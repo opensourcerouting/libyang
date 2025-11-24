@@ -1,9 +1,10 @@
 /**
  * @file test_printer_json.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from printer_yang.c
  *
- * Copyright (c) 2019-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -31,6 +32,12 @@ setup(void **state)
             "      list l {"
             "        key \"k\";"
             "        leaf k {"
+            "          type string;"
+            "        }"
+            "      }"
+            "      list l2 {"
+            "        key \"k2\";"
+            "        leaf k2 {"
             "          type string;"
             "        }"
             "      }"
@@ -96,7 +103,14 @@ test_empty_leaf_list(void **state)
     data = "{\"schema2:a\":{\"b\":{\"c\":\"val\"}}}";
     CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_EMPTY_LEAF_LIST));
-    CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"c\":\"val\",\"l\":[]},\"ll\":[]},\"schema2:tl\":[]}");
+    CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"c\":\"val\",\"l\":[],\"l2\":[]},\"ll\":[]},\"schema2:tl\":[]}");
+    free(buffer);
+    lyd_free_all(tree);
+
+    data = "{\"schema2:a\":{\"b\":{\"l\":[{\"k\":\"key1\"},{\"k\":\"key2\"}]}}}";
+    CHECK_PARSE_LYD_PARAM(data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&buffer, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_EMPTY_LEAF_LIST));
+    CHECK_STRING(buffer, "{\"schema2:a\":{\"b\":{\"l\":[{\"k\":\"key1\"},{\"k\":\"key2\"}],\"l2\":[]},\"ll\":[]},\"schema2:tl\":[]}");
     free(buffer);
     lyd_free_all(tree);
 
@@ -107,6 +121,8 @@ test_empty_leaf_list(void **state)
             "  \"schema2:a\": {\n"
             "    \"b\": {\n"
             "      \"l\": [\n"
+            "      ],\n"
+            "      \"l2\": [\n"
             "      ]\n"
             "    },\n"
             "    \"ll\": [\n"

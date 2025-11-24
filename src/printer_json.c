@@ -734,7 +734,9 @@ json_print_inner(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         while (snode) {
             /* print an empty (leaf-)list */
             LY_CHECK_RET(json_print_leaf_list_empty(pctx, snode));
+            pctx->level_printed = pctx->level;
 
+            /* next iter */
             snode = json_print_next_empty_leaf_list(pctx, snode->next, NULL);
         }
     }
@@ -1083,6 +1085,7 @@ static LY_ERR
 json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
     const struct lysc_node *snode;
+    ly_bool last_inst = 0;
 
     if (!lyd_node_should_print(node, pctx->options)) {
         if (json_print_array_is_last_inst(pctx, node)) {
@@ -1118,6 +1121,13 @@ json_print_node(struct jsonpr_ctx *pctx, const struct lyd_node *node)
         }
 
         if (pctx->options & LYD_PRINT_EMPTY_LEAF_LIST) {
+            /* first check whether the last instance of a schema node has been printed */
+            if (!node->next || (node->schema != node->next->schema)) {
+                last_inst = 1;
+            }
+        }
+
+        if (last_inst) {
             snode = json_print_next_empty_leaf_list(pctx, node->schema->next, node);
             while (snode) {
                 /* print an empty (leaf-)list */
