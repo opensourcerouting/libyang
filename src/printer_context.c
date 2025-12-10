@@ -33,7 +33,7 @@
  * @return Size of @p ARRAY.
  */
 #define CTXS_SIZED_ARRAY(ARRAY) \
-        (ARRAY ? sizeof(LY_ARRAY_COUNT_TYPE) : 0) + LY_ARRAY_COUNT(ARRAY) * sizeof *ARRAY
+        (ARRAY ? LY_CTXP_MEM_SIZE(sizeof(LY_ARRAY_COUNT_TYPE)) : 0) + LY_CTXP_MEM_SIZE(LY_ARRAY_COUNT(ARRAY) * sizeof *ARRAY)
 
 /**
  * @brief Print (serialize) a sized array.

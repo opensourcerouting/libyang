@@ -1459,7 +1459,7 @@ ly_ctx_compiled_print(const struct ly_ctx *ctx, void *mem, void **mem_end)
 
     /* context, referenced */
     pctx = mem;
-    mem = (char *)mem + sizeof *pctx;
+    mem = (char *)mem + LY_CTXP_MEM_SIZE(sizeof *pctx);
     ly_ctx_compiled_addr_ht_add(addr_ht, ctx, pctx);
 
     /* members */
