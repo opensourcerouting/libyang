@@ -954,12 +954,25 @@ LIBYANG_API_DECL void lyplg_ext_cfree_instance_substatements(const struct ly_ctx
  */
 
 /**
+ * @brief Alignment of all the printed data, ensures all memory access is aligned to this number (B)
+ */
+#define LY_CTXP_MEM_ALIGN 8
+
+/**
+ * @brief Adjust data size to an aligned size to make sure the following data is aligned.
+ *
+ * @param[in,out] SIZE Data size that is adjusted.
+ */
+#define LY_CTXP_MEM_SIZE(SIZE) ((SIZE) + ((~(SIZE) + 1) & (LY_CTXP_MEM_ALIGN - 1)))
+
+/**
  * @brief Callback to return the size of the custom compiled structure and substmts array. If there are none, do not
  * define this callback.
  *
  * @param[in] ext Compiled extension structure.
  * @param[in,out] addr_ht Hash table with addresses of shared structures that were already accounted for, can be added to.
- * @return Total size of the custom compiled structures and the substmts array;
+ * @return Total size of the custom compiled structures and the substmts array. Always use ::LY_CTXP_MEM_SIZE when
+ * adding to the size for correct alignment.
  * @return -1 on error.
  */
 typedef int (*lyplg_ext_compiled_size_clb)(const struct lysc_ext_instance *ext, struct ly_ht *addr_ht);
@@ -984,7 +997,7 @@ LIBYANG_API_DECL int lyplg_ext_compiled_stmts_storage_size(const struct lysc_ext
  * @param[in] orig_ext Compiled extension structure to print.
  * @param[in,out] ext Printed extension structure to modify.
  * @param[in,out] mem Memory chunk of the size returned by ::lyplg_ext_compiled_size_clb() to print into, is moved
- * after all the printed data.
+ * after all the printed data. Always use ::LY_CTXP_MEM_SIZE when moving @p mem for correct alignment.
  * @param[in,out] ptr_set Set with pointers to set to printed addresses.
  * @param[in,out] addr_ht Hash table with pairs of addresses of shared structures to be printed and their printed
  * addresses, can be added to.

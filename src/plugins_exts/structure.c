@@ -329,9 +329,9 @@ structure_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr_
 
     struct_cdata = ext->compiled;
 
-    size += sizeof *struct_cdata;
+    size += LY_CTXP_MEM_SIZE(sizeof *struct_cdata);
     size += lyplg_ext_compiled_stmts_storage_size(ext->substmts, addr_ht);
-    size += sizeof *struct_cdata->top_cont;
+    size += LY_CTXP_MEM_SIZE(sizeof *struct_cdata->top_cont);
 
     return size;
 }
@@ -347,12 +347,12 @@ structure_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_e
 
     /* ext structure */
     struct_cdata = ext->compiled = *mem;
-    *mem = (char *)*mem + sizeof *struct_cdata;
+    *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof *struct_cdata);
     memset(struct_cdata, 0, sizeof *struct_cdata);
 
     /* top_cont */
     struct_cdata->top_cont = *mem;
-    *mem = (char *)*mem + sizeof *struct_cdata->top_cont;
+    *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof *struct_cdata->top_cont);
     lyplg_ext_compiled_print_add_addr(addr_ht, orig_cdata->top_cont, struct_cdata->top_cont);
     memset(struct_cdata->top_cont, 0, sizeof *struct_cdata->top_cont);
 

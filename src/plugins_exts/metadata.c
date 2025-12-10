@@ -220,7 +220,7 @@ annotation_compiled_size(const struct lysc_ext_instance *ext, struct ly_ht *addr
 {
     int size = 0;
 
-    size += sizeof(struct lysc_ext_metadata);
+    size += LY_CTXP_MEM_SIZE(sizeof(struct lysc_ext_metadata));
     size += lyplg_ext_compiled_stmts_storage_size(ext->substmts, addr_ht);
 
     return size;
@@ -233,7 +233,7 @@ annotation_compiled_print(const struct lysc_ext_instance *orig_ext, struct lysc_
     struct lysc_ext_metadata *ann_cdata;
 
     ann_cdata = ext->compiled = *mem;
-    *mem = (char *)*mem + sizeof *ann_cdata;
+    *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof *ann_cdata);
     memset(ann_cdata, 0, sizeof *ann_cdata);
 
     ext->substmts[1].storage_p = (void **)&ann_cdata->units;
