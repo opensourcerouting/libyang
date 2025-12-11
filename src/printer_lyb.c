@@ -447,11 +447,11 @@ lyb_write_count(uint32_t count, struct lylyb_print_ctx *lybctx)
         return LY_EINT;
     }
 
-    /* correct byte order */
-    count = htole32(count);
-
     /* copy count to buf */
     buf |= count << prefix_b;
+
+    /* correct byte order */
+    buf = htole32(buf);
 
     return lyb_write(&buf, prefix_b + num_b, lybctx);
 }
@@ -492,11 +492,11 @@ lyb_write_size(uint32_t size, struct lylyb_print_ctx *lybctx)
         num_b = 32;
     }
 
-    /* correct byte order */
-    size = htole32(size);
-
     /* copy size to buf */
     buf |= size << prefix_b;
+
+    /* correct byte order */
+    buf = htole32(buf);
 
     return lyb_write(&buf, prefix_b + num_b, lybctx);
 }
@@ -635,6 +635,9 @@ lyb_print_header(struct lylyb_print_ctx *lybctx)
     /* context hash (is truncated), if not printing empty data */
     if (lybctx->ctx) {
         hash = lyb_truncate_hash_nonzero(ly_ctx_get_modules_hash(lybctx->ctx), LYB_HEADER_CTX_HASH_BITS);
+
+        /* correct byte order */
+        hash = htole32(hash);
     } else {
         hash = 0;
     }
@@ -1018,6 +1021,9 @@ lyb_print_lyb_type(const struct lyd_node *node, struct lylyb_print_ctx *lybctx)
         /* standard child node */
         lyb_type = LYB_NODE_CHILD;
     }
+
+    /* correct byte order */
+    lyb_type = htole32(lyb_type);
 
     LY_CHECK_RET(lyb_write(&lyb_type, LYB_NODE_TYPE_BITS, lybctx));
 

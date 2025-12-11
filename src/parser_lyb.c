@@ -1425,7 +1425,10 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
     char *mod_name = NULL, mod_rev[LY_REV_SIZE];
 
     /* read node type */
-    lyb_read((uint64_t *)&lyb_type, LYB_NODE_TYPE_BITS, lybctx->parse_ctx);
+    lyb_read(&lyb_type, LYB_NODE_TYPE_BITS, lybctx->parse_ctx);
+
+    /* correct byte order */
+    lyb_type = le32toh(lyb_type);
 
     switch (lyb_type) {
     case LYB_NODE_END:
@@ -1542,6 +1545,9 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
     /* context hash */
     data_hash = 0;
     lyb_read((uint8_t *)&data_hash, LYB_HEADER_CTX_HASH_BITS, pctx);
+
+    /* correct byte order */
+    data_hash = le32toh(data_hash);
 
     if (!data_hash) {
         /* fine for no data */
