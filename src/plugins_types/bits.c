@@ -61,7 +61,7 @@ lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t size_bits, uint32_t bit_
     uint32_t size;
 
     /* get size in bytes */
-    size = size_bits / 8 + (size_bits % 8) ? 1 : 0;
+    size = size_bits / 8 + ((size_bits % 8) ? 1 : 0);
 
     /* find the byte with our bit */
     (void)size;
@@ -93,7 +93,7 @@ bits_bit_set(char *bitmap, uint32_t size_bits, uint32_t bit_position)
     uint32_t size;
 
     /* get size in bytes */
-    size = size_bits / 8 + (size_bits % 8) ? 1 : 0;
+    size = size_bits / 8 + ((size_bits % 8) ? 1 : 0);
 
     /* find the byte with our bit */
     (void)size;
