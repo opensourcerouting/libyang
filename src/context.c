@@ -370,7 +370,7 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, const struct lyd_node *yltree)
     LY_ERR ret = LY_SUCCESS;
     uint32_t i, j;
 
-    LY_CHECK_RET(ret = lyd_find_xpath(yltree, "modules-state/module", &set));
+    LY_CHECK_RET(ret = lyd_find_xpath(yltree, "/ietf-yang-library:modules-state/module", &set));
 
     if (!set->count) {
         ret = LY_ENOTFOUND;
