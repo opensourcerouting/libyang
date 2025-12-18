@@ -515,7 +515,7 @@ process_args(int argc, char *argv[], struct yl_opt *yo, struct ly_ctx **ctx)
     yo->line_length = 0;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neEA:t:d:lL:o:O:R:myY:XJx:G:k:", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvVQf:I:p:DF:iP:qs:neE:At:d:lL:o:O:R:myY:XJx:G:k:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'h': /* --help */
             help(0);
