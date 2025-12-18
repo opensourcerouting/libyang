@@ -156,14 +156,16 @@ struct ly_in;
                                                      for that is that the data may be parsed incorrectly possibly
                                                      leading to a crash. However, this hash restriction is too severe
                                                      and the hash must match only with regard to the modules with actual
-                                                     YANG data in the LYB data to guarantee correct data parsing. In other
-                                                     words, if there is a module A in the printing context but no data
-                                                     of this module in the LYB data, the parsing context does not have
-                                                     to have module A loaded but the hash check will fail in that case.
+                                                     YANG data in the LYB data and their equal absolute order in the
+                                                     context to guarantee correct data parsing. In other words, if there
+                                                     is a module A in the printing context but no data
+                                                     of this module in the LYB data and any YANG data belong to modules
+                                                     before the module A, the parsing context does not have
+                                                     to have module A loaded but the hash check will fail without it.
                                                      So, if you are able to guarantee that the parsing context will
-                                                     have all the required YANG modules in the same state as in the
-                                                     printed context you can use this flag to effectively soften the
-                                                     context restriction. */
+                                                     have all the required YANG modules in the same state and absolute
+                                                     order as in the printed context you can use this flag to
+                                                     effectively soften the context restriction. */
 #define LYD_PARSE_ORDERED 0x200000          /**< Do not search for the correct place of each node but instead expect
                                                  that the nodes are being parsed in the correct schema-based order,
                                                  which is always true if the data were printed by libyang and not

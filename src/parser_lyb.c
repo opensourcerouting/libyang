@@ -408,8 +408,15 @@ lyb_parse_module_idx(struct lylyb_parse_ctx *lybctx, const struct lys_module **m
     /* read module index */
     lyb_read_count(&idx, lybctx);
 
+    /* check the read index */
+    if (idx >= lybctx->ctx->modules.count) {
+        LOGERR(lybctx->ctx, LY_EINT, "Invalid context for LYB data parsing, module with index %" PRIu32 " not found.",
+                idx);
+        rc = LY_EINT;
+        goto cleanup;
+    }
+
     /* get the module */
-    assert(idx < lybctx->ctx->modules.count);
     m = lybctx->ctx->modules.objs[idx];
     if (!m->implemented) {
         LOGERR(lybctx->ctx, LY_EINT, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",

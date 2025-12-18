@@ -414,10 +414,14 @@ LIBYANG_API_DECL LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint32_t option
 LIBYANG_API_DECL uint16_t ly_ctx_get_change_count(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the hash of all the modules in the context.
+ * @brief Get the hash of all the modules in the context. Since order of the modules is significant,
+ * even when 2 contexts have the same modules but loaded in a different order, the hash will differ.
+ *
+ * Modules are added into the context in the order they are loaded in, imports following the modules
+ * that imported them.
  *
  * Hash consists of all module names (1), their revisions (2), all enabled features (3), and their
- * imported/implemented state (4). Context module order is not significant.
+ * imported/implemented state (4).
  *
  * @param[in] ctx Context to be examined.
  * @return Context modules hash.
