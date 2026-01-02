@@ -37,26 +37,29 @@
  * | fixed for a specific type | yes | `int32 *` | assigned little-endian value of the enum |
  */
 
-#define ENUM_FIXED_SIZE_BITS(type) \
-        lyplg_type_get_highest_set_bit_pos(\
-        ((struct lysc_type_enum *)type)->enums[LY_ARRAY_COUNT(((struct lysc_type_enum *)type)->enums) - 1].value)
-
 static void
 lyplg_type_lyb_size_enum(const struct lysc_type *type, enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits)
 {
     const struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
-    uint32_t max_value;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t max_value = 0;
 
-    *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
-
-    if (type_enum->enums[0].value < 0) {
-        /* we need the full 4 bytes */
-        *fixed_size_bits = 32;
-        return;
+    if (size_type) {
+        *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
     }
 
-    /* value of the last enum, sorted */
-    max_value = type_enum->enums[LY_ARRAY_COUNT(type_enum->enums) - 1].value;
+    /* learn the max value of enums */
+    LY_ARRAY_FOR(type_enum->enums, u) {
+        if (type_enum->enums[u].value < 0) {
+            /* we need the full 4 bytes */
+            *fixed_size_bits = 32;
+            return;
+        }
+
+        if ((unsigned)type_enum->enums[u].value > max_value) {
+            max_value = type_enum->enums[u].value;
+        }
+    }
 
     /* learn the position of the highest set bit, the least amount of bits that can hold the number */
     *fixed_size_bits = lyplg_type_get_highest_set_bit_pos(max_value);
@@ -71,6 +74,7 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
+    uint32_t fixed_size_bits;
     ly_bool found = 0;
     uint32_t value_size;
     int64_t num = 0;
@@ -81,8 +85,9 @@ lyplg_type_store_enum(const struct ly_ctx *ctx, const struct lysc_type *type, co
     storage->realtype = type;
 
     /* check value length */
+    lyplg_type_lyb_size_enum(type, NULL, &fixed_size_bits);
     ret = lyplg_type_check_value_size("enumeration", format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS,
-            ENUM_FIXED_SIZE_BITS(type), &value_size, err);
+            fixed_size_bits, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {
@@ -176,17 +181,20 @@ static const void *
 lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
+    uint32_t fixed_size_bits;
     int64_t prev_num = 0, num = 0;
     void *buf;
 
     if (format == LY_VALUE_LYB) {
+        lyplg_type_lyb_size_enum(value->realtype, NULL, &fixed_size_bits);
+
         prev_num = num = value->enum_item->value;
         num = htole64(num);
         if (num == prev_num) {
             /* values are equal, little-endian */
             *dynamic = 0;
             if (value_size_bits) {
-                *value_size_bits = ENUM_FIXED_SIZE_BITS(value->realtype);
+                *value_size_bits = fixed_size_bits;
             }
             return &value->enum_item->value;
         } else {
@@ -196,7 +204,7 @@ lyplg_type_print_enum(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *
 
             *dynamic = 1;
             if (value_size_bits) {
-                *value_size_bits = ENUM_FIXED_SIZE_BITS(value->realtype);
+                *value_size_bits = fixed_size_bits;
             }
             memcpy(buf, &num, 4);
             return buf;

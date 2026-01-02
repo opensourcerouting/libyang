@@ -2571,6 +2571,68 @@ test_shrink(void **state)
     lyd_free_all(tree1);
 }
 
+static void
+test_enumeration(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module enum { namespace \"urn:enum\"; prefix e;"
+            "  container cont {"
+            "    presence \"\";"
+            "    leaf test-value {"
+            "      type enumeration {"
+            "        enum value-1 { value 1; }"
+            "        enum value-56 { value 56; }"
+            "        enum value-25 { value 25; }"
+            "        enum value-39 { value 39; }"
+            "        enum value-32 { value 32; }"
+            "        enum value-31 { value 31; }"
+            "      }"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:enum\">\n"
+            "<test-value>value-56</test-value>\n"
+            "</cont>\n";
+    check_print_parse(state, data_xml);
+}
+
+static void
+test_bits(void **state)
+{
+    const char *mod;
+    const char *data_xml;
+
+    mod =
+            "module bits { namespace \"urn:bits\"; prefix b;"
+            "  container cont {"
+            "    presence \"\";"
+            "    leaf test-value {"
+            "      type bits {"
+            "        bit bit-1 { position 1; }"
+            "        bit bit-56 { position 56; }"
+            "        bit bit-25 { position 25; }"
+            "        bit bit-39 { position 39; }"
+            "        bit bit-32 { position 32; }"
+            "        bit bit-31 { position 31; }"
+            "      }"
+            "    }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data_xml =
+            "<cont xmlns=\"urn:bits\">\n"
+            "<test-value>bit-56</test-value>\n"
+            "</cont>\n";
+    check_print_parse(state, data_xml);
+}
+
 int
 main(void)
 {
@@ -2584,6 +2646,8 @@ main(void)
         UTEST(test_opaq, setup),
         UTEST(test_collisions, setup),
         UTEST(test_shrink, setup),
+        UTEST(test_enumeration, setup),
+        UTEST(test_bits, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
