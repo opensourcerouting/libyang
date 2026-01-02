@@ -985,7 +985,7 @@ lyd_diff_find_match(const struct lyd_node *siblings, const struct lyd_node *targ
     }
 
     /* update match as needed */
-    LY_CHECK_RET(lyd_dup_inst_next(match, siblings, dup_inst_ht));
+    LY_CHECK_RET(lyd_dup_inst_next(match, dup_inst_ht));
 
     if (*match && ((*match)->flags & LYD_DEFAULT) && !defaults) {
         /* ignore default nodes */

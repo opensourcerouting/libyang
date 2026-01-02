@@ -2724,7 +2724,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
 
     if (match_trg) {
         /* update match as needed */
-        LY_CHECK_RET(lyd_dup_inst_next(&match_trg, *first_trg, dup_inst));
+        LY_CHECK_RET(lyd_dup_inst_next(&match_trg, dup_inst));
     } else {
         /* first instance of this node */
         first_inst = 1;
@@ -2821,7 +2821,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
 
         if (first_inst) {
             /* remember not to find this instance next time */
-            LY_CHECK_RET(lyd_dup_inst_next(&dup_src, *first_trg, dup_inst));
+            LY_CHECK_RET(lyd_dup_inst_next(&dup_src, dup_inst));
         }
 
         /* call callback, no source node */

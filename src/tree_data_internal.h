@@ -47,11 +47,10 @@ struct lyd_dup_inst {
  * (that should not be considered next time) instance.
  *
  * @param[in,out] inst Found instance, is updated so that the same instance is not returned twice.
- * @param[in] siblings Siblings where @p inst was found.
  * @param[in] dup_inst_ht Duplicate instance cache hash table.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct ly_ht **dup_inst_ht);
+LY_ERR lyd_dup_inst_next(struct lyd_node **inst, struct ly_ht **dup_inst_ht);
 
 /**
  * @brief Free duplicate instance cache.

@@ -105,7 +105,7 @@ lyd_dup_inst_get(const struct lyd_node *first_inst, struct ly_ht **dup_inst_ht)
 }
 
 LY_ERR
-lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struct ly_ht **dup_inst_ht)
+lyd_dup_inst_next(struct lyd_node **inst, struct ly_ht **dup_inst_ht)
 {
     struct lyd_dup_inst *dup_inst;
 
@@ -117,11 +117,11 @@ lyd_dup_inst_next(struct lyd_node **inst, const struct lyd_node *siblings, struc
     /* there can be more exact same instances (even if not allowed in invalid data) and we must make sure we do not
      * match a single node more times */
     dup_inst = lyd_dup_inst_get(*inst, dup_inst_ht);
-    LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(siblings)), LY_EMEM);
+    LY_CHECK_ERR_RET(!dup_inst, LOGMEM(LYD_CTX(*inst)), LY_EMEM);
 
     if (!dup_inst->used) {
-        /* we did not cache these instances yet, do so */
-        lyd_find_sibling_dup_inst_set(siblings, *inst, &dup_inst->set);
+        /* we did not cache these instances yet, do so (use the same inst in case it is from a mount-point) */
+        lyd_find_sibling_dup_inst_set(*inst, *inst, &dup_inst->set);
         assert(dup_inst->set->count && (dup_inst->set->dnodes[0] == *inst));
     }
 
