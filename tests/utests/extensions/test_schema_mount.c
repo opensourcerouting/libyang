@@ -1931,7 +1931,7 @@ test_xpath(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, data);
     CHECK_LOG_CTX("Invalid instance-identifier \"/m:root/m:l3\" value - semantic error: Not found node \"l3\" in path.",
-            "/mount:root/l2", 4);
+            "/sm:root/mount:root/l2", 4);
 
     /* valid */
     xml =

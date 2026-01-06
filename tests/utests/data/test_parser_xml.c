@@ -330,7 +330,7 @@ test_list(void **state)
     lyd_free_all(tree);
 
     PARSER_CHECK_ERROR(data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Invalid position of the key \"b\" in a list.", "/a:l1[c='1']/b", 1);
+            "Invalid position of the key \"b\" in a list.", "/a:l1[b='b'][c='1']/b", 1);
 }
 
 static void
@@ -728,7 +728,7 @@ test_netconf_rpc(void **state)
             &tree, &op));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
-            "/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
+            "/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
     lyd_free_all(tree);
     assert_null(op);
 }

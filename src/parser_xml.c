@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief XML data parser for libyang
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -644,25 +644,26 @@ unknown_module:
 }
 
 /**
- * @brief Parse an XML opque node.
+ * @brief Parse an XML opaque node and insert into the data tree.
  *
  * @param[in] lydctx XML YANG data parser context.
- * @param[in] sibling Existing sibling node, if any.
  * @param[in] prefix Parsed node prefix.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] name Parsed node name.
  * @param[in] name_len Length of @p name.
- * @param[out] insert_anchor Optional anchor node for inserting this node.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[out] node Created node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, const char *prefix, uint32_t prefix_len,
-        const char *name, uint32_t name_len, struct lyd_node **insert_anchor, struct lyd_node **node)
+lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const char *prefix, uint32_t prefix_len, const char *name,
+        uint32_t name_len, struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
     struct lyd_node_opaq *opaq;
+    struct lyd_node *insert_anchor = NULL;
     const char *ns_uri, *value = NULL;
     size_t value_len;
     ly_bool ws_only, dynamic = 0;
@@ -693,7 +694,8 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
     ns_uri = ns ? ns->uri : NULL;
 
     /* get best-effort node hints */
-    lydxml_get_hints_opaq(name, name_len, xmlctx->value, xmlctx->value_len, sibling, ns_uri, &hints, insert_anchor);
+    lydxml_get_hints_opaq(name, name_len, xmlctx->value, xmlctx->value_len, parent ? lyd_child(parent) : *first_p,
+            ns_uri, &hints, &insert_anchor);
 
     /* create the node without value */
     rc = lyd_create_opaq(xmlctx->ctx, name, name_len, prefix, prefix_len, ns_uri, ns_uri ? strlen(ns_uri) : 0, NULL, 0,
@@ -702,6 +704,10 @@ lydxml_subtree_opaq(struct lyd_xml_ctx *lydctx, const struct lyd_node *sibling, 
 
     assert(*node);
     LOG_LOCSET(NULL, *node);
+
+    /* insert */
+    rc = lyd_parser_node_insert(NULL, parent, first_p, insert_anchor, lydctx->parse_opts, *node);
+    LY_CHECK_GOTO(rc, cleanup);
 
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
@@ -745,24 +751,25 @@ cleanup:
         free((char *)value);
     }
     if (rc) {
-        lyd_free_tree(*node);
-        *node = NULL;
+        lyd_parser_node_free(first_p, node);
     }
     return rc;
 }
 
 /**
- * @brief Parse an XML leaf/leaf-list node.
+ * @brief Parse an XML leaf/leaf-list node and insert into the data tree.
  *
  * @param[in] lydctx XML YANG data parser context.
- * @param[in] parent Parent node, if any.
  * @param[in] snode Schema node of the new node.
+ * @param[in] ext Extension instance of @p snode, if any.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[out] node Created node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const struct lysc_node *snode,
-        struct lyd_node **node)
+lydxml_subtree_term(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, const struct lysc_ext_instance *ext,
+        struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
@@ -778,6 +785,10 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, const s
     if (*node) {
         LOG_LOCSET(NULL, *node);
     }
+
+    /* insert */
+    r = lyd_parser_node_insert(ext, parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     if (*node && parent && (snode->flags & LYS_KEY)) {
         /* check the key order, the anchor must never be a key */
@@ -810,24 +821,25 @@ cleanup:
         LOG_LOCBACK(0, 1);
     }
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
-        lyd_free_tree(*node);
-        *node = NULL;
+        lyd_parser_node_free(first_p, node);
     }
     return rc;
 }
 
 /**
- * @brief Parse an XML inner node.
+ * @brief Parse an XML inner node and insert into the data tree.
  *
  * @param[in] lydctx XML YANG data parser context.
  * @param[in] snode Schema node of the new node.
  * @param[in] ext Extension instance of @p snode, if any.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[out] node Created node.
  * @return LY_ERR value.
  */
 static LY_ERR
 lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, const struct lysc_ext_instance *ext,
-        struct lyd_node **node)
+        struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
@@ -850,6 +862,10 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     assert(*node);
     LOG_LOCSET(NULL, *node);
 
+    /* insert */
+    r = lyd_parser_node_insert(ext, parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
     /* parser next */
     rc = lyxml_ctx_next(xmlctx);
     LY_CHECK_GOTO(rc, cleanup);
@@ -863,6 +879,10 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     while (xmlctx->status == LYXML_ELEMENT) {
         r = lydxml_subtree_r(lydctx, *node, lyd_node_child_p(*node), NULL);
         LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+
+        /* insert again, node may be a list that had its keys missing */
+        r = lyd_parser_node_insert(ext, parent, first_p, NULL, lydctx->parse_opts, *node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
     /* restore options */
@@ -892,24 +912,25 @@ cleanup:
     lydctx->parse_opts = prev_parse_opts;
     if (rc && ((*node && !(*node)->hash) || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         /* list without keys is unusable or an error */
-        lyd_free_tree(*node);
-        *node = NULL;
+        lyd_parser_node_free(first_p, node);
     }
     return rc;
 }
 
 /**
- * @brief Parse an XML anyxml/anydata node.
+ * @brief Parse an XML anyxml/anydata node and insert into the data tree.
  *
  * @param[in] lydctx XML YANG data parser context.
  * @param[in] snode Schema node of the new node.
  * @param[in] ext Extension instance of @p snode, if any.
+ * @param[in,out] parent Parent node, if any.
+ * @param[in,out] first_p First top-level node, is updated.
  * @param[out] node Created node.
  * @return LY_ERR value.
  */
 static LY_ERR
 lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, const struct lysc_ext_instance *ext,
-        struct lyd_node **node)
+        struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
@@ -974,6 +995,10 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         child = NULL;
     }
 
+    /* insert */
+    r = lyd_parser_node_insert(ext, parent, first_p, NULL, lydctx->parse_opts, *node);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
 cleanup:
     if (log_node) {
         LOG_LOCBACK(0, 1);
@@ -983,8 +1008,7 @@ cleanup:
     free(val);
     lyd_free_tree(child);
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
-        lyd_free_tree(*node);
-        *node = NULL;
+        lyd_parser_node_free(first_p, node);
     }
     return rc;
 }
@@ -1011,7 +1035,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
     uint32_t orig_parse_opts;
-    struct lyd_node *node = NULL, *insert_anchor = NULL;
+    struct lyd_node *node = NULL;
     ly_bool parse_subtree;
 
     assert(parent || first_p);
@@ -1045,17 +1069,20 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
                 xmlctx->ws_only ? 0 : xmlctx->value_len, NULL, LY_VALUE_XML, NULL, LYD_HINT_DATA, &node);
         LY_CHECK_GOTO(rc, cleanup);
 
+        /* insert */
+        r = lyd_parser_node_insert(NULL, parent, first_p, NULL, lydctx->parse_opts, node);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+
         /* validate the value */
         r = lyd_parser_notif_eventtime_validate(node);
-        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* parser next */
         r = lyxml_ctx_next(xmlctx);
-        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         if (xmlctx->status != LYXML_ELEM_CLOSE) {
             LOGVAL(ctx, LYVE_DATA, "Unexpected notification \"eventTime\" node children.");
             rc = LY_EVALID;
-            lyd_free_tree(node);
             goto cleanup;
         }
 
@@ -1095,18 +1122,17 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     assert(xmlctx->status == LYXML_ELEM_CONTENT);
     if (!snode) {
         /* opaque */
-        r = lydxml_subtree_opaq(lydctx, parent ? lyd_child(parent) : *first_p, prefix, prefix_len, name, name_len,
-                &insert_anchor, &node);
+        r = lydxml_subtree_opaq(lydctx, prefix, prefix_len, name, name_len, parent, first_p, &node);
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* term */
-        r = lydxml_subtree_term(lydctx, parent, snode, &node);
+        r = lydxml_subtree_term(lydctx, snode, ext, parent, first_p, &node);
     } else if (snode->nodetype & LYD_NODE_INNER) {
         /* inner */
-        r = lydxml_subtree_inner(lydctx, snode, ext, &node);
+        r = lydxml_subtree_inner(lydctx, snode, ext, parent, first_p, &node);
     } else {
         /* any */
         assert(snode->nodetype & LYD_NODE_ANY);
-        r = lydxml_subtree_any(lydctx, snode, ext, &node);
+        r = lydxml_subtree_any(lydctx, snode, ext, parent, first_p, &node);
     }
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
@@ -1114,7 +1140,7 @@ node_parsed:
     if (node && snode) {
         /* add/correct flags */
         r = lyd_parser_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
-        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* store for ext instance node validation, if needed */
@@ -1127,7 +1153,7 @@ node_parsed:
     assert(xmlctx->status == LYXML_ELEM_CLOSE);
     if (!parse_subtree) {
         r = lyxml_ctx_next(xmlctx);
-        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
     LY_CHECK_GOTO(!node, cleanup);
@@ -1139,20 +1165,6 @@ node_parsed:
     } else {
         lyd_insert_attr(node, attr);
         attr = NULL;
-    }
-
-    /* insert, keep first pointer correct */
-    if (insert_anchor) {
-        lyd_insert_after(insert_anchor, node);
-    } else if (ext) {
-        r = lyplg_ext_insert(parent, node);
-        LY_CHECK_ERR_GOTO(r, rc = r; lyd_free_tree(node), cleanup);
-    } else {
-        lyd_insert_node(parent, first_p, node,
-                lydctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
-    }
-    while (!parent && (*first_p)->prev->next) {
-        *first_p = (*first_p)->prev;
     }
 
     /* rememeber a successfully parsed node */

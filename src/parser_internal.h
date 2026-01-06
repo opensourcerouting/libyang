@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Internal structures and functions for libyang parsers
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -440,7 +440,7 @@ LY_ERR lyd_parser_check_keys(struct lyd_node *node);
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
-        struct lysc_ext_instance *ext);
+        const struct lysc_ext_instance *ext);
 
 /**
  * @brief Validate a new parsed data node and add its implicit children.
@@ -450,6 +450,28 @@ LY_ERR lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, 
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node);
+
+/**
+ * @brief Free safely a parsed node.
+ *
+ * @param[in,out] first_p Pointer to the first sibling on a level.
+ * @param[in,out] node Node to free, is zeroed.
+ */
+void lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node);
+
+/**
+ * @brief Insert a parsed node.
+ *
+ * @param[in] ext Extension instance if @p node was parsed for one.
+ * @param[in] parent Data node parent, if any.
+ * @param[in,out] first_p First sibling on the level, if any.
+ * @param[in] insert_anchor Optional insert anchor to use.
+ * @param[in] parse_opts Parser options.
+ * @param[in] node Node to insert.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
+        struct lyd_node *insert_anchor, uint32_t parse_opts, struct lyd_node *node);
 
 /**
  * @brief Parse an instance extension statement.

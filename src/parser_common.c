@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang common parser functions.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -381,7 +381,7 @@ lyd_parser_check_keys(struct lyd_node *node)
 
 LY_ERR
 lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct lyd_ctx *lydctx,
-        struct lysc_ext_instance *ext)
+        const struct lysc_ext_instance *ext)
 {
     struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
     struct lyd_ctx_ext_val *ext_val;
@@ -434,7 +434,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
             /* rememeber for validation */
             ext_val = malloc(sizeof *ext_val);
             LY_CHECK_ERR_RET(!ext_val, LOGMEM(LYD_CTX(node)), LY_EMEM);
-            ext_val->ext = ext;
+            ext_val->ext = (struct lysc_ext_instance *)ext;
             ext_val->sibling = node;
             LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
         }
@@ -471,6 +471,65 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
 
 cleanup:
     return rc;
+}
+
+void
+lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node)
+{
+    if (*node && (*node)->schema && ((*node)->schema->flags & LYS_KEY)) {
+        /* no not free keys */
+        return;
+    }
+
+    if (*first_p && !(*first_p)->parent && (*first_p == *node)) {
+        *first_p = (*first_p)->next;
+    }
+
+    lyd_free_tree(*node);
+    *node = NULL;
+}
+
+LY_ERR
+lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
+        struct lyd_node *insert_anchor, uint32_t parse_opts, struct lyd_node *node)
+{
+    const struct lysc_node *skey = NULL;
+    const struct lyd_node *key;
+
+    if (!node || node->parent || (node->prev != node) || (first_p && (*first_p == node))) {
+        /* no node or already inserted */
+        return LY_SUCCESS;
+    }
+
+    if (node->schema && (node->schema->nodetype == LYS_LIST)) {
+        /* check the node has all the keys first */
+        key = lyd_child(node);
+        while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
+            if (!key || (key->schema != skey)) {
+                /* missing key(s) */
+                return LY_SUCCESS;
+            }
+
+            key = key->next;
+        }
+    }
+
+    /* insert */
+    if (insert_anchor) {
+        lyd_insert_after(insert_anchor, node);
+    } else if (ext) {
+        LY_CHECK_RET(lyplg_ext_insert(parent, node));
+    } else {
+        lyd_insert_node(parent, first_p, node,
+                parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
+    }
+
+    /* adjust the first sibling pointer */
+    while (!parent && (*first_p)->prev->next) {
+        *first_p = (*first_p)->prev;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
