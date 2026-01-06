@@ -532,7 +532,7 @@ test_atomize(void **state)
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "//.", 0, &set));
-    assert_uint_in_range(set->count, 17, UINT32_MAX);
+    assert_true(set->count > 17);
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:c/ll[a='val1']/ll[a='val2']/b", 0, &set));
