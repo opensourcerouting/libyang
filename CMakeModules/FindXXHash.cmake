@@ -35,6 +35,7 @@ find_library(XXHASH_LIBRARY
 )
 
 # for 32-bit system compatibility
+set(CMAKE_REQUIRED_LIBRARIES ${XXHASH_LIBRARY})
 check_symbol_exists(XXH3_64bits_withSeed ${XXHASH_INCLUDE_DIR}/xxhash.h HAVE_XXH3_64BITS_WITHSEED)
 
 include(FindPackageHandleStandardArgs)
