@@ -525,6 +525,7 @@ lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *par
     }
 
     /* adjust the first sibling pointer */
+    assert(parent || first_p);
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }
