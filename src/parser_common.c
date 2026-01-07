@@ -516,7 +516,7 @@ lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *par
 
     /* insert */
     if (insert_anchor) {
-        lyd_insert_after(insert_anchor, node);
+        LY_CHECK_RET(lyd_insert_after(insert_anchor, node));
     } else if (ext) {
         LY_CHECK_RET(lyplg_ext_insert(parent, node));
     } else {
