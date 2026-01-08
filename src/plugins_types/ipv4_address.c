@@ -1,9 +1,9 @@
 /**
  * @file ipv4_address.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief ietf-inet-types ipv4-address type plugin.
+ * @brief ietf-inet-types ipv4-address and ipv4-address-link-local type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesIPv4Address ipv4-address (ietf-inet-types)
+ * @subsection howtoDataLYBTypesIPv4Address ipv4-address and ipv4-address-link-local (ietf-inet-types)
  *
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
@@ -368,7 +368,7 @@ lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Plugin information for ipv4-address type implementation.
+ * @brief Plugin information for ipv4-address and ipv4-address-link-local type implementation.
  *
  * Note that external plugins are supposed to use:
  *
@@ -377,8 +377,24 @@ lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_ipv4_address[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "ipv4-address",
+
+        .plugin.id = "ly2 ipv4-address",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
+        .plugin.store = lyplg_type_store_ipv4_address,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
+        .plugin.compare = lyplg_type_compare_ipv4_address,
+        .plugin.sort = lyplg_type_sort_ipv4_address,
+        .plugin.print = lyplg_type_print_ipv4_address,
+        .plugin.duplicate = lyplg_type_dup_ipv4_address,
+        .plugin.free = lyplg_type_free_ipv4_address,
+    },
+    {
+        .module = "ietf-inet-types",
+        .revision = "2025-12-22",
+        .name = "ipv4-address-link-local",
 
         .plugin.id = "ly2 ipv4-address",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,

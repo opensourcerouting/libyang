@@ -84,6 +84,10 @@ test_data_xml(void **state)
     /* xml test */
     schema = MODULE_CREATE_YANG("a",
             "leaf l {type yang:date-and-time;}"
+            "leaf l2 {type yang:date;}"
+            "leaf l2nz {type yang:date-no-zone;}"
+            "leaf l4 {type yang:time;}"
+            "leaf l4nz {type yang:time-no-zone;}"
             "leaf l21 {type yang:hex-string;}"
             "leaf l22 {type yang:uuid;}"
             "leaf l3 {type yang:xpath1.0;}");
@@ -93,9 +97,13 @@ test_data_xml(void **state)
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* date-and-time */
+#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
     TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T21:15:15.88888-02:00");
+#else
+    TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888Z", STRING, "2005-05-25T23:15:15.88888Z");
+#endif
     TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-08:59", STRING, "2005-06-01T06:14:15-02:00");
-    TEST_SUCCESS_XML("a", "l", "2005-05-31T23:15:15-23:00", STRING, "2005-06-01T20:15:15-02:00");
+    TEST_SUCCESS_XML("a", "l", "2005-06-01T11:15:15-11:00", STRING, "2005-06-01T20:15:15-02:00");
 
     /* test 1 second before epoch (mktime returns -1, but it is a correct value), with and without DST */
     TEST_SUCCESS_XML("a", "l", "1970-01-01T00:59:59-02:00", STRING, "1970-01-01T00:59:59-02:00");
@@ -108,18 +116,47 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l", "2005-05-25T23:15:15.88888+04:30", STRING, "2005-05-25T16:45:15.88888-02:00");
 
     /* unknown timezone -- timezone conversion MUST NOT happen */
+#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
     TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00-00:00");
     TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00-00:00");
+#else
+    TEST_SUCCESS_XML("a", "l", "2017-02-01T00:00:00-00:00", STRING, "2017-02-01T00:00:00Z");
+    TEST_SUCCESS_XML("a", "l", "2021-02-29T00:00:00-00:00", STRING, "2021-03-01T00:00:00Z");
+#endif
 
-    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EINVAL);
-    CHECK_LOG_CTX("Missing date-and-time fractions after '.'.",
+    TEST_ERROR_XML("a", "l", "2005-05-31T23:15:15.-08:00", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"2005-05-31T23:15:15.-08:00\" does not conform to "
+            "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)"
+            "(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
             "/a:l", 1);
 
-    TEST_ERROR_XML("a", "l", "2023-16-15T20:13:01+01:00", LY_EINVAL);
-    CHECK_LOG_CTX("Invalid date-and-time month \"15\".", "/a:l", 1);
+    TEST_ERROR_XML("a", "l", "2023-16-15T20:13:01+01:00", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"2023-16-15T20:13:01+01:00\" does not conform to "
+            "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)"
+            "(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
+            "/a:l", 1);
 
-    TEST_ERROR_XML("a", "l", "2023-10-15T20:13:01+95:00", LY_EINVAL);
-    CHECK_LOG_CTX("Invalid date-and-time timezone hour \"95\".", "/a:l", 1);
+    TEST_ERROR_XML("a", "l", "2023-10-15T20:13:01+95:00", LY_EVALID);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"2023-10-15T20:13:01+95:00\" does not conform to "
+            "\"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)"
+            "(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".",
+            "/a:l", 1);
+
+    /* date */
+    TEST_SUCCESS_XML("a", "l2", "2005-05-31-01:00", STRING, "2005-05-30-02:00");
+    TEST_SUCCESS_XML("a", "l2", "1950-01-01-02:00", STRING, "1950-01-01-02:00");
+
+    /* date-no-zone */
+    TEST_SUCCESS_XML("a", "l2nz", "2005-05-31", STRING, "2005-05-31");
+    TEST_SUCCESS_XML("a", "l2nz", "1950-01-01", STRING, "1950-01-01");
+
+    /* time */
+    TEST_SUCCESS_XML("a", "l4", "23:15:15-01:00", STRING, "22:15:15-02:00");
+    TEST_SUCCESS_XML("a", "l4", "00:59:59.001-02:00", STRING, "00:59:59.001-02:00");
+
+    /* time-no-zone */
+    TEST_SUCCESS_XML("a", "l4nz", "23:15:15", STRING, "23:15:15");
+    TEST_SUCCESS_XML("a", "l4nz", "00:59:59.100", STRING, "00:59:59.100");
 
     /* hex-string */
     TEST_SUCCESS_XML("a", "l21", "DB:BA:12:54:fa", STRING, "db:ba:12:54:fa");
@@ -215,7 +252,11 @@ test_lyb(void **state)
     /* xml test */
     schema = MODULE_CREATE_YANG("a",
             "leaf l {type yang:date-and-time;}"
-            "leaf l2 {type yang:xpath1.0;}");
+            "leaf l2 {type yang:date;}"
+            "leaf l2nz {type yang:date-no-zone;}"
+            "leaf l4 {type yang:time;}"
+            "leaf l4nz {type yang:time-no-zone;}"
+            "leaf l3 {type yang:xpath1.0;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
     /* date-and-time */
@@ -223,8 +264,20 @@ test_lyb(void **state)
     TEST_SUCCESS_LYB("a", "l", "2005-05-31T23:15:15-08:59");
     TEST_SUCCESS_LYB("a", "l", "2005-05-01T20:15:15-00:00");
 
+    /* date */
+    TEST_SUCCESS_LYB("a", "l2", "2005-05-31-01:00");
+
+    /* date-no-zone */
+    TEST_SUCCESS_LYB("a", "l2nz", "2005-05-31");
+
+    /* time */
+    TEST_SUCCESS_LYB("a", "l4", "00:59:59.001-02:00");
+
+    /* time-no-zone */
+    TEST_SUCCESS_LYB("a", "l4nz", "23:15:15");
+
     /* xpath1.0 */
-    TEST_SUCCESS_LYB("a\" xmlns:aa=\"urn:tests:a", "l2", "/aa:l2[. = '4']");
+    TEST_SUCCESS_LYB("a\" xmlns:aa=\"urn:tests:a", "l3", "/aa:l2[. = '4']");
 }
 
 static void
@@ -234,7 +287,7 @@ test_sort(void **state)
     const char *schema;
     struct lys_module *mod;
     struct lyd_value val1 = {0}, val2 = {0};
-    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "ietf-yang-types", "2013-07-15", "date-and-time"));
+    struct lyplg_type *type = lysc_get_type_plugin(lyplg_type_plugin_find(NULL, "ietf-yang-types", "2025-12-22", "date-and-time"));
     struct lysc_type *lysc_type;
     struct ly_err_item *err = NULL;
 

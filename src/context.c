@@ -51,12 +51,12 @@
 
 #include "../modules/default@2025-06-18.h"
 #include "../modules/ietf-datastores@2018-02-14.h"
-#include "../modules/ietf-inet-types@2013-07-15.h"
+#include "../modules/ietf-inet-types@2025-12-22.h"
 #include "../modules/ietf-yang-library@2019-01-04.h"
 #include "../modules/ietf-yang-metadata@2016-08-05.h"
 #include "../modules/ietf-yang-schema-mount@2019-01-14.h"
 #include "../modules/ietf-yang-structure-ext@2020-06-17.h"
-#include "../modules/ietf-yang-types@2013-07-15.h"
+#include "../modules/ietf-yang-types@2025-12-22.h"
 #include "../modules/yang@2025-01-29.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
 
@@ -67,16 +67,16 @@ static struct internal_modules_s {
     ly_bool implemented;
     LYS_INFORMAT format;
 } internal_modules[] = {
-    {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
-    {"yang", "2025-01-29", (const char *)yang_2025_01_29_yang, 1, LYS_IN_YANG},
-    {"default", "2025-06-18", (const char *)default_2025_06_18_yang, 1, LYS_IN_YANG},
-    {"ietf-inet-types", "2013-07-15", (const char *)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-types", "2013-07-15", (const char *)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-schema-mount", "2019-01-14", (const char *)ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-structure-ext", "2020-06-17", (const char *)ietf_yang_structure_ext_2020_06_17_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-metadata", "2016-08-05", ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
+    {"yang", "2025-01-29", yang_2025_01_29_yang, 1, LYS_IN_YANG},
+    {"default", "2025-06-18", default_2025_06_18_yang, 1, LYS_IN_YANG},
+    {"ietf-inet-types", "2025-12-22", ietf_inet_types_2025_12_22_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-types", "2025-12-22", ietf_yang_types_2025_12_22_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-schema-mount", "2019-01-14", ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},
+    {"ietf-yang-structure-ext", "2020-06-17", ietf_yang_structure_ext_2020_06_17_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2018-02-14", (const char *)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char *)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
+    {"ietf-datastores", "2018-02-14", ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
+    {"ietf-yang-library", IETF_YANG_LIB_REV, ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)

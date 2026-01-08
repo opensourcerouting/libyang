@@ -1,9 +1,9 @@
 /**
  * @file ipv6_address.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief ietf-inet-types ipv6-address type plugin.
+ * @brief ietf-inet-types ipv6-address and ipv6-address-link-local type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesIPv6Address ipv6-address (ietf-inet-types)
+ * @subsection howtoDataLYBTypesIPv6Address ipv6-address and ipv6-address-link-local (ietf-inet-types)
  *
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
@@ -370,7 +370,7 @@ lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Plugin information for ipv6-address type implementation.
+ * @brief Plugin information for ipv6-address and ipv6-address-link-local type implementation.
  *
  * Note that external plugins are supposed to use:
  *
@@ -379,8 +379,24 @@ lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_ipv6_address[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "ipv6-address",
+
+        .plugin.id = "ly2 ipv6-address",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
+        .plugin.store = lyplg_type_store_ipv6_address,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
+        .plugin.compare = lyplg_type_compare_ipv6_address,
+        .plugin.sort = lyplg_type_sort_ipv6_address,
+        .plugin.print = lyplg_type_print_ipv6_address,
+        .plugin.duplicate = lyplg_type_dup_ipv6_address,
+        .plugin.free = lyplg_type_free_ipv6_address,
+    },
+    {
+        .module = "ietf-inet-types",
+        .revision = "2025-12-22",
+        .name = "ipv6-address-link-local",
 
         .plugin.id = "ly2 ipv6-address",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,

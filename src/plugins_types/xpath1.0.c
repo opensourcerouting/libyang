@@ -528,7 +528,7 @@ lyplg_type_free_xpath10(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_xpath10[] = {
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "xpath1.0",
 
         .plugin.id = "ly2 xpath1.0",

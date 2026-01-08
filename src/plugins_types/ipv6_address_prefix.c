@@ -1,9 +1,9 @@
 /**
- * @file ipv6_prefix.c
+ * @file ipv6_address_prefix.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief ietf-inet-types ipv6-prefix type plugin.
+ * @brief ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesIPv6Prefix ipv6-prefix (ietf-inet-types)
+ * @subsection howtoDataLYBTypesIPv6Prefix ipv6-prefix and ipv6-address-and-prefix (ietf-inet-types)
  *
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
@@ -49,7 +49,7 @@
 
 #define LYPLG_IPV6PREF_LYB_VALUE_SIZE 136
 
-static void lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
+static void lyplg_type_free_ipv6_address_prefix(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Convert IP address with a prefix in string to a binary network-byte order value.
@@ -113,7 +113,7 @@ ipv6prefix_zero_host(struct in6_addr *addr, uint8_t prefix)
 }
 
 static void
-lyplg_type_lyb_size_ipv6_prefix(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
+lyplg_type_lyb_size_ipv6_address_prefix(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
         uint32_t *fixed_size_bits)
 {
     *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
@@ -121,11 +121,11 @@ lyplg_type_lyb_size_ipv6_prefix(const struct lysc_type *UNUSED(type), enum lyplg
 }
 
 /**
- * @brief Implementation of ::lyplg_type_store_clb for the ipv6-prefix ietf-inet-types type.
+ * @brief Implementation of ::lyplg_type_store_clb for the ipv6-prefix and ipv6-address-and-prefix ietf-inet-types type.
  */
 static LY_ERR
-lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
-        uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
+lyplg_type_store_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), const struct lysc_ext_instance *UNUSED(top_ext),
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
@@ -138,15 +138,15 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     storage->realtype = type;
 
     /* check value length */
-    ret = lyplg_type_check_value_size("ipv6-prefix", format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS,
+    ret = lyplg_type_check_value_size(type->name, format, value_size_bits, LYPLG_LYB_SIZE_FIXED_BITS,
             LYPLG_IPV6PREF_LYB_VALUE_SIZE, &value_size, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (format == LY_VALUE_LYB) {
         /* validation */
         if (((uint8_t *)value)[16] > 128) {
-            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB ipv6-prefix prefix length %" PRIu8 ".",
-                    ((uint8_t *)value)[16]);
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid LYB %s prefix length %" PRIu8 ".",
+                    type->name, ((uint8_t *)value)[16]);
             goto cleanup;
         }
 
@@ -163,8 +163,10 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
             memcpy(val, value, value_size);
         }
 
-        /* zero host */
-        ipv6prefix_zero_host(&val->addr, val->prefix);
+        if (!strcmp(type->name, "ipv6-prefix")) {
+            /* zero host */
+            ipv6prefix_zero_host(&val->addr, val->prefix);
+        }
 
         /* success */
         goto cleanup;
@@ -182,8 +184,10 @@ lyplg_type_store_ipv6_prefix(const struct ly_ctx *ctx, const struct lysc_type *t
     ret = ipv6prefix_str2ip(value, value_size, &val->addr, &val->prefix, err);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* zero host */
-    ipv6prefix_zero_host(&val->addr, val->prefix);
+    if (!strcmp(type->name, "ipv6-prefix")) {
+        /* zero host */
+        ipv6prefix_zero_host(&val->addr, val->prefix);
+    }
 
     if (format == LY_VALUE_CANON) {
         /* store canonical value */
@@ -203,16 +207,16 @@ cleanup:
     }
 
     if (ret) {
-        lyplg_type_free_ipv6_prefix(ctx, storage);
+        lyplg_type_free_ipv6_address_prefix(ctx, storage);
     }
     return ret;
 }
 
 /**
- * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv6-prefix type.
+ * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type.
  */
 static LY_ERR
-lyplg_type_compare_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+lyplg_type_compare_ipv6_address_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
         const struct lyd_value *val2)
 {
     struct lyd_value_ipv6_prefix *v1, *v2;
@@ -227,10 +231,10 @@ lyplg_type_compare_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct ly
 }
 
 /**
- * @brief Implementation of ::lyplg_type_sort_clb for the ietf-inet-types ipv6-prefix type.
+ * @brief Implementation of ::lyplg_type_sort_clb for the ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type.
  */
 static int
-lyplg_type_sort_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
+lyplg_type_sort_ipv6_address_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1,
         const struct lyd_value *val2)
 {
     struct lyd_value_ipv6_prefix *v1, *v2;
@@ -242,10 +246,10 @@ lyplg_type_sort_ipv6_prefix(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
 }
 
 /**
- * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv6-prefix type.
+ * @brief Implementation of ::lyplg_type_compare_clb for the ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type.
  */
 static const void *
-lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+lyplg_type_print_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
         void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
 {
     struct lyd_value_ipv6_prefix *val;
@@ -294,10 +298,10 @@ lyplg_type_print_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *v
 }
 
 /**
- * @brief Implementation of ::lyplg_type_dup_clb for the ietf-inet-types ipv6-prefix type.
+ * @brief Implementation of ::lyplg_type_dup_clb for the ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type.
  */
 static LY_ERR
-lyplg_type_dup_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+lyplg_type_dup_ipv6_address_prefix(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     LY_ERR ret;
     struct lyd_value_ipv6_prefix *orig_val, *dup_val;
@@ -317,15 +321,15 @@ lyplg_type_dup_ipv6_prefix(const struct ly_ctx *ctx, const struct lyd_value *ori
     return LY_SUCCESS;
 
 error:
-    lyplg_type_free_ipv6_prefix(ctx, dup);
+    lyplg_type_free_ipv6_address_prefix(ctx, dup);
     return ret;
 }
 
 /**
- * @brief Implementation of ::lyplg_type_free_clb for the ietf-inet-types ipv6-prefix type.
+ * @brief Implementation of ::lyplg_type_free_clb for the ietf-inet-types ipv6-prefix and ipv6-address-and-prefix type.
  */
 static void
-lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value)
+lyplg_type_free_ipv6_address_prefix(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     struct lyd_value_ipv6_prefix *val;
 
@@ -336,28 +340,44 @@ lyplg_type_free_ipv6_prefix(const struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Plugin information for ipv6-prefix type implementation.
+ * @brief Plugin information for ipv6-prefix and ipv6-address-and-prefix type implementation.
  *
  * Note that external plugins are supposed to use:
  *
  *   LYPLG_TYPES = {
  */
-const struct lyplg_type_record plugins_ipv6_prefix[] = {
+const struct lyplg_type_record plugins_ipv6_address_prefix[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "ipv6-prefix",
 
-        .plugin.id = "ly2 ipv6-prefix",
-        .plugin.lyb_size = lyplg_type_lyb_size_ipv6_prefix,
-        .plugin.store = lyplg_type_store_ipv6_prefix,
+        .plugin.id = "ly2 ipv6-address-prefix",
+        .plugin.lyb_size = lyplg_type_lyb_size_ipv6_address_prefix,
+        .plugin.store = lyplg_type_store_ipv6_address_prefix,
         .plugin.validate_value = NULL,
         .plugin.validate_tree = NULL,
-        .plugin.compare = lyplg_type_compare_ipv6_prefix,
-        .plugin.sort = lyplg_type_sort_ipv6_prefix,
-        .plugin.print = lyplg_type_print_ipv6_prefix,
-        .plugin.duplicate = lyplg_type_dup_ipv6_prefix,
-        .plugin.free = lyplg_type_free_ipv6_prefix,
+        .plugin.compare = lyplg_type_compare_ipv6_address_prefix,
+        .plugin.sort = lyplg_type_sort_ipv6_address_prefix,
+        .plugin.print = lyplg_type_print_ipv6_address_prefix,
+        .plugin.duplicate = lyplg_type_dup_ipv6_address_prefix,
+        .plugin.free = lyplg_type_free_ipv6_address_prefix,
+    },
+    {
+        .module = "ietf-inet-types",
+        .revision = "2025-12-22",
+        .name = "ipv6-address-and-prefix",
+
+        .plugin.id = "ly2 ipv6-address-prefix",
+        .plugin.lyb_size = lyplg_type_lyb_size_ipv6_address_prefix,
+        .plugin.store = lyplg_type_store_ipv6_address_prefix,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
+        .plugin.compare = lyplg_type_compare_ipv6_address_prefix,
+        .plugin.sort = lyplg_type_sort_ipv6_address_prefix,
+        .plugin.print = lyplg_type_print_ipv6_address_prefix,
+        .plugin.duplicate = lyplg_type_dup_ipv6_address_prefix,
+        .plugin.free = lyplg_type_free_ipv6_address_prefix,
     },
     {0}
 };

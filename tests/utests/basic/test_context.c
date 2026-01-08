@@ -504,8 +504,8 @@ test_get_models(void **state)
     mod2 = ly_ctx_get_module_implemented_ns(UTEST_LYCTX, mod->ns);
     assert_ptr_equal(mod, mod2);
     assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "ietf-yang-metadata", "2016-08-05"));
-    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "ietf-yang-types", "2013-07-15"));
-    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "ietf-inet-types", "2013-07-15"));
+    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "ietf-yang-types", "2025-12-22"));
+    assert_non_null(ly_ctx_get_module(UTEST_LYCTX, "ietf-inet-types", "2025-12-22"));
     assert_non_null(ly_ctx_get_module_ns(UTEST_LYCTX, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2018-02-14"));
 
     /* select module by revision */

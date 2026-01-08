@@ -213,7 +213,7 @@ lyplg_type_print_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lyd
 const struct lyplg_type_record plugins_ipv4_address_no_zone[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "ipv4-address-no-zone",
 
         .plugin.id = "ly2 ipv4-address-no-zone",

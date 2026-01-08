@@ -101,9 +101,11 @@ set(type_plugins
     src/plugins_types/ipv4_address_no_zone.c
     src/plugins_types/ipv6_address.c
     src/plugins_types/ipv6_address_no_zone.c
-    src/plugins_types/ipv4_prefix.c
-    src/plugins_types/ipv6_prefix.c
+    src/plugins_types/ipv4_address_prefix.c
+    src/plugins_types/ipv6_address_prefix.c
     src/plugins_types/date_and_time.c
+    src/plugins_types/date.c
+    src/plugins_types/time.c
     src/plugins_types/hex_string.c
     src/plugins_types/xpath1.0.c
     src/plugins_types/node_instanceid.c
@@ -260,6 +262,7 @@ else()
     set(INTERNAL_DOCS NO)
 endif()
 
+option(ENABLE_DATE_AND_TIME_TYPE_COMPAT "Print ietf-yang-types 'date-and-time' values in an unknown timezone with '-00:00' instead of 'Z'" OFF)
 set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
 if(LYD_VALUE_SIZE LESS 8)
     message(FATAL_ERROR "Data node value size \"${LYD_VALUE_SIZE}\" is not valid.")

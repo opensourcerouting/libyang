@@ -112,7 +112,7 @@ cleanup:
 const struct lyplg_type_record plugins_hex_string[] = {
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "phys-address",
 
         .plugin.id = "ly2 hex-string",
@@ -128,7 +128,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
     },
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "mac-address",
 
         .plugin.id = "ly2 hex-string",
@@ -144,7 +144,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
     },
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "hex-string",
 
         .plugin.id = "ly2 hex-string",
@@ -160,7 +160,7 @@ const struct lyplg_type_record plugins_hex_string[] = {
     },
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "uuid",
 
         .plugin.id = "ly2 hex-string",

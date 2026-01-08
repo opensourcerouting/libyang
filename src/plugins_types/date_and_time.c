@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief ietf-yang-types date-and-time type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
  * | 64       | yes | `time_t *` | UNIX timestamp |
- * | 1        | no | `uint8_t *` | flag whether the value is in the special -00:00 unknown timezone or not |
+ * | 8        | no | `uint8_t *` | flag whether the value is in the special Z/-00:00 unknown timezone or not |
  * | string length | no | `char *` | string with the fraction digits of a second |
  */
 
@@ -107,6 +107,12 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
     ret = lyplg_type_check_hints(hints, value, value_size, type->basetype, NULL, err);
     LY_CHECK_GOTO(ret, cleanup);
 
+    if (!(options & LYPLG_TYPE_STORE_ONLY)) {
+        /* validate value */
+        ret = lyplg_type_validate_patterns(ctx, ((struct lysc_type_str *)type)->patterns, value, value_size, err);
+        LY_CHECK_RET(ret);
+    }
+
     /* convert to UNIX time and fractions of second */
     ret = ly_time_str2time(value, &val->time, &val->fractions_s);
     if (ret) {
@@ -114,8 +120,12 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         goto cleanup;
     }
 
-    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6)) {
-        /* unknown timezone */
+    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6)
+#ifndef ENABLE_DATE_AND_TIME_TYPE_COMPAT
+            || (((char *)value)[value_size - 1] == 'Z')
+#endif
+       ) {
+        /* unknown timezone, timezone format supported for backwards compatibility */
         val->unknown_tz = 1;
     }
 
@@ -262,6 +272,7 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
     struct lyd_value_date_and_time *val;
     struct tm tm;
     char *ret;
+    const char *unknown_tz;
 
     LYD_VALUE_GET(value, val);
 
@@ -296,9 +307,15 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
             if (!gmtime_r(&val->time, &tm)) {
                 return NULL;
             }
-            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%s-00:00",
+
+#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
+            unknown_tz = "-00:00";
+#else
+            unknown_tz = "Z";
+#endif
+            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "") == -1) {
+                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "", unknown_tz) == -1) {
                 return NULL;
             }
         } else {
@@ -390,7 +407,7 @@ lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_date_and_time[] = {
     {
         .module = "ietf-yang-types",
-        .revision = "2013-07-15",
+        .revision = "2025-12-22",
         .name = "date-and-time",
 
         .plugin.id = "ly2 date-and-time",

@@ -700,7 +700,39 @@ struct lyd_value_ipv6_prefix {
 struct lyd_value_date_and_time {
     time_t time;        /**< UNIX timestamp */
     char *fractions_s;  /**< Optional fractions of a second */
-    ly_bool unknown_tz; /**< Whether the value is in the special -00:00 timezone. */
+    ly_bool unknown_tz; /**< Whether the value is in the special Z/-00:00 timezone. */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-yang-types date values.
+ */
+struct lyd_value_date {
+    time_t time;        /**< UNIX timestamp */
+    ly_bool unknown_tz; /**< Whether the value is in the special Z/-00:00 timezone. */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-yang-types date-no-zone values.
+ */
+struct lyd_value_date_nz {
+    time_t time;        /**< UNIX timestamp */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-yang-types time values.
+ */
+struct lyd_value_time {
+    uint32_t seconds;   /**< Timestamp converted into seconds */
+    char *fractions_s;  /**< Optional fractions of a second */
+    ly_bool unknown_tz; /**< Whether the value is in the special Z/-00:00 timezone. */
+};
+
+/**
+ * @brief Special lyd_value structure for ietf-yang-types time-no-zone values.
+ */
+struct lyd_value_time_nz {
+    uint32_t seconds;   /**< Timestamp converted into seconds */
+    char *fractions_s;  /**< Optional fractions of a second */
 };
 
 /**

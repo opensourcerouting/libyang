@@ -65,13 +65,15 @@ extern const struct lyplg_type_record plugins_ipv4_address[];
 extern const struct lyplg_type_record plugins_ipv4_address_no_zone[];
 extern const struct lyplg_type_record plugins_ipv6_address[];
 extern const struct lyplg_type_record plugins_ipv6_address_no_zone[];
-extern const struct lyplg_type_record plugins_ipv4_prefix[];
-extern const struct lyplg_type_record plugins_ipv6_prefix[];
+extern const struct lyplg_type_record plugins_ipv4_address_prefix[];
+extern const struct lyplg_type_record plugins_ipv6_address_prefix[];
 
 /*
  * ietf-yang-types
  */
 extern const struct lyplg_type_record plugins_date_and_time[];
+extern const struct lyplg_type_record plugins_date[];
+extern const struct lyplg_type_record plugins_time[];
 extern const struct lyplg_type_record plugins_hex_string[];
 extern const struct lyplg_type_record plugins_xpath10[];
 
@@ -599,11 +601,13 @@ lyplg_init(ly_bool builtin_type_plugins_only, ly_bool static_plugins_only)
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_address_no_zone), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_address), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_address_no_zone), error);
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_prefix), error);
-        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_prefix), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv4_address_prefix), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_ipv6_address_prefix), error);
 
         /* ietf-yang-types */
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_date_and_time), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_date), error);
+        LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_time), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_hex_string), error);
         LY_CHECK_GOTO(ret = plugins_insert(NULL, LYPLG_TYPE, plugins_xpath10), error);
 
