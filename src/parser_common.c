@@ -481,7 +481,7 @@ lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node)
         return;
     }
 
-    if (*first_p && !(*first_p)->parent && (*first_p == *node)) {
+    if (first_p && *first_p && !(*first_p)->parent && (*first_p == *node)) {
         *first_p = (*first_p)->next;
     }
 
