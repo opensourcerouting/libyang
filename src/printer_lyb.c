@@ -982,12 +982,17 @@ lyb_print_schema_hash(struct lysc_node *schema, struct ly_ht **sibling_ht, struc
 static LY_ERR
 lyb_print_node_header(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
+    uint32_t buf;
+
     /* write any metadata */
     LY_CHECK_RET(lyb_print_metadata(node, lybctx));
 
     if (!lybctx->print_ctx->shrink) {
+        /* correct byte order */
+        buf = htole32(node->flags);
+
         /* write node flags, fixed bits */
-        LY_CHECK_RET(lyb_write(&node->flags, LYB_DATA_NODE_FLAG_BITS, lybctx->print_ctx));
+        LY_CHECK_RET(lyb_write(&buf, LYB_DATA_NODE_FLAG_BITS, lybctx->print_ctx));
     }
 
     return LY_SUCCESS;

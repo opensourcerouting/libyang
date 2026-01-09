@@ -969,6 +969,9 @@ lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     if (!lybctx->parse_ctx->shrink) {
         /* read flags, fixed bits */
         lyb_read(flags, LYB_DATA_NODE_FLAG_BITS, lybctx->parse_ctx);
+
+        /* correct byte order */
+        *flags = le32toh(*flags);
     } else {
         *flags = LYD_NEW;
     }
