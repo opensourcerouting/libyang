@@ -157,7 +157,7 @@ static void
 node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const char **mod_name, ly_bool *data_dict)
 {
     struct lyd_node_opaq *onode;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
 
     *mod_name = NULL;
 
@@ -177,7 +177,9 @@ node_prefix(const struct lyd_node *node, const struct lysc_node *snode, const ch
             }
             break;
         case LY_VALUE_XML:
-            mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
+            if (onode->name.module_ns) {
+                mod = ly_ctx_get_module_implemented_ns(onode->ctx, onode->name.module_ns);
+            }
             if (mod) {
                 *mod_name = mod->name;
                 if (data_dict) {
