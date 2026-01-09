@@ -219,6 +219,7 @@ lyplg_type_compare_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 {
     struct lyd_value_time *v1, *v2;
     struct lyd_value_time_nz *vn1, *vn2;
+    const char *fr1, *fr2;
 
     if (!strcmp(val1->realtype->name, "time")) {
         LYD_VALUE_GET(val1, v1);
@@ -228,6 +229,9 @@ lyplg_type_compare_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
         if ((v1->seconds != v2->seconds) || (v1->unknown_tz != v2->unknown_tz)) {
             return LY_ENOT;
         }
+
+        fr1 = v1->fractions_s;
+        fr2 = v2->fractions_s;
     } else {
         LYD_VALUE_GET(val1, vn1);
         LYD_VALUE_GET(val2, vn2);
@@ -236,11 +240,13 @@ lyplg_type_compare_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
         if (vn1->seconds != vn2->seconds) {
             return LY_ENOT;
         }
+
+        fr1 = vn1->fractions_s;
+        fr2 = vn2->fractions_s;
     }
 
     /* compare second fractions */
-    if ((!v1->fractions_s && !v2->fractions_s) ||
-            (v1->fractions_s && v2->fractions_s && !strcmp(v1->fractions_s, v2->fractions_s))) {
+    if ((!fr1 && !fr2) || (fr1 && fr2 && !strcmp(fr1, fr2))) {
         return LY_SUCCESS;
     }
     return LY_ENOT;
@@ -315,8 +321,8 @@ lyplg_type_sort_by_fractions(char *f1, char *f2)
 static int
 lyplg_type_sort_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    struct lyd_value_time *v1, *v2;
-    struct lyd_value_time_nz *vn1, *vn2;
+    struct lyd_value_time *v1 = NULL, *v2;
+    struct lyd_value_time_nz *vn1 = NULL, *vn2;
     double dt;
 
     if (!strcmp(val1->realtype->name, "time")) {
@@ -337,7 +343,11 @@ lyplg_type_sort_time(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *v
     }
 
     /* compare second fractions */
-    return lyplg_type_sort_by_fractions(v1->fractions_s, v2->fractions_s);
+    if (v1) {
+        return lyplg_type_sort_by_fractions(v1->fractions_s, v2->fractions_s);
+    } else {
+        return lyplg_type_sort_by_fractions(vn1->fractions_s, vn2->fractions_s);
+    }
 }
 
 /**
