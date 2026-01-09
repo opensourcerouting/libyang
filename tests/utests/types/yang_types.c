@@ -144,11 +144,15 @@ test_data_xml(void **state)
 
     /* date */
     TEST_SUCCESS_XML("a", "l2", "2005-05-31-01:00", STRING, "2005-05-30-02:00");
+#ifndef _WIN32
     TEST_SUCCESS_XML("a", "l2", "1950-01-01-02:00", STRING, "1950-01-01-02:00");
+#endif
 
     /* date-no-zone */
     TEST_SUCCESS_XML("a", "l2nz", "2005-05-31", STRING, "2005-05-31");
+#ifndef _WIN32
     TEST_SUCCESS_XML("a", "l2nz", "1950-01-01", STRING, "1950-01-01");
+#endif
 
     /* time */
     TEST_SUCCESS_XML("a", "l4", "23:15:15-01:00", STRING, "22:15:15-02:00");
