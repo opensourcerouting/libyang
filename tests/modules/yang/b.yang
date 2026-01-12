@@ -1,0 +1,14 @@
+module b { 
+  namespace "urn:b";
+  prefix "b";
+
+  include d {
+    revision-date "2026-01-09";
+  }
+  include c {
+    revision-date "2026-01-09";
+  }
+  revision 2026-01-09 {
+    description "example";
+  }
+}

@@ -465,6 +465,20 @@ test_imports(void **state)
 }
 
 static void
+test_includes(void **state)
+{
+    struct lys_module *mod;
+
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG);
+
+    /* load b with c and d submodules */
+    mod = ly_ctx_load_module(UTEST_LYCTX, "b", NULL, NULL);
+    assert_non_null(mod);
+
+    ly_ctx_unset_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG);
+}
+
+static void
 test_get_models(void **state)
 {
     struct lys_module *mod, *mod2;
@@ -1119,6 +1133,7 @@ main(void)
         UTEST(test_options),
         UTEST(test_models),
         UTEST(test_imports),
+        UTEST(test_includes),
         UTEST(test_get_models),
         UTEST(test_ylmem),
         UTEST(test_set_priv_parsed),

@@ -1,0 +1,9 @@
+submodule d {
+  belongs-to b {
+    prefix b;
+  }
+
+  revision 2026-01-09 {
+    description "example";
+  }
+}

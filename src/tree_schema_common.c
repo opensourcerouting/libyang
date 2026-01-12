@@ -1228,8 +1228,8 @@ lysp_load_submodules(struct lysp_ctx *pctx, struct lysp_module *pmod, struct ly_
                 submod_included = 0;
             } else if (r) {
                 return r;
-            } else if (inc->submodule->latest_revision == 2) {
-                /* submodule found and is the latest existing revision */
+            } else if (inc->rev[0] || (inc->submodule->latest_revision == 2)) {
+                /* submodule found and is the specific requested revision/latest existing revision */
                 continue;
             }
         }
