@@ -503,11 +503,11 @@ LY_ERR ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *patt
 void ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern);
 
 /**
- * @brief Free members of a pattern record stored in the context hash table.
+ * @brief Free members of a pattern record stored in the context shared data hash table.
  *
- * @param[in] rec Pattern records whose members to free.
+ * @param[in] ctx Context to use.
  */
-void ly_ctx_ht_pattern_rec_free(struct ly_pattern_ht_rec *rec);
+void ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx);
 
 /******************************************************************************
  * Dictionary

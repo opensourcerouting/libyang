@@ -534,13 +534,22 @@ cleanup:
 }
 
 void
-ly_ctx_ht_pattern_rec_free(struct ly_pattern_ht_rec *rec)
+ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
 {
-    if (!rec) {
-        return;
+    struct ly_ctx_shared_data *ctx_data;
+    struct ly_ht_rec *rec;
+    uint32_t hlist_idx, rec_idx;
+
+    ctx_data = ly_ctx_shared_data_get(ctx);
+
+    /* free all the stored records */
+    LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
+        pcre2_code_free(((struct ly_pattern_ht_rec *)&rec->val)->pcode);
     }
 
-    pcre2_code_free(rec->pcode);
+    /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
+     * double free, but just trick it to look empty */
+    ctx_data->pattern_ht->used = 0;
 }
 
 LY_ERR
