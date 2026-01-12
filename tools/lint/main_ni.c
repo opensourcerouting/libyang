@@ -238,8 +238,16 @@ help(int shortout)
 static void
 libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *data_path, const char *schema_path, uint64_t line)
 {
+    LY_LOG_LEVEL sr_ll;
     const char *levstr;
     char *full_msg = NULL, *aux;
+
+    sr_ll = ly_log_level(0);
+    ly_log_level(sr_ll);
+
+    if (level > sr_ll) {
+        return;
+    }
 
     switch (level) {
     case LY_LLERR:

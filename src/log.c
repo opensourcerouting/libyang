@@ -500,13 +500,12 @@ log_stderr_path_line(const char *data_path, const char *schema_path, uint64_t li
 /**
  * @brief Learn whether a log is a no-operation or must be produced, based on current ly_log_opts.
  *
- * @param[in] level Message log level to compare to enabled logging level.
  * @param[out] will_log Optionally learn whether the log will be printed.
  * @param[out] will_store Optionally learn whether the log will be stored.
  * @return 1 if the log is a no-operation, 0 otherwise.
  */
 static ly_bool
-log_is_noop(LY_LOG_LEVEL level, ly_bool *will_log, ly_bool *will_store)
+log_is_noop(ly_bool *will_log, ly_bool *will_store)
 {
     ly_bool lolog, lostore;
 
@@ -526,7 +525,7 @@ log_is_noop(LY_LOG_LEVEL level, ly_bool *will_log, ly_bool *will_store)
         *will_store = lostore;
     }
 
-    return (level > ATOMIC_LOAD_RELAXED(ly_ll)) || (!lolog && !lostore);
+    return !lolog && !lostore;
 }
 
 /**
@@ -551,7 +550,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
     const char *msg;
     ly_bool free_strs = 1, lolog, lostore;
 
-    if (log_is_noop(level, &lolog, &lostore)) {
+    if (log_is_noop(&lolog, &lostore)) {
         /* do not print or store the message */
         goto cleanup;
     }
@@ -574,7 +573,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
 
     /* store the error/warning in the context (if we need to store errors internally, it does not matter what are
      * the user log options), if the message is not dynamic, it would most likely fail to store (no memory) */
-    if ((level < LY_LLVRB) && ctx && lostore && dyn_msg) {
+    if ((level <= ATOMIC_LOAD_RELAXED(ly_ll)) && (level < LY_LLVRB) && ctx && lostore && dyn_msg) {
         free_strs = 0;
         if (log_store(ctx, level, err, vecode, dyn_msg, data_path, schema_path, line, apptag ? strdup(apptag) : NULL)) {
             goto cleanup;
@@ -585,7 +584,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
     if (lolog) {
         if (log_clb) {
             log_clb(level, msg, data_path, schema_path, line);
-        } else {
+        } else if (level <= ATOMIC_LOAD_RELAXED(ly_ll)) {
             fprintf(stderr, "libyang[%d]: ", level);
             fprintf(stderr, "%s", msg);
             log_stderr_path_line(data_path, schema_path, line);
@@ -799,10 +798,6 @@ ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char
     char *data_path = NULL, *schema_path = NULL;
     uint64_t line = 0;
 
-    if (log_is_noop(LY_LLERR, NULL, NULL)) {
-        return;
-    }
-
     if (ctx) {
         ly_vlog_build_path_line(ctx, &data_path, &schema_path, &line);
     }
@@ -832,7 +827,7 @@ ly_ext_log(const struct ly_ctx *ctx, const char *plugin_name, LY_LOG_LEVEL level
 {
     char *plugin_msg;
 
-    if (log_is_noop(level, NULL, NULL)) {
+    if (level > ATOMIC_LOAD_RELAXED(ly_ll)) {
         return;
     }
 
@@ -934,7 +929,7 @@ _ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const c
 
     LY_CHECK_ARG_RET(ctx, eitem, );
 
-    if (log_is_noop(eitem->level, NULL, NULL)) {
+    if (eitem->level > ATOMIC_LOAD_RELAXED(ly_ll)) {
         return;
     }
 
@@ -953,6 +948,6 @@ _ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const c
 LIBYANG_API_DEF void
 ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem)
 {
-    /* String ::ly_err_item.msg cannot be used directly because it may contain the % character */
+    /* string ::ly_err_item.msg cannot be used directly because it may contain the % character */
     _ly_err_print(ctx, eitem, "%s", eitem->msg);
 }

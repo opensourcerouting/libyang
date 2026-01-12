@@ -96,6 +96,8 @@ typedef enum {
 /**
  * @brief Set logger verbosity level.
  *
+ * Does not affect the logging callback.
+ *
  * To get the current value, the function must be called twice resetting the level by the received value.
  *
  * @param[in] level Verbosity level.
@@ -186,6 +188,8 @@ typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *data
 
 /**
  * @brief Set logger callback.
+ *
+ * Is not affected by global log level.
  *
  * @param[in] clb Logging callback.
  */
