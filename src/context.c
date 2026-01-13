@@ -178,28 +178,39 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 }
 
 LIBYANG_API_DEF LY_ERR
-ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
+ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
+    LY_ERR rc = LY_SUCCESS;
+    uint32_t index;
+    char *search_dir_real = NULL;
+
     LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), LY_EINVAL);
 
     if (!ctx->search_paths.count) {
         return LY_SUCCESS;
     }
 
-    if (value) {
-        /* remove specific search directory */
-        uint32_t index;
+    if (search_dir) {
+        search_dir_real = realpath(search_dir, NULL);
+        if (!search_dir_real) {
+            LOGERR(ctx, LY_EINVAL, "Unable to normalize search directory \"%s\" (%s).", search_dir, strerror(errno));
+            rc = LY_EINVAL;
+            goto cleanup;
+        }
 
+        /* remove specific search directory */
         for (index = 0; index < ctx->search_paths.count; ++index) {
-            if (!strcmp(value, ctx->search_paths.objs[index])) {
+            if (!strcmp(search_dir_real, ctx->search_paths.objs[index])) {
                 break;
             }
         }
         if (index == ctx->search_paths.count) {
-            LOGARG(ctx, value);
-            return LY_EINVAL;
+            LOGARG(ctx, search_dir_real);
+            rc = LY_EINVAL;
+            goto cleanup;
         } else {
-            return ly_set_rm_index(&ctx->search_paths, index, free);
+            rc = ly_set_rm_index(&ctx->search_paths, index, free);
+            goto cleanup;
         }
     } else {
         /* remove them all */
@@ -207,7 +218,9 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
         memset(&ctx->search_paths, 0, sizeof ctx->search_paths);
     }
 
-    return LY_SUCCESS;
+cleanup:
+    free(search_dir_real);
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
