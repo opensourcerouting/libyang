@@ -73,7 +73,7 @@ test_searchdirs(void **state)
     /* removing searchpaths */
     /* nonexisting */
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(UTEST_LYCTX, "/nonexistingfile"));
-    CHECK_LOG_CTX("Unable to use search directory \"/nonexistingfile\" (No such file or directory).", NULL, 0);
+    CHECK_LOG_CTX("Unable to normalize search directory \"/nonexistingfile\" (No such file or directory).", NULL, 0);
 
     /* first */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(UTEST_LYCTX, path1));
