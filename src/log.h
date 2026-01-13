@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Logger manipulation routines and error definitions.
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -127,7 +127,7 @@ LIBYANG_API_DECL LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
  */
 
 /**
- * @brief Set logger options. Default is #LY_LOLOG | #LY_LOSTORE_LAST.
+ * @brief Set global logger options. Default is #LY_LOLOG | #LY_LOSTORE_LAST.
  *
  * To get the current value, the function must be called twice resetting the level by the received value.
  *
@@ -137,7 +137,7 @@ LIBYANG_API_DECL LY_LOG_LEVEL ly_log_level(LY_LOG_LEVEL level);
 LIBYANG_API_DECL uint32_t ly_log_options(uint32_t opts);
 
 /**
- * @brief Set temporary thread-safe logger options overwriting those set by ::ly_log_options().
+ * @brief Set temporary thread-safe (thread-specific) logger options overwriting those set by ::ly_log_options().
  *
  * @param[in] opts Pointer to the temporary @ref logopts. If NULL, restores the effect of global logger options.
  * @return Previous temporary options.
@@ -187,7 +187,7 @@ typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *data
         uint64_t line);
 
 /**
- * @brief Set logger callback.
+ * @brief Set global logger callback.
  *
  * Is not affected by global log level.
  *
@@ -196,11 +196,21 @@ typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *data
 LIBYANG_API_DECL void ly_set_log_clb(ly_log_clb clb);
 
 /**
- * @brief Get logger callback.
+ * @brief Get global logger callback.
  *
  * @return Logger callback (can be NULL).
  */
 LIBYANG_API_DECL ly_log_clb ly_get_log_clb(void);
+
+/**
+ * @brief Set temporary thread-safe (thread-specific) logger callback ovewriting that set by ::ly_set_log_clb.
+ *
+ * Is not affected by global log level.
+ *
+ * @param[in] clb Logging callback.
+ * @return Previous temporary logging callback.
+ */
+LIBYANG_API_DECL ly_log_clb ly_temp_log_clb(ly_log_clb clb);
 
 /** @} log */
 

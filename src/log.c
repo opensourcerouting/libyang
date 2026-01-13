@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Logger routines implementations
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ ATOMIC_T ly_ll = (uint_fast32_t)LY_LLWRN;
 ATOMIC_T ly_log_opts = (uint_fast32_t)(LY_LOLOG | LY_LOSTORE_LAST);
 THREAD_LOCAL uint32_t *temp_ly_log_opts;
 static ly_log_clb log_clb;
+THREAD_LOCAL ly_log_clb temp_log_clb;
 THREAD_LOCAL char last_msg[LY_LAST_MSG_SIZE];
 #ifndef NDEBUG
 ATOMIC_T ly_ldbg_groups = 0;
@@ -298,6 +299,16 @@ LIBYANG_API_DEF ly_log_clb
 ly_get_log_clb(void)
 {
     return log_clb;
+}
+
+LIBYANG_API_DEF ly_log_clb
+ly_temp_log_clb(ly_log_clb clb)
+{
+    ly_log_clb prev_cb = temp_log_clb;
+
+    temp_log_clb = clb;
+
+    return prev_cb;
 }
 
 void
@@ -582,7 +593,9 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, LY_VECODE 
 
     /* if we are only storing errors internally, never print the message (yet) */
     if (lolog) {
-        if (log_clb) {
+        if (temp_log_clb) {
+            temp_log_clb(level, msg, data_path, schema_path, line);
+        } else if (log_clb) {
             log_clb(level, msg, data_path, schema_path, line);
         } else if (level <= ATOMIC_LOAD_RELAXED(ly_ll)) {
             fprintf(stderr, "libyang[%d]: ", level);
