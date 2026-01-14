@@ -1530,10 +1530,14 @@ ly_ctx_destroy(struct ly_ctx *ctx)
             mod->compiled = NULL;
         }
 
-        /* even compiled ext definitions can have ext instances, free those, too */
+        /* even compiled ext definitions and itentities can have ext instances, free those, too */
         LY_ARRAY_FOR(mod->extensions, u) {
             FREE_ARRAY(ctx, mod->extensions[u].exts, lysc_ext_instance_free);
             mod->extensions[u].exts = NULL;
+        }
+        LY_ARRAY_FOR(mod->identities, u) {
+            FREE_ARRAY(ctx, mod->identities[u].exts, lysc_ext_instance_free);
+            mod->identities[u].exts = NULL;
         }
     }
 
