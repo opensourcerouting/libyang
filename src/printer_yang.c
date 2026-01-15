@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG printer
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -288,6 +288,7 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
 {
     struct lysp_stmt *stmt;
     ly_bool child_presence;
+    uint16_t flags = 0;
 
     if ((ext->flags & LYS_INTERNAL) || (ext->parent_stmt != substmt) || (ext->parent_stmt_index != substmt_index)) {
         return;
@@ -296,9 +297,13 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
     ypr_open(pctx->out, flag);
 
     if (ext->argument) {
-        ly_print_(pctx->out, "%*s%s \"", INDENT, ext->name);
-        ypr_encode(pctx->out, ext->argument, -1);
-        ly_print_(pctx->out, "\"");
+        if (!strchr(ext->argument, '\n')) {
+            flags |= LYS_YPR_TEXT_SINGLELINE;
+        }
+        if (ext->flags & LYS_SINGLEQUOTED) {
+            flags |= LYS_YPR_TEXT_SINGLEQUOTED;
+        }
+        ypr_text(pctx, ext->name, ext->argument, flags);
     } else {
         ly_print_(pctx->out, "%*s%s", INDENT, ext->name);
     }

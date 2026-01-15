@@ -991,7 +991,7 @@ parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, 
     LY_CHECK_RET(lysdict_insert(PARSER_CTX(ctx), ext_name, ext_name_len, &e->name));
 
     /* get optional argument */
-    LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_RET(get_argument(ctx, Y_MAYBE_STR_ARG, &e->flags, &word, &buf, &word_len));
     if (word) {
         INSERT_WORD_GOTO(ctx, buf, e->argument, word, word_len, ret, cleanup);
     }

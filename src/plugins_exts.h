@@ -412,7 +412,8 @@ struct lysp_ext_instance {
     enum ly_stmt parent_stmt;               /**< type of the parent statement */
     LY_ARRAY_COUNT_TYPE parent_stmt_index;  /**< index of the stamenet in case the parent does not point to the parent
                                                  statement directly and it is an array */
-    uint16_t flags;                         /**< ::LYS_INTERNAL value (@ref snodeflags) */
+    uint16_t flags;                         /**< ::LYS_INTERNAL value and ::LYS_SINGLEQUOTED or ::LYS_DOUBLEQUOTED
+                                                 describing the argument (@ref snodeflags) */
 
     struct lysp_ext_substmt *substmts;      /**< list of supported known YANG statements with the pointer to their
                                                  parsed data ([sized array](@ref sizedarrays)) */
