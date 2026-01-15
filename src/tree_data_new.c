@@ -1763,7 +1763,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, const str
                     r = LY_ENOT;
                 } else {
                     /* validate value */
-                    r = ly_value_validate(NULL, schema, value, value_size_bits, format, NULL, 0, ext);
+                    r = ly_value_validate(NULL, schema, value ? value : "", value_size_bits, format, NULL, 0, ext);
                 }
                 if (r && (r != LY_EINCOMPLETE)) {
                     /* creating opaque leaf */
