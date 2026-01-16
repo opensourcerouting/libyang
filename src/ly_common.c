@@ -1029,7 +1029,6 @@ ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, s
     LY_ERR rc = LY_SUCCESS;
     int err_code;
     regex_t *preg_p = (void *)pat_comp;
-    regmatch_t pmatch = {0};
 
     assert(pat_comp || pattern);
 
@@ -1039,10 +1038,30 @@ ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, s
         LY_CHECK_GOTO(rc, cleanup);
     }
 
+#ifdef HAVE_REG_STARTEND
+    regmatch_t pmatch = {0};
+
     /* match the string up to its length */
     pmatch.rm_so = 0;
     pmatch.rm_eo = str_len;
     err_code = regexec(preg_p, str, 1, &pmatch, REG_STARTEND);
+#else
+    /* must match the whole string */
+    if (!str[str_len]) {
+        /* zero-terminated */
+        err_code = regexec(preg_p, str, 0, NULL, 0);
+    } else {
+        char *str_dup;
+
+        str_dup = strndup(str, str_len);
+        if (!str_dup) {
+            rc = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+            goto cleanup;
+        }
+        err_code = regexec(preg_p, str_dup, 0, NULL, 0);
+        free(str_dup);
+    }
+#endif
 
     /* check the result */
     if (err_code == REG_NOMATCH) {

@@ -402,6 +402,9 @@ if(WIN32)
     target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
 endif()
 
+# check regex compatibility
+check_symbol_exists(REG_STARTEND "regex.h" HAVE_REG_STARTEND)
+
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
 # link math

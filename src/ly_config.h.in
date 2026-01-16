@@ -81,4 +81,7 @@
 /** date-and-time canonical value with an unknown time zone printed in backwards-compatible way with -00:00 instead of Z */
 #cmakedefine ENABLE_DATE_AND_TIME_TYPE_COMPAT
 
+/** regex.h BSD flag */
+#cmakedefine HAVE_REG_STARTEND
+
 #endif /* LY_CONFIG_H_ */
