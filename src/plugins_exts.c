@@ -153,7 +153,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
     case LY_STMT_LEAF_LIST:
     case LY_STMT_LIST:
     case LY_STMT_USES: {
-        const uint16_t flags;
+        uint16_t flags;
         struct lysp_node *pnodes, *pnode;
         struct lysc_node *node;
 
@@ -231,7 +231,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
         break;
     }
     case LY_STMT_WHEN: {
-        const uint16_t flags;
+        uint16_t flags;
         const struct lysp_when *when = *parsed_p;
 
         /* read compiled status */
@@ -288,7 +288,7 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
         break;
 
     case LY_STMT_TYPE: {
-        const uint16_t flags;
+        uint16_t flags;
         const char *units;
         const struct lysp_type *ptype = *parsed_p;
 
