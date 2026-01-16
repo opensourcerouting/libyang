@@ -4965,10 +4965,9 @@ xpath_position(struct lyxp_set **UNUSED(args), uint32_t UNUSED(arg_count), struc
 static LY_ERR
 xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *set, uint32_t options)
 {
-    struct lysc_pattern **patterns = NULL, **pattern;
-    struct lysc_node_leaf *sleaf;
     LY_ERR rc = LY_SUCCESS;
-    struct ly_err_item *err;
+    struct lysc_node_leaf *sleaf;
+    struct ly_err_item *err = NULL;
 
     if (options & LYXP_SCNODE_ALL) {
         if ((args[0]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
@@ -4995,25 +4994,14 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
     LY_CHECK_RET(rc);
 
-    /* create a temporary pattern */
-    LY_ARRAY_NEW_RET(set->ctx, patterns, pattern, LY_EMEM);
-    *pattern = calloc(1, sizeof **pattern);
+    /* validate the pattern */
     if (set->cur_node) {
         LOG_LOCSET(NULL, set->cur_node);
     }
-
-    /* validate the pattern */
-    (*pattern)->expr = args[1]->val.str;
-    rc = lyplg_type_validate_patterns(set->ctx, patterns, args[0]->val.str, strlen(args[0]->val.str), &err);
-
+    rc = ly_pat_match(NULL, args[1]->val.str, 0, args[0]->val.str, strlen(args[0]->val.str), &err);
     if (set->cur_node) {
         LOG_LOCBACK(0, 1);
     }
-
-    /* free the pattern */
-    free(*pattern);
-    LY_ARRAY_FREE(patterns);
-    ly_ctx_shared_data_pattern_del(set->ctx, args[1]->val.str, 0);
 
     if (rc && (rc != LY_EVALID)) {
         /* error */
