@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -5003,14 +5003,14 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
         LOG_LOCBACK(0, 1);
     }
 
-    if (rc && (rc != LY_EVALID)) {
+    if (rc && (rc != LY_ENOT)) {
         /* error */
         ly_err_print(set->ctx, err);
         ly_err_free(err);
         return rc;
     }
 
-    if (rc == LY_EVALID) {
+    if (rc == LY_ENOT) {
         ly_err_free(err);
         set_fill_boolean(set, 0);
     } else {
