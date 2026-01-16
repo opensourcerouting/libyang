@@ -13,7 +13,6 @@
  */
 
 #define _GNU_SOURCE
-#define _POSIX_C_SOURCE 200809L /* pthread_rwlock_t */
 
 #include "ly_common.h"
 
