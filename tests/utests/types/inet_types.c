@@ -159,7 +159,7 @@ test_data_basic_plugins_only_xml(void **state)
     /* Stored via string plugin */
     TEST_SUCCESS_XML("a", "l", "192.168.0.1", STRING, "192.168.0.1");
     TEST_ERROR_XML("a", "l", "192.168.0.333");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"192.168.0.333\" does not conform to \""
+    CHECK_LOG_CTX("Unsatisfied pattern - \"192.168.0.333\" does not match \""
             "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}"
             "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\".", "/a:l", 1);
     TEST_SUCCESS_PARSE_STORE_ONLY_XML("a", "l", "192.168.0.333", STRING, "192.168.0.333");

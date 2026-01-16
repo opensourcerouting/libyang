@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang representation of YANG data trees.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -18,9 +18,6 @@
 
 /* socket/ip includes in ly_config.h */
 
-#define PCRE2_CODE_UNIT_WIDTH 8
-
-#include <pcre2.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
@@ -2767,25 +2764,32 @@ LIBYANG_API_DECL LY_ERR lyd_leafref_link_node_tree(const struct lyd_node *tree);
  * @param[in] pattern Regular expression pattern to use.
  * @param[in] string String to match.
  * @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.
- * @param[in,out] pcode Optional pointer to PCRE2 code. If set and NULL, it is returned. If set and non-NULL, it is
- * used directly for matching instead of compiling @p pattern. Free it using pcre2_code_free().
+ * @param[in,out] pat_comp Optional pointer to pattern code. If set and NULL, it is returned. If set and non-NULL, it is
+ * used directly for matching instead of compiling @p pattern. Free it using ::ly_pattern_free().
  * @return LY_SUCCESS on a match;
  * @return LY_ENOT if the string does not match;
  * @return LY_ERR on error.
  */
 LIBYANG_API_DECL LY_ERR ly_pattern_match(const struct ly_ctx *ctx, const char *pattern, const char *string,
-        uint32_t str_len, pcre2_code **pcode);
+        uint32_t str_len, void **pat_comp);
 
 /**
  * @brief Compile an XML Schema regex pattern prior to matching.
  *
  * @param[in] ctx Optional context for storing errors.
  * @param[in] pattern Regular expression pattern to use.
- * @param[out] pcode Compiled @p pattern to be used by ::ly_pattern_match(). Free it using pcre2_code_free().
+ * @param[out] pat_comp Compiled @p pattern to be used by ::ly_pattern_match(). Free it using ::ly_pattern_free().
  * @return LY_SUCCESS on success;
  * @return LY_ERR on error.
  */
-LIBYANG_API_DECL LY_ERR ly_pattern_compile(const struct ly_ctx *ctx, const char *pattern, pcre2_code **pcode);
+LIBYANG_API_DECL LY_ERR ly_pattern_compile(const struct ly_ctx *ctx, const char *pattern, void **pat_comp);
+
+/**
+ * @brief Free a compiled XML Schema regex pattern.
+ *
+ * @param[in] pat_comp Compiled pattern to free.
+ */
+LIBYANG_API_DECL void ly_pattern_free(void *pat_comp);
 
 #ifdef __cplusplus
 }

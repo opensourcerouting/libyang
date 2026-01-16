@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang support for YANG extensions implementation.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -893,8 +893,9 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
 /**
  * @brief Callback for validating parsed YANG instance data described by an extension instance.
  *
- * This callback is called both for nested data definition (with a standard YANG schema parent) when all @p sibling
- * nodes have ::LYD_EXT flag set and for data nodes of schema nodes with the extension instance (no special flag).
+ * This callback is called in 2 distinct cases:
+ * 1) For nested data definition (with a standard YANG schema parent) when all @p sibling nodes have ::LYD_EXT flag set;
+ * 2) For data nodes of a) schema nodes or b) their types with the extension instance (no special flag).
  *
  * @param[in] ext Compiled extension instance.
  * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb for nested data, otherwise

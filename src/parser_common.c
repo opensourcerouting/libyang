@@ -117,7 +117,7 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 
         /* free pcodes that were just cached */
         LY_ARRAY_FOR(patterns, u) {
-            ly_ctx_shared_data_pattern_del(cctx.ctx, patterns[u]->expr);
+            ly_ctx_shared_data_pattern_del(cctx.ctx, patterns[u]->expr, patterns[u]->format);
         }
     }
 

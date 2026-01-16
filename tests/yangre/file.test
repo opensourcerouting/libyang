@@ -11,7 +11,7 @@ test file_empty_str {<string> is empty} {
 } {}
 
 test file_empty_str_err {empty <string> is not allowed} {
-    ly_cmd_err "-f $fdir/empty_str_err.txt" "does not conform"
+    ly_cmd_err "-f $fdir/empty_str_err.txt" "does not match"
 } {}
 
 test file_one_pattern {one pattern in the file} {
@@ -23,7 +23,7 @@ test file_two_patterns {two patterns in the file} {
 } {}
 
 test file_two_patterns_err {two patterns and the <string> is wrong} {
-    ly_cmd_err "-f $fdir/two_patterns_err.txt" "does not conform"
+    ly_cmd_err "-f $fdir/two_patterns_err.txt" "does not match"
 } {}
 
 test file_two_patterns_invert_match {one pattern is inverted} {
@@ -31,7 +31,7 @@ test file_two_patterns_invert_match {one pattern is inverted} {
 } {}
 
 test file_two_patterns_invert_match_err {one pattern is inverted and the <string> is wrong} {
-    ly_cmd_err "-f $fdir/two_patterns_invert_match_err.txt" "does not conform to inverted"
+    ly_cmd_err "-f $fdir/two_patterns_invert_match_err.txt" "does not match inverted"
 } {}
 
 cleanupTests

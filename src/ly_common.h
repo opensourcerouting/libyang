@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -269,7 +269,6 @@ int LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INORD          LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
 #define LY_VCODE_OOB            LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV          LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
-#define LY_VCODE_INREGEXP       LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
 
 #define LY_VCODE_INSUBELEM2     LYVE_SYNTAX_YIN, "Invalid sub-elemnt \"%s\" of \"%s\" element - this sub-element is allowed only in modules with version 1.1 or newer."
 #define LY_VCODE_INVAL_YIN      LYVE_SYNTAX_YIN, "Invalid value \"%s\" of \"%s\" attribute in \"%s\" element."
@@ -307,7 +306,6 @@ int LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_UNEXPNODE      LYVE_DATA, "Unexpected data %s node \"%s\" found."
 #define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
-#define LY_ERRMSG_NOPATTERN /* LYVE_DATA */ "Unsatisfied pattern - \"%.*s\" does not conform to %s\"%s\"."
 #define LY_ERRMSG_NOLENGTH /* LYVE_DATA */ "Unsatisfied length - string \"%.*s\" length is not allowed."
 #define LY_ERRMSG_NORANGE /* LYVE_DATA */ "Unsatisfied range - value \"%.*s\" is out of the allowed range."
 
@@ -331,8 +329,9 @@ int LY_VCODE_INSTREXP_len(const char *str);
  */
 struct ly_pattern_ht_rec {
     const char *pattern;    /**< Pattern expression, used both as key to hash and value to search for.
-                              * Not stored in a dictionary, but a direct reference to ::lysc_pattern.expr. */
-    pcre2_code *pcode;      /**< Compiled PCRE2 pattern code. */
+                               * Not stored in a dictionary, but a direct reference to ::lysc_pattern.expr. */
+    ly_bool format;         /**< Pattern format, 0 - XML Schema regex, 1 - POSIX regex */
+    void *pat_comp;         /**< Compiled pattern code. */
 };
 
 /**
@@ -433,6 +432,13 @@ LY_ERR ly_ctx_data_add(const struct ly_ctx *ctx);
 void ly_ctx_data_del(const struct ly_ctx *ctx);
 
 /**
+ * @brief Free members of a pattern record stored in the context shared data hash table.
+ *
+ * @param[in] ctx Context to use.
+ */
+void ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx);
+
+/**
  * @brief Get private (thread-specific) context data or create it if it does not exist.
  *
  * @param[in] ctx Context whose data to get.
@@ -483,31 +489,61 @@ void ly_ctx_ht_leafref_links_rec_free(void *val_p);
 struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
 
 /**
- * @brief Get a PCRE2 pattern code.
+ * @brief Get a compiled pattern code.
  *
  * If the pattern is not found in the context, it is compiled and cached.
  *
  * @param[in] ctx Context to get or create the pattern code in.
  * @param[in] pattern Pattern string to search for or to compile and store.
- * @param[out] pcode Optional compiled pattern code. DO NOT FREE IT, it is owned by the context.
+ * @param[in] format 0 if XML Schema regex, 1 if POSIX regex.
+ * @param[out] pat_comp Optional compiled pattern code. DO NOT FREE IT, it is owned by the context.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode);
+LY_ERR ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly_bool format,
+        const void **pat_comp);
 
 /**
  * @brief Free a PCRE2 pattern code, if found in the context cache.
  *
  * @param[in] ctx Context of the pattern.
  * @param[in] pattern Pattern string to use.
+ * @param[in] format 0 if XML Schema regex, 1 if POSIX regex.
  */
-void ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern);
+void ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly_bool format);
 
 /**
- * @brief Free members of a pattern record stored in the context shared data hash table.
+ * @brief Compile a pattern.
  *
- * @param[in] ctx Context to use.
+ * @param[in] pattern Pattern to compile.
+ * @param[in] format Pattern format: 0 - XML Schema, 1 - POSIX.
+ * @param[out] pat_comp Compiled pattern.
+ * @param[out] err Generated error, if any.
+ * @return LY_ERR value.
  */
-void ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx);
+LY_ERR ly_pat_compile(const char *pattern, ly_bool format, void **pat_comp, struct ly_err_item **err);
+
+/**
+ * @brief Match a string for a pattern.
+ *
+ * @param[in] pat_comp Compiled pattern, may not be set if @p pattern.
+ * @param[in] pattern Pattern, may not be set if @p pat_comp.
+ * @param[in] format Pattern format: 0 - XML Schema, 1 - POSIX.
+ * @param[in] str String to match.
+ * @param[in] str_len Length of @p str.
+ * @param[out] err Generated error, if any.
+ * @return LY_ENOT if @p str does not match.
+ * @return LY_ERR value on error.
+ */
+LY_ERR ly_pat_match(const void *pat_comp, const char *pattern, ly_bool format, const char *str, size_t str_len,
+        struct ly_err_item **err);
+
+/**
+ * @brief Free a compiled pattern.
+ *
+ * @param[in] pat_comp Compiled pattern to free.
+ * @param[in] format Pattern format: 0 - XML Schema, 1 - POSIX.
+ */
+void ly_pat_free(void *pat_comp, ly_bool format);
 
 /******************************************************************************
  * Dictionary

@@ -1089,294 +1089,61 @@ cleanup:
 }
 
 /**
- * @brief Transform characters block in an XML Schema pattern into Perl character ranges.
+ * @brief Check whether a parsed moudle includes the 'openconfig-extensions:regexp-posix' extension.
  *
- * @param[in] ctx libyang context.
- * @param[in] pattern Original pattern.
- * @param[in,out] regex Pattern to modify.
- * @return LY_ERR value.
+ * @param[in] pmod Parsed module to examine.
+ * @return 1 if the extension has been found;
+ * @return 0 otherwise.
  */
-static LY_ERR
-lys_compile_pattern_chblocks_xmlschema2perl(const struct ly_ctx *ctx, const char *pattern, char **regex)
+static ly_bool
+lys_compile_type_patterns_has_oc_posix_ext(const struct lysp_module *pmod)
 {
-#define URANGE_LEN 19
-    char *ublock2urange[][2] = {
-        {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
-        {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]"},
-        {"LatinExtended-A", "[\\x{0100}-\\x{017F}]"},
-        {"LatinExtended-B", "[\\x{0180}-\\x{024F}]"},
-        {"IPAExtensions", "[\\x{0250}-\\x{02AF}]"},
-        {"SpacingModifierLetters", "[\\x{02B0}-\\x{02FF}]"},
-        {"CombiningDiacriticalMarks", "[\\x{0300}-\\x{036F}]"},
-        {"Greek", "[\\x{0370}-\\x{03FF}]"},
-        {"Cyrillic", "[\\x{0400}-\\x{04FF}]"},
-        {"Armenian", "[\\x{0530}-\\x{058F}]"},
-        {"Hebrew", "[\\x{0590}-\\x{05FF}]"},
-        {"Arabic", "[\\x{0600}-\\x{06FF}]"},
-        {"Syriac", "[\\x{0700}-\\x{074F}]"},
-        {"Thaana", "[\\x{0780}-\\x{07BF}]"},
-        {"Devanagari", "[\\x{0900}-\\x{097F}]"},
-        {"Bengali", "[\\x{0980}-\\x{09FF}]"},
-        {"Gurmukhi", "[\\x{0A00}-\\x{0A7F}]"},
-        {"Gujarati", "[\\x{0A80}-\\x{0AFF}]"},
-        {"Oriya", "[\\x{0B00}-\\x{0B7F}]"},
-        {"Tamil", "[\\x{0B80}-\\x{0BFF}]"},
-        {"Telugu", "[\\x{0C00}-\\x{0C7F}]"},
-        {"Kannada", "[\\x{0C80}-\\x{0CFF}]"},
-        {"Malayalam", "[\\x{0D00}-\\x{0D7F}]"},
-        {"Sinhala", "[\\x{0D80}-\\x{0DFF}]"},
-        {"Thai", "[\\x{0E00}-\\x{0E7F}]"},
-        {"Lao", "[\\x{0E80}-\\x{0EFF}]"},
-        {"Tibetan", "[\\x{0F00}-\\x{0FFF}]"},
-        {"Myanmar", "[\\x{1000}-\\x{109F}]"},
-        {"Georgian", "[\\x{10A0}-\\x{10FF}]"},
-        {"HangulJamo", "[\\x{1100}-\\x{11FF}]"},
-        {"Ethiopic", "[\\x{1200}-\\x{137F}]"},
-        {"Cherokee", "[\\x{13A0}-\\x{13FF}]"},
-        {"UnifiedCanadianAboriginalSyllabics", "[\\x{1400}-\\x{167F}]"},
-        {"Ogham", "[\\x{1680}-\\x{169F}]"},
-        {"Runic", "[\\x{16A0}-\\x{16FF}]"},
-        {"Khmer", "[\\x{1780}-\\x{17FF}]"},
-        {"Mongolian", "[\\x{1800}-\\x{18AF}]"},
-        {"LatinExtendedAdditional", "[\\x{1E00}-\\x{1EFF}]"},
-        {"GreekExtended", "[\\x{1F00}-\\x{1FFF}]"},
-        {"GeneralPunctuation", "[\\x{2000}-\\x{206F}]"},
-        {"SuperscriptsandSubscripts", "[\\x{2070}-\\x{209F}]"},
-        {"CurrencySymbols", "[\\x{20A0}-\\x{20CF}]"},
-        {"CombiningMarksforSymbols", "[\\x{20D0}-\\x{20FF}]"},
-        {"LetterlikeSymbols", "[\\x{2100}-\\x{214F}]"},
-        {"NumberForms", "[\\x{2150}-\\x{218F}]"},
-        {"Arrows", "[\\x{2190}-\\x{21FF}]"},
-        {"MathematicalOperators", "[\\x{2200}-\\x{22FF}]"},
-        {"MiscellaneousTechnical", "[\\x{2300}-\\x{23FF}]"},
-        {"ControlPictures", "[\\x{2400}-\\x{243F}]"},
-        {"OpticalCharacterRecognition", "[\\x{2440}-\\x{245F}]"},
-        {"EnclosedAlphanumerics", "[\\x{2460}-\\x{24FF}]"},
-        {"BoxDrawing", "[\\x{2500}-\\x{257F}]"},
-        {"BlockElements", "[\\x{2580}-\\x{259F}]"},
-        {"GeometricShapes", "[\\x{25A0}-\\x{25FF}]"},
-        {"MiscellaneousSymbols", "[\\x{2600}-\\x{26FF}]"},
-        {"Dingbats", "[\\x{2700}-\\x{27BF}]"},
-        {"BraillePatterns", "[\\x{2800}-\\x{28FF}]"},
-        {"CJKRadicalsSupplement", "[\\x{2E80}-\\x{2EFF}]"},
-        {"KangxiRadicals", "[\\x{2F00}-\\x{2FDF}]"},
-        {"IdeographicDescriptionCharacters", "[\\x{2FF0}-\\x{2FFF}]"},
-        {"CJKSymbolsandPunctuation", "[\\x{3000}-\\x{303F}]"},
-        {"Hiragana", "[\\x{3040}-\\x{309F}]"},
-        {"Katakana", "[\\x{30A0}-\\x{30FF}]"},
-        {"Bopomofo", "[\\x{3100}-\\x{312F}]"},
-        {"HangulCompatibilityJamo", "[\\x{3130}-\\x{318F}]"},
-        {"Kanbun", "[\\x{3190}-\\x{319F}]"},
-        {"BopomofoExtended", "[\\x{31A0}-\\x{31BF}]"},
-        {"EnclosedCJKLettersandMonths", "[\\x{3200}-\\x{32FF}]"},
-        {"CJKCompatibility", "[\\x{3300}-\\x{33FF}]"},
-        {"CJKUnifiedIdeographsExtensionA", "[\\x{3400}-\\x{4DB5}]"},
-        {"CJKUnifiedIdeographs", "[\\x{4E00}-\\x{9FFF}]"},
-        {"YiSyllables", "[\\x{A000}-\\x{A48F}]"},
-        {"YiRadicals", "[\\x{A490}-\\x{A4CF}]"},
-        {"HangulSyllables", "[\\x{AC00}-\\x{D7A3}]"},
-        {"PrivateUse", "[\\x{E000}-\\x{F8FF}]"},
-        {"CJKCompatibilityIdeographs", "[\\x{F900}-\\x{FAFF}]"},
-        {"AlphabeticPresentationForms", "[\\x{FB00}-\\x{FB4F}]"},
-        {"ArabicPresentationForms-A", "[\\x{FB50}-\\x{FDFF}]"},
-        {"CombiningHalfMarks", "[\\x{FE20}-\\x{FE2F}]"},
-        {"CJKCompatibilityForms", "[\\x{FE30}-\\x{FE4F}]"},
-        {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
-        {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
-        {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
-        {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
-        {NULL, NULL}
-    };
+    const struct lysp_ext_instance *ext;
+    LY_ARRAY_COUNT_TYPE u;
+    const struct lys_module *mod;
+    const char *tmp, *name, *prefix;
+    uint32_t pref_len, name_len;
 
-    size_t idx, idx2, start, end;
-    char *perl_regex, *ptr;
+    LY_ARRAY_FOR(pmod->exts, u) {
+        ext = &pmod->exts[u];
 
-    perl_regex = *regex;
+        /* parse the prefix, the nodeid was previously already parsed and checked */
+        tmp = ext->name;
+        ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len);
 
-    /* substitute Unicode Character Blocks with exact Character Ranges */
-    while ((ptr = strstr(perl_regex, "\\p{Is"))) {
-        start = ptr - perl_regex;
+        /* get the module */
+        mod = ly_resolve_prefix(pmod->mod->ctx, prefix, pref_len, ext->format, ext->prefix_data);
 
-        ptr = strchr(ptr, '}');
-        if (!ptr) {
-            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 2, "unterminated character property");
-            return LY_EVALID;
-        }
-        end = (ptr - perl_regex) + 1;
-
-        /* need more space */
-        if (end - start < URANGE_LEN) {
-            perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
-            *regex = perl_regex;
-            LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
-        }
-
-        /* find our range */
-        for (idx = 0; ublock2urange[idx][0]; ++idx) {
-            if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
-                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
-                break;
-            }
-        }
-        if (!ublock2urange[idx][0]) {
-            LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + start + 5, "unknown block name");
-            return LY_EVALID;
-        }
-
-        /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
-        for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
-            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                ++idx;
-            }
-            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                assert(idx);
-                --idx;
-            }
-        }
-        if (idx) {
-            /* skip brackets */
-            memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
-        } else {
-            memmove(perl_regex + start + URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
-            memcpy(perl_regex + start, ublock2urange[idx][1], URANGE_LEN);
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
-LY_ERR
-lys_compile_type_pattern_check(const struct ly_ctx *ctx, const char *pattern, pcre2_code **code)
-{
-    size_t idx, size, brack;
-    char *perl_regex;
-    int err_code, compile_opts;
-    const char *orig_ptr;
-    PCRE2_SIZE err_offset;
-    pcre2_code *code_local;
-    ly_bool escaped;
-    LY_ERR r;
-
-    /* adjust the expression to a Perl equivalent
-     * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
-
-    /* allocate space for the transformed pattern */
-    size = strlen(pattern) + 1;
-    compile_opts = PCRE2_UTF | PCRE2_UCP | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE;
-#ifdef PCRE2_ENDANCHORED
-    compile_opts |= PCRE2_ENDANCHORED;
-#else
-    /* add space for trailing $ anchor */
-    size++;
-#endif
-    perl_regex = malloc(size);
-    LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
-    perl_regex[0] = '\0';
-
-    /* we need to replace all "$" and "^" (that are not in "[]") with "\$" and "\^" */
-    brack = 0;
-    idx = 0;
-    escaped = 0;
-    orig_ptr = pattern;
-    while (orig_ptr[0]) {
-        switch (orig_ptr[0]) {
-        case '$':
-        case '^':
-            if (!brack) {
-                /* make space for the extra character */
-                ++size;
-                perl_regex = ly_realloc(perl_regex, size);
-                LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
-
-                /* print escape slash */
-                perl_regex[idx] = '\\';
-                ++idx;
-            }
-            break;
-        case '\\':
-            /*  escape character found or backslash is escaped */
-            escaped = !escaped;
-            /* copy backslash and continue with the next character */
-            perl_regex[idx] = orig_ptr[0];
-            ++idx;
-            ++orig_ptr;
+        /* compare */
+        if ((name_len != 12) || strncmp(name, "regexp-posix", name_len)) {
             continue;
-        case '[':
-            if (!escaped) {
-                ++brack;
-            }
-            break;
-        case ']':
-            if (!brack && !escaped) {
-                /* If ']' does not terminate a character class expression, then pcre2_compile() implicitly escapes the
-                 * ']' character. But this seems to be against the regular expressions rules declared in
-                 * "XML schema: Datatypes" and therefore an error is returned. So for example if pattern is '\[a]' then
-                 * pcre2 match characters '[a]' literally but in YANG such pattern is not allowed.
-                 */
-                LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, orig_ptr, "character group doesn't begin with '['");
-                free(perl_regex);
-                return LY_EVALID;
-            } else if (!escaped) {
-                --brack;
-            }
-            break;
-        default:
-            break;
+        }
+        if (!mod || strcmp(mod->name, "openconfig-extensions")) {
+            continue;
         }
 
-        /* copy char */
-        perl_regex[idx] = orig_ptr[0];
-
-        ++idx;
-        ++orig_ptr;
-        escaped = 0;
-    }
-#ifndef PCRE2_ENDANCHORED
-    /* anchor match to end of subject */
-    perl_regex[idx++] = '$';
-#endif
-    perl_regex[idx] = '\0';
-
-    /* transform character blocks */
-    if ((r = lys_compile_pattern_chblocks_xmlschema2perl(ctx, pattern, &perl_regex))) {
-        free(perl_regex);
-        return r;
+        return 1;
     }
 
-    /* must return 0, already checked during parsing */
-    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED, compile_opts,
-            &err_code, &err_offset, NULL);
-    if (!code_local) {
-        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
-
-        pcre2_get_error_message(err_code, err_msg, LY_PCRE2_MSG_LIMIT);
-        LOGVAL(ctx, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
-        free(perl_regex);
-        return LY_EVALID;
-    }
-    free(perl_regex);
-
-    if (code) {
-        *code = code_local;
-    } else {
-        pcre2_code_free(code_local);
-    }
-
-    return LY_SUCCESS;
-
-#undef URANGE_LEN
+    return 0;
 }
 
 LY_ERR
 lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *patterns_p, struct lysc_pattern **base_patterns,
         struct lysc_pattern ***patterns)
 {
+    LY_ERR rc = LY_SUCCESS;
     struct lysc_pattern **pattern;
     LY_ARRAY_COUNT_TYPE u;
-    LY_ERR ret = LY_SUCCESS;
+    uint32_t format = 0;
 
-    /* first, copy the patterns from the base type */
+    /* first check the format of the patterns based on the current parsed module extensions (not compiled yet),
+     * if not set, assume internal use that always uses XML Schema expressions */
+    if (ctx->pmod) {
+        format = lys_compile_type_patterns_has_oc_posix_ext(ctx->pmod);
+    }
+
+    /* copy the patterns from the base type */
     if (base_patterns) {
         *patterns = lysc_patterns_dup(ctx->ctx, base_patterns);
         LY_CHECK_ERR_RET(!(*patterns), LOGMEM(ctx->ctx), LY_EMEM);
@@ -1387,25 +1154,26 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, const struct lysp_restr *pattern
         *pattern = calloc(1, sizeof **pattern);
         (*pattern)->refcount = 1;
 
+        (*pattern)->format = format;
         if (patterns_p[u].arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
             (*pattern)->inverted = 1;
         }
-        LY_CHECK_GOTO(ret = lysdict_insert(ctx->ctx, &patterns_p[u].arg.str[1], 0, &(*pattern)->expr), done);
-        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag, ret, done);
-        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg, ret, done);
-        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, ret, done);
-        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].ref, (*pattern)->ref, ret, done);
-        COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), ret, done);
+        LY_CHECK_GOTO(rc = lysdict_insert(ctx->ctx, &patterns_p[u].arg.str[1], 0, &(*pattern)->expr), cleanup);
+        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag, rc, cleanup);
+        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg, rc, cleanup);
+        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc, rc, cleanup);
+        DUP_STRING_GOTO(ctx->ctx, patterns_p[u].ref, (*pattern)->ref, rc, cleanup);
+        COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), rc, cleanup);
 
         /* compile the pattern, if it wasnt already compiled (e.g. same expression but different module)
          * we do this now to verify the pattern right away while compiling the type
          * and so we can store it in the cache so we dont have to recompile it again later
          */
-        LY_CHECK_GOTO(ret = ly_ctx_shared_data_pattern_get(ctx->ctx, (*pattern)->expr, NULL), done);
+        LY_CHECK_GOTO(rc = ly_ctx_shared_data_pattern_get(ctx->ctx, (*pattern)->expr, (*pattern)->format, NULL), cleanup);
     }
 
-done:
-    return ret;
+cleanup:
+    return rc;
 }
 
 /**

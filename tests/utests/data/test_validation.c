@@ -1589,15 +1589,15 @@ test_case(void **state)
 static void
 test_pattern(void **UNUSED(state))
 {
-    pcre2_code *pcode = NULL;
+    void *pat_comp = NULL;
 
     assert_int_equal(ly_pattern_match(NULL, "a.b.c", "abc", 0, NULL), LY_ENOT);
     assert_int_equal(ly_pattern_match(NULL, "a.b.c", "a0b1c", 0, NULL), LY_SUCCESS);
 
-    assert_int_equal(ly_pattern_match(NULL, "a.b.c", "abc", 0, &pcode), LY_ENOT);
-    assert_int_equal(ly_pattern_match(NULL, NULL, "a0b1c", 0, &pcode), LY_SUCCESS);
+    assert_int_equal(ly_pattern_match(NULL, "a.b.c", "abc", 0, &pat_comp), LY_ENOT);
+    assert_int_equal(ly_pattern_match(NULL, NULL, "a0b1c", 0, &pat_comp), LY_SUCCESS);
 
-    pcre2_code_free(pcode);
+    ly_pattern_free(pat_comp);
 }
 
 const char *schema_k =
@@ -1627,7 +1627,7 @@ test_store_only(void **state)
 
     /* validate separately */
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Unsatisfied pattern - \"no-lowercAse-A\" does not conform to \".*a.*\".", NULL, 0);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"no-lowercAse-A\" does not match \".*a.*\".", NULL, 0);
 
     lyd_free_siblings(tree);
 }

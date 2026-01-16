@@ -628,7 +628,7 @@ test_schema_yin(void **state)
             "</type> </typedef>"
             "<leaf name=\"port\"><type name=\"my_type\"> <pattern value=\"bcd.*\"/> </type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied pattern - \"a1i-j<\" does not conform to \"bcd.*\".).",
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Unsatisfied pattern - \"a1i-j<\" does not match \"bcd.*\".).",
             "/TDEFAULT_3:port", 0);
 
 }
@@ -806,7 +806,7 @@ test_data_xml(void **state)
     TEST_ERROR_XML("T_UTF8", "€€€");
     CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.", "/T_UTF8:port", 1);
     TEST_ERROR_XML("T_UTF8", "€€€€€€€€");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".", "/T_UTF8:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not match \"[€]{5,7}\".", "/T_UTF8:port", 1);
 
     /* ANCHOR TEST ^$ is implicit */
     schema = MODULE_CREATE_YANG("T_ANCHOR", "leaf port {type string {"
@@ -814,9 +814,9 @@ test_data_xml(void **state)
             "}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_ERROR_XML("T_ANCHOR", "abc");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not conform to \"a.*b\".", "/T_ANCHOR:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
     TEST_ERROR_XML("T_ANCHOR", "cab");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"cab\" does not conform to \"a.*b\".", "/T_ANCHOR:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"cab\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
 }
 
 static void
@@ -876,7 +876,7 @@ test_data_json(void **state)
     /* inverted value */
     TEST_SUCCESS_JSON("T1", "a\\nbcde",     STRING, "a\nbcde");
     TEST_ERROR_JSON("T1", "p4abc\\n");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"p4abc\n\" does not conform to inverted \"p4.*\\n\".", "/T1:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"p4abc\n\" does not match inverted \"p4.*\\n\".", "/T1:port", 1);
     /* size 20 */
     TEST_SUCCESS_JSON("T1", "ahojahojaho\\njahojaho", STRING, "ahojahojaho\njahojaho");
     TEST_SUCCESS_JSON("T1", "abc\\n-de", STRING, "abc\n-de");
@@ -921,7 +921,7 @@ test_data_json(void **state)
     TEST_ERROR_JSON("T_UTF8", "€€€");
     CHECK_LOG_CTX("Unsatisfied length - string \"€€€\" length is not allowed.", "/T_UTF8:port", 1);
     TEST_ERROR_JSON("T_UTF8", "€€€€€€€€");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not conform to \"[€]{5,7}\".", "/T_UTF8:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"€€€€€€€€\" does not match \"[€]{5,7}\".", "/T_UTF8:port", 1);
 
     /* ANCHOR TEST ^$ is implicit */
     schema = MODULE_CREATE_YANG("T_ANCHOR", "leaf port {type string {"
@@ -929,9 +929,9 @@ test_data_json(void **state)
             "}}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
     TEST_ERROR_JSON("T_ANCHOR", "abc");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not conform to \"a.*b\".", "/T_ANCHOR:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"abc\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
     TEST_ERROR_JSON("T_ANCHOR", "cb");
-    CHECK_LOG_CTX("Unsatisfied pattern - \"cb\" does not conform to \"a.*b\".", "/T_ANCHOR:port", 1);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"cb\" does not match \"a.*b\".", "/T_ANCHOR:port", 1);
 }
 
 static void

@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2018 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,12 +16,16 @@
 
 #include "ly_common.h"
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <regex.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,7 +142,11 @@ ly_ctx_ht_pattern_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void
 
     /* compare the pattern strings, if they match we can use the stored
      * serialized value to create the pcre2 code for the pattern */
-    return !strcmp(val1->pattern, val2->pattern);
+    if (!strcmp(val1->pattern, val2->pattern) && (val1->format == val2->format)) {
+        return 1;
+    }
+
+    return 0;
 }
 
 /**
@@ -538,13 +546,21 @@ ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
 {
     struct ly_ctx_shared_data *ctx_data;
     struct ly_ht_rec *rec;
+    struct ly_pattern_ht_rec *pat_rec;
     uint32_t hlist_idx, rec_idx;
 
     ctx_data = ly_ctx_shared_data_get(ctx);
 
     /* free all the stored records */
     LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
-        pcre2_code_free(((struct ly_pattern_ht_rec *)&rec->val)->pcode);
+        pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
+
+        if (pat_rec->format) {
+            regfree(pat_rec->pat_comp);
+            free(pat_rec->pat_comp);
+        } else {
+            pcre2_code_free(pat_rec->pat_comp);
+        }
     }
 
     /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
@@ -553,18 +569,19 @@ ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
 }
 
 LY_ERR
-ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, const pcre2_code **pcode)
+ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly_bool format, const void **pat_comp)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_ctx_shared_data *ctx_data;
     struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
     uint32_t hash;
-    pcre2_code *pcode_tmp = NULL;
+    void *pat_comp_tmp = NULL;
+    struct ly_err_item *err = NULL;
 
     assert(ctx && pattern);
 
-    if (pcode) {
-        *pcode = NULL;
+    if (pat_comp) {
+        *pat_comp = NULL;
     }
 
     /* get the context shared data */
@@ -574,34 +591,40 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, co
     /* try to find the pattern code in the pattern ht */
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
+    rec.format = format;
     if (!lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
-        /* pcode cached */
-        if (pcode) {
-            *pcode = found_rec->pcode;
+        /* pat_comp cached */
+        if (pat_comp) {
+            *pat_comp = found_rec->pat_comp;
         }
         goto cleanup;
     }
 
-    /* didnt find it, either it's the first time or using printed context (which compiles the pcodes on the fly) */
-    assert(!pcode || ly_ctx_is_printed(ctx));
-    LY_CHECK_GOTO(rc = lys_compile_type_pattern_check(ctx, pattern, &pcode_tmp), cleanup);
+    /* didnt find it, either it's the first time or using printed context (which compiles the patterns on the fly) */
+    assert(!pat_comp || ly_ctx_is_printed(ctx));
+    LY_CHECK_GOTO(rc = ly_pat_compile(pattern, format, &pat_comp_tmp, &err), cleanup);
 
     /* store the compiled pattern code in the hash table */
-    rec.pcode = pcode_tmp;
+    rec.pat_comp = pat_comp_tmp;
     LY_CHECK_GOTO(rc = lyht_insert_no_check(ctx_data->pattern_ht, &rec, hash, NULL), cleanup);
 
-    if (pcode) {
-        *pcode = pcode_tmp;
+    if (pat_comp) {
+        *pat_comp = pat_comp_tmp;
     }
-    pcode_tmp = NULL;
+    pat_comp_tmp = NULL;
 
 cleanup:
-    pcre2_code_free(pcode_tmp);
+    ly_pat_free(pat_comp_tmp, format);
+    if (err) {
+        /* log with the schema path */
+        ly_vlog(ctx, err->apptag, err->vecode, "%s", err->msg);
+        ly_err_free(err);
+    }
     return rc;
 }
 
 void
-ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern)
+ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly_bool format)
 {
     struct ly_ctx_shared_data *ctx_data;
     struct ly_pattern_ht_rec rec = {0}, *found_rec = NULL;
@@ -616,6 +639,7 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern)
     /* try to find the pattern code in the pattern ht */
     hash = lyht_hash(pattern, strlen(pattern));
     rec.pattern = pattern;
+    rec.format = format;
 
     if (lyht_find(ctx_data->pattern_ht, &rec, hash, (void **)&found_rec)) {
         /* pattern code not cached, this may happen when using printed context,
@@ -623,12 +647,503 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern)
         return;
     }
 
-    /* found it, free the pcode */
-    pcre2_code_free(found_rec->pcode);
+    /* found it, free */
+    ly_pat_free(found_rec->pat_comp, found_rec->format);
 
     /* free the pattern HT record */
     if (lyht_remove(ctx_data->pattern_ht, &rec, hash)) {
         LOGINT(ctx);
+    }
+}
+
+/**
+ * @brief Compile a POSIX pattern.
+ *
+ * @param[in] pattern Pattern to compile.
+ * @param[out] pat_comp Compiled pattern.
+ * @param[out] err Generated error, if any.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_pat_compile_posix(const char *pattern, void **pat_comp, struct ly_err_item **err)
+{
+    LY_ERR rc = LY_SUCCESS;
+    int err_code;
+    size_t err_len;
+    char *err_msg = NULL;
+    regex_t *preg_p = NULL;
+
+    /* alloc memory */
+    preg_p = calloc(1, sizeof *preg_p);
+    if (!preg_p) {
+        rc = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+        goto cleanup;
+    }
+
+    /* try to compile the pattern */
+    err_code = regcomp(preg_p, pattern, REG_EXTENDED);
+    if (err_code) {
+        err_len = regerror(err_code, NULL, NULL, 0);
+        err_msg = malloc(err_len);
+        if (err_msg) {
+            regerror(err_code, NULL, err_msg, err_len);
+        }
+
+        rc = ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (%s).", pattern, err_msg);
+        goto cleanup;
+    }
+
+    /* return compiled pattern */
+    *pat_comp = preg_p;
+    preg_p = NULL;
+
+cleanup:
+    if (preg_p) {
+        regfree(preg_p);
+        free(preg_p);
+    }
+    free(err_msg);
+    return rc;
+}
+
+/**
+ * @brief Transform characters block in an XML Schema pattern into Perl character ranges.
+ *
+ * @param[in] pattern Pattern to compile.
+ * @param[in,out] regex Pattern (regex) to modify.
+ * @param[out] err Generated error, if any.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_pat_compile_xmlschema_chblocks_xmlschema2perl(const char *pattern, char **regex, struct ly_err_item **err)
+{
+#define URANGE_LEN 19
+    char *ublock2urange[][2] = {
+        {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
+        {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]"},
+        {"LatinExtended-A", "[\\x{0100}-\\x{017F}]"},
+        {"LatinExtended-B", "[\\x{0180}-\\x{024F}]"},
+        {"IPAExtensions", "[\\x{0250}-\\x{02AF}]"},
+        {"SpacingModifierLetters", "[\\x{02B0}-\\x{02FF}]"},
+        {"CombiningDiacriticalMarks", "[\\x{0300}-\\x{036F}]"},
+        {"Greek", "[\\x{0370}-\\x{03FF}]"},
+        {"Cyrillic", "[\\x{0400}-\\x{04FF}]"},
+        {"Armenian", "[\\x{0530}-\\x{058F}]"},
+        {"Hebrew", "[\\x{0590}-\\x{05FF}]"},
+        {"Arabic", "[\\x{0600}-\\x{06FF}]"},
+        {"Syriac", "[\\x{0700}-\\x{074F}]"},
+        {"Thaana", "[\\x{0780}-\\x{07BF}]"},
+        {"Devanagari", "[\\x{0900}-\\x{097F}]"},
+        {"Bengali", "[\\x{0980}-\\x{09FF}]"},
+        {"Gurmukhi", "[\\x{0A00}-\\x{0A7F}]"},
+        {"Gujarati", "[\\x{0A80}-\\x{0AFF}]"},
+        {"Oriya", "[\\x{0B00}-\\x{0B7F}]"},
+        {"Tamil", "[\\x{0B80}-\\x{0BFF}]"},
+        {"Telugu", "[\\x{0C00}-\\x{0C7F}]"},
+        {"Kannada", "[\\x{0C80}-\\x{0CFF}]"},
+        {"Malayalam", "[\\x{0D00}-\\x{0D7F}]"},
+        {"Sinhala", "[\\x{0D80}-\\x{0DFF}]"},
+        {"Thai", "[\\x{0E00}-\\x{0E7F}]"},
+        {"Lao", "[\\x{0E80}-\\x{0EFF}]"},
+        {"Tibetan", "[\\x{0F00}-\\x{0FFF}]"},
+        {"Myanmar", "[\\x{1000}-\\x{109F}]"},
+        {"Georgian", "[\\x{10A0}-\\x{10FF}]"},
+        {"HangulJamo", "[\\x{1100}-\\x{11FF}]"},
+        {"Ethiopic", "[\\x{1200}-\\x{137F}]"},
+        {"Cherokee", "[\\x{13A0}-\\x{13FF}]"},
+        {"UnifiedCanadianAboriginalSyllabics", "[\\x{1400}-\\x{167F}]"},
+        {"Ogham", "[\\x{1680}-\\x{169F}]"},
+        {"Runic", "[\\x{16A0}-\\x{16FF}]"},
+        {"Khmer", "[\\x{1780}-\\x{17FF}]"},
+        {"Mongolian", "[\\x{1800}-\\x{18AF}]"},
+        {"LatinExtendedAdditional", "[\\x{1E00}-\\x{1EFF}]"},
+        {"GreekExtended", "[\\x{1F00}-\\x{1FFF}]"},
+        {"GeneralPunctuation", "[\\x{2000}-\\x{206F}]"},
+        {"SuperscriptsandSubscripts", "[\\x{2070}-\\x{209F}]"},
+        {"CurrencySymbols", "[\\x{20A0}-\\x{20CF}]"},
+        {"CombiningMarksforSymbols", "[\\x{20D0}-\\x{20FF}]"},
+        {"LetterlikeSymbols", "[\\x{2100}-\\x{214F}]"},
+        {"NumberForms", "[\\x{2150}-\\x{218F}]"},
+        {"Arrows", "[\\x{2190}-\\x{21FF}]"},
+        {"MathematicalOperators", "[\\x{2200}-\\x{22FF}]"},
+        {"MiscellaneousTechnical", "[\\x{2300}-\\x{23FF}]"},
+        {"ControlPictures", "[\\x{2400}-\\x{243F}]"},
+        {"OpticalCharacterRecognition", "[\\x{2440}-\\x{245F}]"},
+        {"EnclosedAlphanumerics", "[\\x{2460}-\\x{24FF}]"},
+        {"BoxDrawing", "[\\x{2500}-\\x{257F}]"},
+        {"BlockElements", "[\\x{2580}-\\x{259F}]"},
+        {"GeometricShapes", "[\\x{25A0}-\\x{25FF}]"},
+        {"MiscellaneousSymbols", "[\\x{2600}-\\x{26FF}]"},
+        {"Dingbats", "[\\x{2700}-\\x{27BF}]"},
+        {"BraillePatterns", "[\\x{2800}-\\x{28FF}]"},
+        {"CJKRadicalsSupplement", "[\\x{2E80}-\\x{2EFF}]"},
+        {"KangxiRadicals", "[\\x{2F00}-\\x{2FDF}]"},
+        {"IdeographicDescriptionCharacters", "[\\x{2FF0}-\\x{2FFF}]"},
+        {"CJKSymbolsandPunctuation", "[\\x{3000}-\\x{303F}]"},
+        {"Hiragana", "[\\x{3040}-\\x{309F}]"},
+        {"Katakana", "[\\x{30A0}-\\x{30FF}]"},
+        {"Bopomofo", "[\\x{3100}-\\x{312F}]"},
+        {"HangulCompatibilityJamo", "[\\x{3130}-\\x{318F}]"},
+        {"Kanbun", "[\\x{3190}-\\x{319F}]"},
+        {"BopomofoExtended", "[\\x{31A0}-\\x{31BF}]"},
+        {"EnclosedCJKLettersandMonths", "[\\x{3200}-\\x{32FF}]"},
+        {"CJKCompatibility", "[\\x{3300}-\\x{33FF}]"},
+        {"CJKUnifiedIdeographsExtensionA", "[\\x{3400}-\\x{4DB5}]"},
+        {"CJKUnifiedIdeographs", "[\\x{4E00}-\\x{9FFF}]"},
+        {"YiSyllables", "[\\x{A000}-\\x{A48F}]"},
+        {"YiRadicals", "[\\x{A490}-\\x{A4CF}]"},
+        {"HangulSyllables", "[\\x{AC00}-\\x{D7A3}]"},
+        {"PrivateUse", "[\\x{E000}-\\x{F8FF}]"},
+        {"CJKCompatibilityIdeographs", "[\\x{F900}-\\x{FAFF}]"},
+        {"AlphabeticPresentationForms", "[\\x{FB00}-\\x{FB4F}]"},
+        {"ArabicPresentationForms-A", "[\\x{FB50}-\\x{FDFF}]"},
+        {"CombiningHalfMarks", "[\\x{FE20}-\\x{FE2F}]"},
+        {"CJKCompatibilityForms", "[\\x{FE30}-\\x{FE4F}]"},
+        {"SmallFormVariants", "[\\x{FE50}-\\x{FE6F}]"},
+        {"ArabicPresentationForms-B", "[\\x{FE70}-\\x{FEFE}]"},
+        {"HalfwidthandFullwidthForms", "[\\x{FF00}-\\x{FFEF}]"},
+        {"Specials", "[\\x{FEFF}|\\x{FFF0}-\\x{FFFD}]"},
+        {NULL, NULL}
+    };
+
+    size_t idx, idx2, start, end;
+    char *perl_regex, *ptr;
+
+    perl_regex = *regex;
+
+    /* substitute Unicode Character Blocks with exact Character Ranges */
+    while ((ptr = strstr(perl_regex, "\\p{Is"))) {
+        start = ptr - perl_regex;
+
+        ptr = strchr(ptr, '}');
+        if (!ptr) {
+            return ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
+                    pattern, perl_regex + start + 2, "unterminated character property");
+        }
+        end = (ptr - perl_regex) + 1;
+
+        /* need more space */
+        if (end - start < URANGE_LEN) {
+            perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
+            *regex = perl_regex;
+            if (!perl_regex) {
+                return ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+            }
+        }
+
+        /* find our range */
+        for (idx = 0; ublock2urange[idx][0]; ++idx) {
+            if (!strncmp(perl_regex + start + ly_strlen_const("\\p{Is"),
+                    ublock2urange[idx][0], strlen(ublock2urange[idx][0]))) {
+                break;
+            }
+        }
+        if (!ublock2urange[idx][0]) {
+            return ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
+                    pattern, perl_regex + start + 5, "unknown block name");
+        }
+
+        /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
+        for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
+            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
+                ++idx;
+            }
+            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
+                assert(idx);
+                --idx;
+            }
+        }
+        if (idx) {
+            /* skip brackets */
+            memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
+        } else {
+            memmove(perl_regex + start + URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, ublock2urange[idx][1], URANGE_LEN);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Compile an XML Schema pattern.
+ *
+ * @param[in] pattern Pattern to compile.
+ * @param[out] pat_comp Compiled pattern.
+ * @param[out] err Generated error, if any.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_pat_compile_xmlschema(const char *pattern, void **pat_comp, struct ly_err_item **err)
+{
+    LY_ERR rc = LY_SUCCESS;
+    size_t idx, size, brack;
+    char *perl_regex = NULL;
+    int err_code, compile_opts;
+    const char *orig_ptr;
+    PCRE2_SIZE err_offset;
+    pcre2_code *code_local;
+    ly_bool escaped;
+
+    /* adjust the expression to a Perl equivalent
+     * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
+
+    /* allocate space for the transformed pattern */
+    size = strlen(pattern) + 1;
+    compile_opts = PCRE2_UTF | PCRE2_UCP | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE | PCRE2_ANCHORED;
+#ifdef PCRE2_ENDANCHORED
+    compile_opts |= PCRE2_ENDANCHORED;
+#else
+    /* add space for trailing $ anchor */
+    size++;
+#endif
+
+    perl_regex = malloc(size);
+    if (!perl_regex) {
+        rc = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+        goto cleanup;
+    }
+    perl_regex[0] = '\0';
+
+    /* we need to replace all "$" and "^" (that are not in "[]") with "\$" and "\^" */
+    brack = 0;
+    idx = 0;
+    escaped = 0;
+    orig_ptr = pattern;
+    while (orig_ptr[0]) {
+        switch (orig_ptr[0]) {
+        case '$':
+        case '^':
+            if (!brack) {
+                /* make space for the extra character */
+                ++size;
+                perl_regex = ly_realloc(perl_regex, size);
+                if (!perl_regex) {
+                    rc = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+                    goto cleanup;
+                }
+
+                /* print escape slash */
+                perl_regex[idx] = '\\';
+                ++idx;
+            }
+            break;
+        case '\\':
+            /*  escape character found or backslash is escaped */
+            escaped = !escaped;
+            /* copy backslash and continue with the next character */
+            perl_regex[idx] = orig_ptr[0];
+            ++idx;
+            ++orig_ptr;
+            continue;
+        case '[':
+            if (!escaped) {
+                ++brack;
+            }
+            break;
+        case ']':
+            if (!brack && !escaped) {
+                /* If ']' does not terminate a character class expression, then pcre2_compile() implicitly escapes the
+                * ']' character. But this seems to be against the regular expressions rules declared in
+                * "XML schema: Datatypes" and therefore an error is returned. So for example if pattern is '\[a]' then
+                * pcre2 match characters '[a]' literally but in YANG such pattern is not allowed.
+                */
+                rc = ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
+                        pattern, orig_ptr, "character group doesn't begin with '['");
+                goto cleanup;
+            } else if (!escaped) {
+                --brack;
+            }
+            break;
+        default:
+            break;
+        }
+
+        /* copy char */
+        perl_regex[idx] = orig_ptr[0];
+
+        ++idx;
+        ++orig_ptr;
+        escaped = 0;
+    }
+#ifndef PCRE2_ENDANCHORED
+    /* anchor match to end of subject */
+    perl_regex[idx++] = '$';
+#endif
+    perl_regex[idx] = '\0';
+
+    /* transform character blocks */
+    if ((rc = ly_pat_compile_xmlschema_chblocks_xmlschema2perl(pattern, &perl_regex, err))) {
+        goto cleanup;
+    }
+
+    /* must return 0, already checked during parsing */
+    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED, compile_opts, &err_code, &err_offset, NULL);
+    if (!code_local) {
+        PCRE2_UCHAR err_msg[LY_PCRE2_MSG_LIMIT] = {0};
+
+        pcre2_get_error_message(err_code, err_msg, LY_PCRE2_MSG_LIMIT);
+        rc = ly_err_new(err, LY_EVALID, 0, NULL, NULL, "Regular expression \"%s\" is not valid (\"%s\": %s).",
+                pattern, perl_regex + err_offset, err_msg);
+        goto cleanup;
+    }
+
+    if (pat_comp) {
+        *pat_comp = code_local;
+    } else {
+        pcre2_code_free(code_local);
+    }
+
+cleanup:
+    free(perl_regex);
+    return rc;
+
+#undef URANGE_LEN
+}
+
+LY_ERR
+ly_pat_compile(const char *pattern, ly_bool format, void **pat_comp, struct ly_err_item **err)
+{
+    if (format) {
+        return ly_pat_compile_posix(pattern, pat_comp, err);
+    } else {
+        return ly_pat_compile_xmlschema(pattern, pat_comp, err);
+    }
+}
+
+/**
+ * @brief Match a string for a POSIX pattern.
+ *
+ * @param[in] pat_comp Compiled pattern, may not be set if @p pattern.
+ * @param[in] pattern Pattern, may not be set if @p pat_comp.
+ * @param[in] str String to match.
+ * @param[in] str_len Length of @p str.
+ * @param[out] err Generated error, if any.
+ * @return LY_ENOT if @p str does not match.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, size_t str_len, struct ly_err_item **err)
+{
+    LY_ERR rc = LY_SUCCESS;
+    int err_code;
+    regex_t *preg_p = (void *)pat_comp;
+    regmatch_t pmatch = {0};
+
+    assert(pat_comp || pattern);
+
+    if (!preg_p) {
+        /* compile pattern first */
+        rc = ly_pat_compile_posix(pattern, (void **)&preg_p, err);
+        LY_CHECK_GOTO(rc, cleanup);
+    }
+
+    /* match the string up to its length */
+    pmatch.rm_so = 0;
+    pmatch.rm_eo = str_len;
+    err_code = regexec(preg_p, str, 1, &pmatch, REG_STARTEND);
+
+    /* check the result */
+    if (err_code == REG_NOMATCH) {
+        rc = ly_err_new(err, LY_ENOT, 0, NULL, NULL, "Unsatisfied pattern - \"%.*s\" does not match \"%s\".",
+                (int)str_len, str, pattern);
+        goto cleanup;
+    }
+
+cleanup:
+    if (!pat_comp) {
+        ly_pat_free(preg_p, 1);
+    }
+    return rc;
+}
+
+/**
+ * @brief Match a string for an XML Schema pattern.
+ *
+ * @param[in] pat_comp Compiled pattern, may not be set if @p pattern.
+ * @param[in] pattern Pattern, may not be set if @p pat_comp.
+ * @param[in] str String to match.
+ * @param[in] str_len Length of @p str.
+ * @param[out] err Generated error, if any.
+ * @return LY_ENOT if @p str does not match.
+ * @return LY_ERR value on error.
+ */
+static LY_ERR
+ly_pat_match_xmlschema(const void *pat_comp, const char *pattern, const char *str, size_t str_len, struct ly_err_item **err)
+{
+    LY_ERR rc = LY_SUCCESS;
+    int r, match_opts = 0;
+    pcre2_code *pcode = (void *)pat_comp;
+    pcre2_match_data *match_data = NULL;
+
+    if (!pat_comp) {
+        /* compile pattern first */
+        rc = ly_pat_compile_xmlschema(pattern, (void **)&pcode, err);
+        LY_CHECK_GOTO(rc, cleanup);
+    }
+
+    /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
+    match_data = pcre2_match_data_create_from_pattern(pcode, NULL);
+    if (!match_data) {
+        rc = ly_err_new(err, LY_EMEM, 0, NULL, NULL, LY_EMEM_MSG);
+        goto cleanup;
+    }
+
+    match_opts |= PCRE2_ANCHORED;
+#ifdef PCRE2_ENDANCHORED
+    /* PCRE2_ENDANCHORED was added in PCRE2 version 10.30 */
+    match_opts |= PCRE2_ENDANCHORED;
+#endif
+
+    r = pcre2_match(pcode, (PCRE2_SPTR)str, str_len, 0, match_opts, match_data, NULL);
+    pcre2_match_data_free(match_data);
+
+    if ((r != PCRE2_ERROR_NOMATCH) && (r < 0)) {
+        /* error */
+        PCRE2_UCHAR pcre2_errmsg[LY_PCRE2_MSG_LIMIT] = {0};
+
+        pcre2_get_error_message(r, pcre2_errmsg, LY_PCRE2_MSG_LIMIT);
+        rc = ly_err_new(err, LY_ESYS, 0, NULL, NULL, "%s", (const char *)pcre2_errmsg);
+        goto cleanup;
+    }
+
+    if (r == PCRE2_ERROR_NOMATCH) {
+        rc = ly_err_new(err, LY_ENOT, 0, NULL, NULL, "Unsatisfied pattern - \"%.*s\" does not match \"%s\".",
+                (int)str_len, str, pattern);
+        goto cleanup;
+    }
+
+cleanup:
+    if (!pat_comp) {
+        ly_pat_free(pcode, 0);
+    }
+    return rc;
+}
+
+LY_ERR
+ly_pat_match(const void *pat_comp, const char *pattern, ly_bool format, const char *str, size_t str_len,
+        struct ly_err_item **err)
+{
+    if (format) {
+        return ly_pat_match_posix(pat_comp, pattern, str, str_len, err);
+    } else {
+        return ly_pat_match_xmlschema(pat_comp, pattern, str, str_len, err);
+    }
+}
+
+void
+ly_pat_free(void *pat_comp, ly_bool format)
+{
+    if (!pat_comp) {
+        return;
+    }
+
+    if (format) {
+        regfree(pat_comp);
+        free(pat_comp);
+    } else {
+        pcre2_code_free(pat_comp);
     }
 }
 

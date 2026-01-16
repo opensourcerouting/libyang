@@ -541,9 +541,10 @@ LIBYANG_API_DEF LY_ERR
 lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **patterns, const char *str, uint32_t str_len,
         struct ly_err_item **err)
 {
-    LY_ERR r;
+    LY_ERR r, rc = LY_SUCCESS;
+    struct ly_err_item *err_tmp = NULL;
     LY_ARRAY_COUNT_TYPE u;
-    const pcre2_code *pcode;
+    const void *pat_comp;
 
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
@@ -552,23 +553,32 @@ lyplg_type_validate_patterns(const struct ly_ctx *ctx, struct lysc_pattern **pat
     LY_ARRAY_FOR(patterns, u) {
         /* get (or compile) the compiled pattern. The pattern might not be found, because
          * if ctx is printed, it did not inherit compiled patterns from the original context. */
-        LY_CHECK_RET(ly_ctx_shared_data_pattern_get(ctx, patterns[u]->expr, &pcode));
+        LY_CHECK_RET(ly_ctx_shared_data_pattern_get(ctx, patterns[u]->expr, patterns[u]->format, &pat_comp));
 
         /* match the pattern */
-        r = ly_pattern_code_match(pcode, str, str_len, err);
-        LY_CHECK_RET(r && (r != LY_ENOT), r);
+        r = ly_pat_match(pat_comp, NULL, patterns[u]->format, str, str_len, &err_tmp);
+        if (r && (r != LY_ENOT)) {
+            *err = err_tmp;
+            return r;
+        }
 
         if (((r == LY_ENOT) && !patterns[u]->inverted) || ((r == LY_SUCCESS) && patterns[u]->inverted)) {
             char *eapptag = patterns[u]->eapptag ? strdup(patterns[u]->eapptag) : NULL;
 
             if (patterns[u]->emsg) {
-                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", patterns[u]->emsg);
+                rc = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag, "%s", patterns[u]->emsg);
             } else {
-                const char *inverted = patterns[u]->inverted ? "inverted " : "";
-
-                return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
-                        LY_ERRMSG_NOPATTERN, (int)str_len, str, inverted, patterns[u]->expr);
+                rc = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, eapptag,
+                        "Unsatisfied pattern - \"%.*s\" does not match %s\"%s\".", (int)str_len, str,
+                        patterns[u]->inverted ? "inverted " : "", patterns[u]->expr);
             }
+            ly_err_free(err_tmp);
+            return rc;
+        }
+
+        if (r == LY_ENOT) {
+            ly_err_free(err_tmp);
+            err_tmp = NULL;
         }
     }
 

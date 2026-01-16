@@ -71,16 +71,6 @@ LY_ERR lys_compile_type_range(struct lysc_ctx *ctx, const struct lysp_restr *ran
         ly_bool length_restr, uint8_t frdigits, struct lysc_range *base_range, struct lysc_range **range);
 
 /**
- * @brief Checks pattern syntax.
- *
- * @param[in] ctx Context.
- * @param[in] pattern Pattern to check.
- * @param[in,out] code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
- * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
- */
-LY_ERR lys_compile_type_pattern_check(const struct ly_ctx *ctx, const char *pattern, pcre2_code **code);
-
-/**
  * @brief Compile parsed pattern restriction in conjunction with the patterns from base type.
  *
  * @param[in] ctx Compile context.

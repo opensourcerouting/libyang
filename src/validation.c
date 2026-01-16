@@ -1896,25 +1896,55 @@ lyd_validate_nested_ext(struct lyd_node *sibling, struct ly_set *ext_val)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Store a node with ext instance validation callback to be validated later.
+ *
+ * @param[in] node Node to store.
+ * @param[in] ext Relevant extension instance.
+ * @param[in,out] ext_val Set with the nodes to validate.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_validate_node_ext_add(struct lyd_node *node, struct lysc_ext_instance *ext, struct ly_set *ext_val)
+{
+    struct lyd_ctx_ext_val *ext_v;
+
+    /* store for validation */
+    ext_v = malloc(sizeof *ext_v);
+    LY_CHECK_ERR_RET(!ext_v, LOGMEM(LYD_CTX(node)), LY_EMEM);
+    ext_v->ext = ext;
+    ext_v->sibling = node;
+    LY_CHECK_RET(ly_set_add(ext_val, ext_v, 1, NULL));
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
 {
-    struct lyd_ctx_ext_val *ext_v;
     struct lysc_ext_instance *exts;
     struct lyplg_ext *ext_plg;
     LY_ARRAY_COUNT_TYPE u;
 
-    /* try to find a relevant extension instance with validation callback */
+    /* try to find a relevant extension instance with validation callback in the schema node ... */
     exts = node->schema->exts;
     LY_ARRAY_FOR(exts, u) {
         ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
         if (ext_plg && ext_plg->validate) {
             /* store for validation */
-            ext_v = malloc(sizeof *ext_v);
-            LY_CHECK_ERR_RET(!ext_v, LOGMEM(LYD_CTX(node)), LY_EMEM);
-            ext_v->ext = &exts[u];
-            ext_v->sibling = node;
-            LY_CHECK_RET(ly_set_add(ext_val, ext_v, 1, NULL));
+            LY_CHECK_RET(lyd_validate_node_ext_add(node, &exts[u], ext_val));
+        }
+    }
+
+    /* ... and in the type */
+    if (node->schema->nodetype & LYD_NODE_TERM) {
+        exts = ((struct lysc_node_leaf *)node->schema)->type->exts;
+        LY_ARRAY_FOR(exts, u) {
+            ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+            if (ext_plg && ext_plg->validate) {
+                /* store for validation */
+                LY_CHECK_RET(lyd_validate_node_ext_add(node, &exts[u], ext_val));
+            }
         }
     }
 

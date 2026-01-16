@@ -16,10 +16,6 @@
 #ifndef LY_TREE_SCHEMA_H_
 #define LY_TREE_SCHEMA_H_
 
-#define PCRE2_CODE_UNIT_WIDTH 8
-
-#include <pcre2.h>
-
 #include <stdint.h>
 #include <stdio.h>
 
@@ -1262,7 +1258,8 @@ struct lysc_pattern {
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint32_t inverted : 1;           /**< invert-match flag */
-    uint32_t refcount : 31;          /**< reference counter */
+    uint32_t format : 1;             /**< 0 - XML Schema Regex, 1 - POSIX ERE regex */
+    uint32_t refcount : 30;          /**< reference counter */
 };
 
 struct lysc_must {

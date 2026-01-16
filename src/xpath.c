@@ -5013,7 +5013,7 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     /* free the pattern */
     free(*pattern);
     LY_ARRAY_FREE(patterns);
-    ly_ctx_shared_data_pattern_del(set->ctx, args[1]->val.str);
+    ly_ctx_shared_data_pattern_del(set->ctx, args[1]->val.str, 0);
 
     if (rc && (rc != LY_EVALID)) {
         /* error */
