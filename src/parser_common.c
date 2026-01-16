@@ -71,64 +71,18 @@ lyd_ctx_free(struct lyd_ctx *lydctx)
 LY_ERR
 lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
 {
-    LY_ERR rc = LY_SUCCESS;
-    struct ly_ctx *ctx = (struct ly_ctx *)LYD_CTX(node);
-    struct lysc_ctx cctx = {0};
-    const struct lys_module *mod1, *mod2;
     const struct lysc_node *schema;
-    LY_ARRAY_COUNT_TYPE u;
-    struct ly_err_item *err = NULL;
-    struct lysp_type *type_p = NULL;
-    struct lysc_pattern **patterns = NULL;
     const char *value;
 
-    /* find the used modules, we will either use a compiled leaf or compile the relevant type ourselves */
-    mod1 = ly_ctx_get_module_implemented(ctx, "notifications");
-    mod2 = ly_ctx_get_module_latest(ctx, "ietf-yang-types");
-    assert(mod2);
+    /* get an internal node from the 'yang' module that we can use for validation */
+    schema = lys_find_path(LYD_CTX(node), NULL, "/yang:date-and-time", 0);
+    LY_CHECK_ERR_RET(!schema, LOGINT(LYD_CTX(node)), LY_EINT);
 
-    if (mod1 || !mod2->parsed) {
-        /* get date-and-time leaf */
-        schema = lys_find_path(LYD_CTX(node), NULL, "/notifications:notification/eventTime", 0);
-        LY_CHECK_RET(!schema, LY_ENOTFOUND);
+    /* validate the value, in JSON format */
+    value = lyd_get_value(node);
+    LY_CHECK_RET(lyd_value_validate(schema, value, strlen(value), NULL, NULL, NULL));
 
-        /* validate the value, in JSON format */
-        value = lyd_get_value(node);
-        LY_CHECK_RET(lyd_value_validate(schema, value, strlen(value), NULL, NULL, NULL));
-    } else {
-        LYSC_CTX_INIT_CTX(cctx, ctx);
-
-        /* get date-and-time parsed type */
-        LY_ARRAY_FOR(mod2->parsed->typedefs, u) {
-            if (!strcmp(mod2->parsed->typedefs[u].name, "date-and-time")) {
-                type_p = &mod2->parsed->typedefs[u].type;
-                break;
-            }
-        }
-        assert(type_p);
-
-        /* compile patterns */
-        assert(type_p->patterns);
-        LY_CHECK_GOTO(rc = lys_compile_type_patterns(&cctx, type_p->patterns, NULL, &patterns), cleanup);
-
-        /* validate */
-        value = lyd_get_value(node);
-        rc = lyplg_type_validate_patterns(ctx, patterns, value, strlen(value), &err);
-
-        /* free pcodes that were just cached */
-        LY_ARRAY_FOR(patterns, u) {
-            ly_ctx_shared_data_pattern_del(cctx.ctx, patterns[u]->expr, patterns[u]->format);
-        }
-    }
-
-cleanup:
-    FREE_ARRAY(cctx.ctx, patterns, lysc_pattern_free);
-    if (rc && err) {
-        ly_err_print(ctx, err);
-        ly_err_free(err);
-        LOGVAL(ctx, LYVE_DATA, "Invalid \"eventTime\" in the notification.");
-    }
-    return rc;
+    return LY_SUCCESS;
 }
 
 LY_ERR

@@ -544,7 +544,7 @@ test_atomize(void **state)
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/*", 0, &set));
-    assert_int_equal(15, set->count);
+    assert_int_equal(16, set->count);
     ly_set_free(set, NULL);
 
     /*

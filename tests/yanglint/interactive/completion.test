@@ -12,7 +12,7 @@ test completion_hints_ietf_ip {Completion and hints for ietf-ip.yang} {
     ly_cmd "add $mdir/ietf-ip.yang"
 
     # completion and hint
-    ly_completion "print -f info -P " "/ietf-"
+    ly_completion "print -f info -P /i" "etf-"
 
     set hints {"/ietf-yang-schema-mount:schema-mounts" "/ietf-interfaces:interfaces" "/ietf-interfaces:interfaces-state"}
     ly_hint "" "print -f info -P /ietf-" $hints

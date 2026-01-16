@@ -1948,6 +1948,8 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
     struct lysp_ext_instance *extp, *prev_exts = mod->exts;
     struct lysp_stmt *stmt;
     struct lysp_tpdf *tpdf;
+    struct lysp_node_leaf *leaf;
+    struct lysp_import *imp;
     uint32_t idx;
 
     /* add new typedef */
@@ -1988,6 +1990,20 @@ lysp_add_internal_yang(struct lysp_ctx *pctx, struct lysp_module *mod)
         }
         pctx->ext_inst.objs[idx] = mod->exts;
     }
+
+    /* add a date-and-time leaf so that such values can be validated (there is a compiled type) */
+    LY_LIST_NEW_RET(mod->mod->ctx, &mod->data, leaf, next, LY_EMEM);
+    leaf->nodetype = LYS_LEAF;
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "date-and-time", 0, &leaf->name));
+    leaf->flags = LYS_INTERNAL;
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "yang_:date-and-time", 0, &leaf->type.name));
+    leaf->type.pmod = mod;
+
+    /* create new imports for the used prefixes */
+    LY_ARRAY_NEW_RET(mod->mod->ctx, mod->imports, imp, LY_EMEM);
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "ietf-yang-types", 0, &imp->name));
+    LY_CHECK_RET(lysdict_insert(mod->mod->ctx, "yang_", 0, &imp->prefix));
+    imp->flags = LYS_INTERNAL;
 
     return LY_SUCCESS;
 }

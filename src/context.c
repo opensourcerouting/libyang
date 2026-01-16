@@ -67,11 +67,11 @@ static struct internal_modules_s {
     ly_bool implemented;
     LYS_INFORMAT format;
 } internal_modules[] = {
+    {"ietf-inet-types", "2025-12-22", ietf_inet_types_2025_12_22_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-types", "2025-12-22", ietf_yang_types_2025_12_22_yang, 0, LYS_IN_YANG},
     {"ietf-yang-metadata", "2016-08-05", ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
     {"yang", "2025-01-29", yang_2025_01_29_yang, 1, LYS_IN_YANG},
     {"default", "2025-06-18", default_2025_06_18_yang, 1, LYS_IN_YANG},
-    {"ietf-inet-types", "2025-12-22", ietf_inet_types_2025_12_22_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-types", "2025-12-22", ietf_yang_types_2025_12_22_yang, 0, LYS_IN_YANG},
     {"ietf-yang-schema-mount", "2019-01-14", ietf_yang_schema_mount_2019_01_14_yang, 1, LYS_IN_YANG},
     {"ietf-yang-structure-ext", "2020-06-17", ietf_yang_structure_ext_2020_06_17_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */

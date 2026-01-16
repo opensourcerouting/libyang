@@ -1869,6 +1869,10 @@ test_lys_getnext(void **state)
 
     node = lys_getnext(NULL, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
     assert_non_null(node);
+    assert_string_equal(node->name, "date-and-time");
+
+    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    assert_non_null(node);
     assert_string_equal(node->name, "schema-mounts");
 
     node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
