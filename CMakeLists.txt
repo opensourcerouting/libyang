@@ -20,6 +20,7 @@ include(ABICheck)
 include(SourceFormat)
 include(GenDoc)
 include(GenCoverage)
+include(CheckIncludeFile)
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -327,6 +328,12 @@ if ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
     source_format_enable(0.77)
 endif()
 
+# check regex compatibility
+check_include_file("regex.h" HAVE_REGEX_H)
+if(HAVE_REGEX_H)
+    check_symbol_exists(REG_STARTEND "regex.h" HAVE_REG_STARTEND)
+endif()
+
 # generate and copy all public header files
 configure_file(${PROJECT_SOURCE_DIR}/src/ly_config.h.in ${PROJECT_BINARY_DIR}/libyang/ly_config.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/libyang/version.h @ONLY)
@@ -401,9 +408,6 @@ if(WIN32)
     set(COMPAT_WIN_LIBRARIES PThreads4W::PThreads4W shlwapi.lib ws2_32)
     target_link_libraries(yang ${COMPAT_WIN_LIBRARIES})
 endif()
-
-# check regex compatibility
-check_symbol_exists(REG_STARTEND "regex.h" HAVE_REG_STARTEND)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 

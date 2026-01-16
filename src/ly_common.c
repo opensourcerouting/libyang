@@ -13,8 +13,21 @@
  */
 
 #define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L /* pthread_rwlock_t */
 
 #include "ly_common.h"
+
+#ifdef HAVE_REGEX_H
+# include <regex.h>
+#endif
+
+#ifndef _WIN32
+# ifdef HAVE_MMAP
+#  include <sys/mman.h>
+# endif
+#else
+# include <io.h>
+#endif
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -25,18 +38,10 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
-#include <regex.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
-# ifdef HAVE_MMAP
-#  include <sys/mman.h>
-# endif
-#else
-# include <io.h>
-#endif
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -46,8 +51,6 @@
 #include "tree_schema_internal.h"
 #include "version.h"
 #include "xml.h"
-
-# define _POSIX_C_SOURCE 200809L /* pthread_rwlock_t */
 
 /**< lock for creating and destroying both private & shared context data */
 static pthread_rwlock_t ly_ctx_data_rwlock = PTHREAD_RWLOCK_INITIALIZER;
@@ -555,12 +558,7 @@ ly_ctx_pattern_ht_erase(const struct ly_ctx *ctx)
     LYHT_ITER_ALL_RECS(ctx_data->pattern_ht, hlist_idx, rec_idx, rec) {
         pat_rec = (struct ly_pattern_ht_rec *)&rec->val;
 
-        if (pat_rec->format) {
-            regfree(pat_rec->pat_comp);
-            free(pat_rec->pat_comp);
-        } else {
-            pcre2_code_free(pat_rec->pat_comp);
-        }
+        ly_pat_free(pat_rec->pat_comp, pat_rec->format);
     }
 
     /* we have removed all patterns (so it is empty), we can not free the ht here though, to avoid
@@ -667,6 +665,7 @@ ly_ctx_shared_data_pattern_del(const struct ly_ctx *ctx, const char *pattern, ly
 static LY_ERR
 ly_pat_compile_posix(const char *pattern, void **pat_comp, struct ly_err_item **err)
 {
+#ifdef HAVE_REGEX_H
     LY_ERR rc = LY_SUCCESS;
     int err_code;
     size_t err_len;
@@ -704,6 +703,12 @@ cleanup:
     }
     free(err_msg);
     return rc;
+#else
+    (void)pattern;
+    (void)pat_comp;
+
+    return ly_err_new(err, LY_EINVAL, 0, NULL, NULL, "POSIX patterns are not supported.");
+#endif
 }
 
 /**
@@ -1026,6 +1031,7 @@ ly_pat_compile(const char *pattern, ly_bool format, void **pat_comp, struct ly_e
 static LY_ERR
 ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, size_t str_len, struct ly_err_item **err)
 {
+#ifdef HAVE_REGEX_H
     LY_ERR rc = LY_SUCCESS;
     int err_code;
     regex_t *preg_p = (void *)pat_comp;
@@ -1038,14 +1044,14 @@ ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, s
         LY_CHECK_GOTO(rc, cleanup);
     }
 
-#ifdef HAVE_REG_STARTEND
+# ifdef HAVE_REG_STARTEND
     regmatch_t pmatch = {0};
 
     /* match the string up to its length */
     pmatch.rm_so = 0;
     pmatch.rm_eo = str_len;
     err_code = regexec(preg_p, str, 1, &pmatch, REG_STARTEND);
-#else
+# else
     /* must match the whole string */
     if (!str[str_len]) {
         /* zero-terminated */
@@ -1061,7 +1067,7 @@ ly_pat_match_posix(const void *pat_comp, const char *pattern, const char *str, s
         err_code = regexec(preg_p, str_dup, 0, NULL, 0);
         free(str_dup);
     }
-#endif
+# endif
 
     /* check the result */
     if (err_code == REG_NOMATCH) {
@@ -1075,6 +1081,14 @@ cleanup:
         ly_pat_free(preg_p, 1);
     }
     return rc;
+#else
+    (void)pat_comp;
+    (void)pattern;
+    (void)str;
+    (void)str_len;
+
+    return ly_err_new(err, LY_EINVAL, 0, NULL, NULL, "POSIX patterns are not supported.");
+#endif
 }
 
 /**
@@ -1159,8 +1173,10 @@ ly_pat_free(void *pat_comp, ly_bool format)
     }
 
     if (format) {
+#ifdef HAVE_REGEX_H
         regfree(pat_comp);
         free(pat_comp);
+#endif
     } else {
         pcre2_code_free(pat_comp);
     }
