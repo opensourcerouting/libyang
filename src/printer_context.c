@@ -1373,6 +1373,9 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
         /* type */
         ctxp_type(orig_leaf->type, &leaf->type, addr_ht, ptr_set, mem);
 
+        /* units */
+        leaf->units = ly_ctx_compiled_addr_ht_get(addr_ht, orig_leaf->units, 0);
+
         /* dflt */
         ctxp_dflt(&orig_leaf->dflt, &leaf->dflt, addr_ht, ptr_set, mem);
         break;
@@ -1394,6 +1397,9 @@ ctxp_node(const struct lysc_node *orig_node, struct lysc_node *node, struct ly_h
 
         /* type */
         ctxp_type(orig_llist->type, &llist->type, addr_ht, ptr_set, mem);
+
+        /* units */
+        llist->units = ly_ctx_compiled_addr_ht_get(addr_ht, orig_llist->units, 0);
 
         /* dflts */
         CTXP_SIZED_ARRAY(orig_llist->dflts, llist->dflts, mem);
