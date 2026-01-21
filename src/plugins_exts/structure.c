@@ -574,7 +574,18 @@ structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *tree,
 
     /* return the child */
     *node = lyd_child(tree);
-    return;
+}
+
+/**
+ * @brief Snode xpath callback for structure.
+ */
+static void
+structure_snode_xpath(struct lysc_ext_instance *ext, const struct lysc_node **snode)
+{
+    struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
+
+    /* XPath starts at the substatements */
+    *snode = struct_cdata->top_cont->child;
 }
 
 /**
@@ -583,25 +594,21 @@ structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *tree,
 static LY_ERR
 structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
         const char *prefix, uint32_t UNUSED(prefix_len), LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data),
-        const char *name, uint32_t UNUSED(name_len), ly_bool in_xpath, const struct lysc_node **snode)
+        const char *name, uint32_t UNUSED(name_len), const struct lysc_node **snode)
 {
     struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
 
     assert(!parent && !sparent && !prefix && !name);
+
     (void)parent;
     (void)sparent;
     (void)prefix;
     (void)name;
 
-    if (in_xpath) {
-        /* XPath starts at the substatements */
-        *snode = struct_cdata->top_cont->child;
-    } else {
-        /* data tree start at the top-level virtual container */
-        *snode = &struct_cdata->top_cont->node;
-    }
+    /* data tree start at the top-level virtual container */
+    *snode = &struct_cdata->top_cont->node;
 
-    return *snode ? LY_SUCCESS : LY_ENOT;
+    return LY_SUCCESS;
 }
 
 /**
@@ -674,6 +681,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.printer_ctree = structure_sprinter_ctree,
         .plugin.printer_ptree = structure_sprinter_ptree,
         .plugin.node_xpath = structure_node_xpath,
+        .plugin.snode_xpath = structure_snode_xpath,
         .plugin.snode = structure_snode,
         .plugin.validate = NULL,
         .plugin.pfree = structure_pfree,
@@ -693,6 +701,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.printer_ctree = structure_aug_sprinter_ctree,
         .plugin.printer_ptree = structure_aug_sprinter_ptree,
         .plugin.node_xpath = NULL,
+        .plugin.snode_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = structure_pfree,

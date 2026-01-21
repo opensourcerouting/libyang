@@ -6524,7 +6524,7 @@ moveto_axis_scnode_next_first(const struct lysc_node **iter, enum lyxp_node_type
 {
     const struct lysc_node *next = NULL;
     enum lyxp_node_type next_type = 0;
-    struct lyplg_ext *ext_plg;
+    struct lyplg_ext *plg_ext;
 
     assert(!*iter);
     assert(!*iter_type);
@@ -6554,9 +6554,10 @@ moveto_axis_scnode_next_first(const struct lysc_node **iter, enum lyxp_node_type
     case LYXP_AXIS_DESCENDANT:
     case LYXP_AXIS_CHILD:
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
-            if (set->ext && set->ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(set->ext->def->plugin_ref))->snode) {
-                /* extensions instance calllback */
-                if (!ext_plg->snode((struct lysc_ext_instance *)set->ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, 1, &next)) {
+            if (set->ext && set->ext->def->plugin_ref && (plg_ext = LYSC_GET_EXT_PLG(set->ext->def->plugin_ref))->snode_xpath) {
+                /* extensions instance callback */
+                plg_ext->snode_xpath((struct lysc_ext_instance *)set->ext, &next);
+                if (next) {
                     next_type = LYXP_NODE_ELEM;
                 }
             } else {

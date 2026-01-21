@@ -56,18 +56,17 @@ void lyd_val_getnext_ht_free(struct ly_ht *getnext_ht);
  *
  * Getnext structure cannot be returned because the pointer may become invalid on HT resize.
  *
+ * @param[in] snode First schema node to use.
  * @param[in] sparent Schema parent to use.
  * @param[in] mod Module to use.
- * @param[in] ext Extension instance to use, if relevant.
  * @param[in] output Whether to traverse operation output instead of input nodes.
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
  * @param[out] choices Array of getnext choices of @p sparent.
  * @param[out] snodes Array of getnext schema nodes except for choices of @p sparent.
  * @return LY_ERR value.
  */
-LY_ERR lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod,
-        const struct lysc_ext_instance *ext, ly_bool output, struct ly_ht *getnext_ht, const struct lysc_node ***choices,
-        const struct lysc_node ***snodes);
+LY_ERR lyd_val_getnext_get(const struct lysc_node *snode, const struct lysc_node *sparent, const struct lys_module *mod,
+        ly_bool output, struct ly_ht *getnext_ht, const struct lysc_node ***choices, const struct lysc_node ***snodes);
 
 /**
  * @brief Add new changes into a diff. They are always merged.
@@ -111,7 +110,6 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, 
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
- * @param[in] ext Extension instance to use, if relevant.
  * @param[in] val_opts Validation options.
  * @param[in] int_opts Internal parser options.
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
@@ -119,8 +117,7 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, 
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-        const struct lysc_ext_instance *ext, uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht,
-        struct lyd_node **diff);
+        uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
  * @brief Validate data node with an extension instance, if any, by storing it in its unres set.

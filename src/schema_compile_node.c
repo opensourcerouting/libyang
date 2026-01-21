@@ -2219,7 +2219,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             /* we must compare with both the choice and all its nested data-definiition nodes (but not recursively) */
             if (iter->nodetype == LYS_CHOICE) {
                 iter2 = NULL;
-                while ((iter2 = lys_getnext_ext(iter2, iter, NULL, 0))) {
+                while ((iter2 = lys_getnext(iter2, iter, NULL, 0))) {
                     if (CHECK_NODE(iter2, exclude, name)) {
                         dup = iter2;
                         goto cleanup;
@@ -2228,7 +2228,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *parent, 
             }
 
             /* next iter */
-            iter = lys_getnext_ext(iter, parent, ctx->ext, getnext_flags);
+            iter = lys_getnext(iter, parent, NULL, getnext_flags);
         }
     } else {
         while ((iter = lys_getnext(iter, parent, ctx->cur_mod->compiled, getnext_flags))) {

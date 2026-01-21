@@ -1341,7 +1341,7 @@ ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *spar
         }
 
         /* try to get the schema node */
-        r = ext_snode_cb(&nested_exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, 0, snode);
+        r = ext_snode_cb(&nested_exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
         if (!r) {
             if (ext) {
                 /* data successfully created, remember the ext instance */

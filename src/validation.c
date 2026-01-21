@@ -115,13 +115,14 @@ lyd_val_getnext_ht_set_free(void *getnext_ht)
 }
 
 LY_ERR
-lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mod, const struct lysc_ext_instance *ext,
+lyd_val_getnext_get(const struct lysc_node *snode, const struct lysc_node *sparent, const struct lys_module *mod,
         ly_bool output, struct ly_ht *getnext_ht, const struct lysc_node ***choices, const struct lysc_node ***snodes)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_val_getnext val = {0}, *getnext = NULL;
-    const struct lysc_node *snode = NULL;
     uint32_t getnext_opts, snode_count = 0, choice_count = 0;
+
+    assert(snode || sparent || mod);
 
     /* try to find the entry for this schema parent */
     val.sparent = sparent;
@@ -129,10 +130,19 @@ lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mo
         goto cleanup;
     }
 
-    /* traverse all the children using getnext and store them */
     getnext_opts = LYS_GETNEXT_WITHCHOICE | (output ? LYS_GETNEXT_OUTPUT : 0);
-    while (ext ? (snode = lys_getnext_ext(snode, sparent, ext, getnext_opts)) :
-            (snode = lys_getnext(snode, sparent, mod ? mod->compiled : NULL, getnext_opts))) {
+
+    /* get the first schema node, need to prefer sparent or mod (for choices) */
+    if (sparent || mod) {
+        snode = lys_getnext(NULL, sparent, mod ? mod->compiled : NULL, getnext_opts);
+    } else {
+        while (snode->prev->next) {
+            snode = snode->prev;
+        }
+    }
+
+    /* traverse all the children using getnext and store them */
+    while (snode) {
         if (snode->nodetype == LYS_CHOICE) {
             /* store a choice node */
             val.choices = ly_realloc(val.choices, (choice_count + 2) * sizeof *val.choices);
@@ -146,6 +156,8 @@ lyd_val_getnext_get(const struct lysc_node *sparent, const struct lys_module *mo
             val.snodes[snode_count] = snode;
             ++snode_count;
         }
+
+        snode = lys_getnext(snode, sparent, mod ? mod->compiled : NULL, getnext_opts);
     }
 
     /* add terminating NULL items */
@@ -902,7 +914,6 @@ lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node **node, 
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
- * @param[in] ext Extension instance to use, if relevant.
  * @param[in] val_opts Validation options.
  * @param[in] int_opts Internal parser options.
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
@@ -911,16 +922,17 @@ lyd_validate_autodel_case_dflt(struct lyd_node **first, struct lyd_node **node, 
  */
 static LY_ERR
 lyd_validate_choice_r(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-        const struct lysc_ext_instance *ext, uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht,
-        struct lyd_node **diff)
+        uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
     const struct lysc_node **choices, **snodes;
     uint32_t i;
 
     /* get cached getnext schema nodes */
-    rc = lyd_val_getnext_get(sparent, mod, ext, int_opts & LYD_INTOPT_REPLY, getnext_ht, &choices, &snodes);
+    rc = lyd_val_getnext_get(*first ? (*first)->schema : NULL, sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht,
+            &choices, &snodes);
     LY_CHECK_GOTO(rc, cleanup);
+
     if (!choices) {
         goto cleanup;
     }
@@ -931,7 +943,7 @@ lyd_validate_choice_r(struct lyd_node **first, const struct lysc_node *sparent, 
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
         /* check for nested choice */
-        r = lyd_validate_choice_r(first, choices[i], mod, ext, val_opts, int_opts, getnext_ht, diff);
+        r = lyd_validate_choice_r(first, choices[i], mod, val_opts, int_opts, getnext_ht, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
     }
 
@@ -941,8 +953,7 @@ cleanup:
 
 LY_ERR
 lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-        const struct lysc_ext_instance *ext, uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht,
-        struct lyd_node **diff)
+        uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_node *node;
@@ -951,7 +962,7 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
     assert(first && (sparent || mod));
 
     /* validate choices */
-    r = lyd_validate_choice_r(first, sparent, mod, ext, val_opts, int_opts, getnext_ht, diff);
+    r = lyd_validate_choice_r(first, sparent, mod, val_opts, int_opts, getnext_ht, diff);
     LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
     node = *first;
@@ -1552,7 +1563,8 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lyd_no
     uint32_t i;
 
     /* get cached getnext schema nodes */
-    rc = lyd_val_getnext_get(sparent, mod, ext, int_opts & LYD_INTOPT_REPLY, getnext_ht, &choices, &snodes);
+    rc = lyd_val_getnext_get(first ? first->schema : NULL, sparent, mod, int_opts & LYD_INTOPT_REPLY, getnext_ht,
+            &choices, &snodes);
     LY_CHECK_GOTO(rc, cleanup);
 
     for (i = 0; choices && choices[i]; ++i) {
@@ -2019,7 +2031,7 @@ lyd_validate_tree(struct lyd_node *root, const struct lysc_ext_instance *ext, st
             }
         } else if (node->schema->nodetype & LYD_NODE_INNER) {
             /* new node validation, autodelete */
-            r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, NULL, val_opts, int_opts, getnext_ht, diff);
+            r = lyd_validate_new(lyd_node_child_p(node), node->schema, NULL, val_opts, int_opts, getnext_ht, diff);
             LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 
             /* add nested defaults */
@@ -2103,7 +2115,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* validate new top-level nodes of this module, autodelete */
-        r = lyd_validate_new(first2, *first2 ? lysc_data_parent((*first2)->schema) : NULL, mod, NULL, val_opts, 0,
+        r = lyd_validate_new(first2, *first2 ? lysc_data_parent((*first2)->schema) : NULL, mod, val_opts, 0,
                 getnext_ht, diff);
         LY_VAL_ERR_GOTO(r, rc = r, val_opts, cleanup);
 

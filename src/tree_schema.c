@@ -170,10 +170,10 @@ lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const
     LY_ARRAY_COUNT_TYPE u;
     const struct ly_ctx *sm_ctx = NULL;
     const struct lys_module *mod;
-    struct lyplg_ext *ext_plg;
+    struct lyplg_ext *plg_ext;
     uint32_t idx;
 
-    LY_CHECK_ARG_RET(NULL, parent || module || ext, NULL);
+    LY_CHECK_ARG_RET(NULL, last || parent || module || ext, NULL);
 
 next:
     if (!last) {
@@ -186,10 +186,15 @@ next:
         } else {
             /* top level data */
             if (ext) {
-                if (ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(ext->def->plugin_ref))->snode) {
+                plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+                if (plg_ext && ((plg_ext->snode_xpath && (options & LYS_GETNEXT_EXT_XPATH)) ||
+                        (plg_ext->snode && !(options & LYS_GETNEXT_EXT_XPATH)))) {
                     /* use the extension callback */
-                    ext_plg->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0,
-                            options & LYS_GETNEXT_EXT_XPATH, &last);
+                    if (options & LYS_GETNEXT_EXT_XPATH) {
+                        plg_ext->snode_xpath((struct lysc_ext_instance *)ext, &last);
+                    } else {
+                        plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &last);
+                    }
                 } else {
                     last = NULL;
                 }
@@ -248,7 +253,7 @@ repeat:
                 lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
-            } else {
+            } else if (module) {
                 next = (struct lysc_node *)module->rpcs;
             }
         } else if (!notif_flag) {
@@ -257,7 +262,7 @@ repeat:
                 lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof next, (const void **)&next);
             } else if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);
-            } else {
+            } else if (module) {
                 next = (struct lysc_node *)module->notifs;
             }
         } else if (!sm_flag) {
@@ -355,7 +360,7 @@ check:
         goto repeat;
     default:
         /* we should not be here */
-        LOGINT(module ? module->mod->ctx : parent ? parent->module->ctx : ext->module->ctx);
+        LOGINT(NULL);
         return NULL;
     }
 
@@ -379,6 +384,7 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
         uint16_t nodetype, uint32_t options)
 {
     const struct lysc_node *node = NULL;
+    struct lyplg_ext *plg_ext;
 
     LY_CHECK_ARG_RET(NULL, ext, name, NULL);
     if (!nodetype) {
@@ -389,21 +395,52 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
         return NULL;
     }
 
-    while ((node = lys_getnext_ext(node, NULL, ext, options))) {
+    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+    if (!plg_ext) {
+        return NULL;
+    }
+
+    /* standard nodes */
+    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+    if (plg_ext->snode_xpath && (options & LYS_GETNEXT_EXT_XPATH)) {
+        plg_ext->snode_xpath((struct lysc_ext_instance *)ext, &node);
+    } else if (plg_ext->snode && !(options & LYS_GETNEXT_EXT_XPATH)) {
+        plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &node);
+    }
+    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
         if (!(node->nodetype & nodetype)) {
             continue;
         }
 
-        if (name_len) {
-            if (!ly_strncmp(node->name, name, name_len)) {
-                return node;
-            }
-        } else {
-            if (!strcmp(node->name, name)) {
-                return node;
-            }
+        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
+            return node;
         }
     }
+
+    /* op nodes */
+    lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof node, (const void **)&node);
+    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
+        if (!(node->nodetype & nodetype)) {
+            continue;
+        }
+
+        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
+            return node;
+        }
+    }
+
+    /* notif nodes */
+    lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof node, (const void **)&node);
+    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
+        if (!(node->nodetype & nodetype)) {
+            continue;
+        }
+
+        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
+            return node;
+        }
+    }
+
     return NULL;
 }
 

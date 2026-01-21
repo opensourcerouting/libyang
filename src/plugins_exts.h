@@ -833,7 +833,7 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tr
 /** @} pluginsExtensionsSprinterTree */
 
 /*
- * data node
+ * node xpath
  */
 
 /**
@@ -843,8 +843,20 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tr
  * @param[in] tree Whole data tree.
  * @param[out] node First XPath document root child node, if any.
  */
-typedef void (*lyplg_ext_data_node_xpath_clb)(struct lysc_ext_instance *ext, const struct lyd_node *tree,
+typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const struct lyd_node *tree,
         const struct lyd_node **node);
+
+/*
+ * data snode xpath
+ */
+
+/**
+ * @brief Callback for getting the first child schema node of an XPath document root of the extension instance.
+ *
+ * @param[in] ext Compiled extension instance.
+ * @param[out] snode First XPath document root child schema node, if any.
+ */
+typedef void (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const struct lysc_node **snode);
 
 /*
  * data snode
@@ -862,10 +874,6 @@ typedef void (*lyplg_ext_data_node_xpath_clb)(struct lysc_ext_instance *ext, con
  *    - this callback is called with @p in_xpath 0;
  *    - schema node that can be instantiated in data should be returned (matching any set parameters).
  *
- * 3) XPath expression is being evaluated during schema compilation (must, when, leafref path, unique):
- *    - this callback is called with @p in_xpath 1;
- *    - first child of the document root of this extension should be returned.
- *
  * @param[in] ext Compiled extension instance.
  * @param[in] parent Parsed parent data node.
  * @param[in] sparent Schema parent node.
@@ -876,7 +884,6 @@ typedef void (*lyplg_ext_data_node_xpath_clb)(struct lysc_ext_instance *ext, con
  * @param[in] name Element name. If NULL, the first node should be returned (top-level, @p parent and @p sparent will
  * not be set).
  * @param[in] name_len Length of @p name.
- * @param[in] in_xpath Whether we are in an XPath accessible tree context or standard YANG data handling (parsing).
  * @param[out] snode Schema node to use for parsing the node.
  * @return LY_SUCCESS on success.
  * @return LY_ENOT if the data are not described by @p ext.
@@ -884,7 +891,7 @@ typedef void (*lyplg_ext_data_node_xpath_clb)(struct lysc_ext_instance *ext, con
  */
 typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const struct lyd_node *parent,
         const struct lysc_node *sparent, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data,
-        const char *name, uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode);
+        const char *name, uint32_t name_len, const struct lysc_node **snode);
 
 /*
  * data validate
@@ -1061,7 +1068,8 @@ struct lyplg_ext {
     lyplg_ext_sprinter_info_clb printer_info;   /**< callback to print the compiled content (info format) */
     lyplg_ext_sprinter_ctree_clb printer_ctree; /**< callback to print tree format of a compiled node */
     lyplg_ext_sprinter_ptree_clb printer_ptree; /**< callback to print tree format of a parsed node */
-    lyplg_ext_data_node_xpath_clb node_xpath;   /**< callback to get first XPath document root child node */
+    lyplg_ext_node_xpath_clb node_xpath;    /**< callback to get first XPath document root data child node */
+    lyplg_ext_snode_xpath_clb snode_xpath;  /**< callback to get first XPath document root schema child node */
     lyplg_ext_data_snode_clb snode;         /**< callback to get schema node in various use-cases */
     lyplg_ext_data_validate_clb validate;   /**< callback to validate parsed data instances */
 

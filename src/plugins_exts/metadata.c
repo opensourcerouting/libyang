@@ -265,6 +265,7 @@ const struct lyplg_ext_record plugins_metadata[] = {
         .plugin.printer_ctree = NULL,
         .plugin.printer_ptree = NULL,
         .plugin.node_xpath = NULL,
+        .plugin.snode_xpath = NULL,
         .plugin.snode = NULL,
         .plugin.validate = NULL,
         .plugin.pfree = annotation_pfree,
