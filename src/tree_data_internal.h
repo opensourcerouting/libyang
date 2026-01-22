@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -156,23 +156,25 @@ void lyd_np_cont_dflt_del(struct lyd_node *parent);
 /**
  * @brief Try to get schema node for data with a parent based on an extension instance.
  *
- * @param[in] parent Parsed parent data node. Set if @p sparent is NULL.
- * @param[in] sparent Schema parent node. Set if @p sparent is NULL.
+ * @param[in] ctx Context to use.
+ * @param[in] parent Parsed parent data node.
+ * @param[in] sparent Schema parent node.
  * @param[in] prefix Element prefix, if any.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of @p prefix.
  * @param[in] prefix_data Format-specific data.
  * @param[in] name Element name.
  * @param[in] name_len Length of @p name.
+ * @param[in] in_xpath Set if searching for nodes in an XPath expression.
  * @param[out] snode Found schema node, NULL if no suitable was found.
  * @param[out] ext Optional extension instance that provided @p snode.
  * @return LY_SUCCESS on success;
  * @return LY_ENOT if no extension instance parsed the data;
  * @return LY_ERR on error.
  */
-LY_ERR ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *sparent, const char *prefix,
-        size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
-        const struct lysc_node **snode, struct lysc_ext_instance **ext);
+LY_ERR ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        size_t name_len, ly_bool in_xpath, const struct lysc_node **snode, struct lysc_ext_instance **ext);
 
 /**
  * @brief Free stored prefix data.

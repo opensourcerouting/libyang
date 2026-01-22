@@ -1313,46 +1313,82 @@ lyd_np_cont_dflt_del(struct lyd_node *parent)
 }
 
 LY_ERR
-ly_nested_ext_schema(const struct lyd_node *parent, const struct lysc_node *sparent, const char *prefix,
-        size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, size_t name_len,
-        const struct lysc_node **snode, struct lysc_ext_instance **ext)
+ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, size_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        size_t name_len, ly_bool in_xpath, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
     LY_ERR r;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ext_instance *nested_exts = NULL;
-    lyplg_ext_data_snode_clb ext_snode_cb;
+    struct lysc_ext_instance *exts;
+    struct lyplg_ext *plg_ext;
+    const struct lys_module *mod;
+    uint32_t getnext_opts = in_xpath ? LYS_GETNEXT_EXT_XPATH : 0;
 
     /* check if there are any nested extension instances */
     if (parent && parent->schema) {
-        nested_exts = parent->schema->exts;
+        exts = parent->schema->exts;
     } else if (sparent) {
-        nested_exts = sparent->exts;
+        exts = sparent->exts;
+    } else {
+        exts = NULL;
     }
-    LY_ARRAY_FOR(nested_exts, u) {
-        if (!nested_exts[u].def->plugin_ref) {
-            /* no plugin */
-            continue;
-        }
-
-        ext_snode_cb = LYSC_GET_EXT_PLG(nested_exts[u].def->plugin_ref)->snode;
-        if (!ext_snode_cb) {
-            /* not an extension with nested data */
-            continue;
-        }
-
-        /* try to get the schema node */
-        r = ext_snode_cb(&nested_exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
-        if (!r) {
-            if (ext) {
-                /* data successfully created, remember the ext instance */
-                *ext = &nested_exts[u];
+    LY_ARRAY_FOR(exts, u) {
+        plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+        if (!in_xpath && plg_ext && plg_ext->snode) {
+            /* try to get the schema node */
+            r = plg_ext->snode(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
+            if (!r) {
+                if (ext) {
+                    /* schema node found, remember the ext instance */
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            } else if (r != LY_ENOT) {
+                /* fatal error */
+                return r;
             }
-            return LY_SUCCESS;
-        } else if (r != LY_ENOT) {
-            /* fatal error */
-            return r;
+        } else {
+            *snode = lysc_ext_find_node(&exts[u], NULL, name, name_len, 0, getnext_opts);
+            if (*snode) {
+                if (ext) {
+                    /* schema node found, remember the ext instance */
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            }
         }
-        /* data was not from this module, continue */
+
+        /* data was not from this ext instance, continue */
+    }
+
+    /* check if there are global module ext instances */
+    mod = lyplg_type_identity_module(ctx, sparent, prefix, prefix_len, format, prefix_data);
+    if (mod && mod->implemented) {
+        exts = mod->compiled->exts;
+    } else {
+        exts = NULL;
+    }
+    LY_ARRAY_FOR(exts, u) {
+        plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+        if (!in_xpath && plg_ext && plg_ext->snode) {
+            r = plg_ext->snode(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
+            if (!r) {
+                if (ext) {
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            } else if (r != LY_ENOT) {
+                return r;
+            }
+        } else {
+            *snode = lysc_ext_find_node(&exts[u], NULL, name, name_len, 0, getnext_opts);
+            if (*snode) {
+                if (ext) {
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            }
+        }
     }
 
     /* no extensions or none matched */

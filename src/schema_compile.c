@@ -824,7 +824,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     }
 
     /* try to find the target, current module is that of the context node (RFC 7950 6.4.1 second bullet) */
-    LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, ctx->ext, lref->path,
+    LY_CHECK_RET(ly_path_compile_leafref(ctx->ctx, node, lref->path,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
             LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p));
 
@@ -1417,7 +1417,7 @@ resolve_all:
 
         v = 0;
         while ((lref = lys_type_leafref_next(l->node, &v))) {
-            ret = ly_path_compile_leafref(cctx.ctx, l->node, cctx.ext, lref->path,
+            ret = ly_path_compile_leafref(cctx.ctx, l->node, lref->path,
                     (l->node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &path);
             ly_path_free(path);

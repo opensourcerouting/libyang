@@ -434,9 +434,6 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
  * @param[in] format Input format of the value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] ctx_node The @p value schema context node.
- * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
- * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
- * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in,out] unres Global unres structure for newly implemented modules.
  * @param[out] path Pointer to store the created structure representing the schema path from the @p value.
  * @param[out] err Pointer to store the error information provided in case of failure.
@@ -446,7 +443,7 @@ LIBYANG_API_DECL void lyplg_type_prefix_data_free(LY_VALUE_FORMAT format, void *
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_lypath_new(const struct ly_ctx *ctx, const char *value, uint32_t value_len,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
+        struct lys_glob_unres *unres, struct ly_path **path, struct ly_err_item **err);
 
 /**
  * @brief Convert canonical value into a value in a specific format.

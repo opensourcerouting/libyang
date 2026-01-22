@@ -215,13 +215,19 @@ LIBYANG_API_DEF LY_ERR
 lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree)
 {
+    LY_ERR rc;
     const struct ly_ctx *ctx = ext ? ext->module->ctx : NULL;
 
     LY_CHECK_ARG_RET(ctx, ext, in, parent || tree, LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(parse_options & ~LYD_PARSE_OPTS_MASK), LY_EINVAL);
     LY_CHECK_ARG_RET(ctx, !(validate_options & ~LYD_VALIDATE_OPTS_MASK), LY_EINVAL);
 
-    return lyd_parse(ctx, ext, parent, tree, in, format, parse_options, validate_options, NULL);
+    rc = lyd_parse(ctx, ext, parent, tree, in, format, parse_options, validate_options, NULL);
+
+    if (!rc && *tree) {
+        (*tree)->flags |= LYD_EXT;
+    }
+    return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -308,7 +314,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
             LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, NULL, NULL, exp, new_val_options & LYD_NEW_VAL_OUTPUT ?
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, NULL, exp, new_val_options & LYD_NEW_VAL_OUTPUT ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* has to have a schema */
@@ -2157,8 +2163,8 @@ lyd_find_ext_ctx(const struct lyd_node *orig_node, const struct lyd_node *dup_pa
     }
 
     /* find the extension context to use from the target context */
-    r = ly_nested_ext_schema(dup_parent, dup_sparent, orig_node->schema->module->name, strlen(orig_node->schema->module->name),
-            LY_VALUE_JSON, NULL, LYD_NAME(orig_node), strlen(LYD_NAME(orig_node)), &snode, NULL);
+    r = ly_find_ext_schema(*trg_ctx, dup_parent, dup_sparent, orig_node->schema->module->name, strlen(orig_node->schema->module->name),
+            LY_VALUE_JSON, NULL, LYD_NAME(orig_node), strlen(LYD_NAME(orig_node)), 0, &snode, NULL);
     if (r == LY_ENOT) {
         path = lyd_path(orig_node, LYD_PATH_STD, NULL, 0);
         LOGERR(*trg_ctx, LY_ENOTFOUND, "Schema node of an extension node \"%s\" not found in the target context.", path);
@@ -3795,7 +3801,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile the path */
-    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, NULL, expr,
+    ret = ly_path_compile(LYD_CTX(ctx_node), NULL, ctx_node->schema, expr,
             output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, 0, LY_VALUE_JSON, NULL, &lypath);
     LY_CHECK_GOTO(ret, cleanup);
 

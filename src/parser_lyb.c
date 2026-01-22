@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief LYB data parser for libyang
  *
- * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -915,11 +915,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     /* find our node with matching hashes */
     sibling = NULL;
     while (1) {
-        if (!sparent && lybctx->ext) {
-            sibling = lys_getnext_ext(sibling, sparent, lybctx->ext, getnext_opts);
-        } else {
-            sibling = lys_getnext(sibling, sparent, mod ? mod->compiled : NULL, getnext_opts);
-        }
+        sibling = lys_getnext(sibling, sparent, mod ? mod->compiled : NULL, getnext_opts);
         if (!sibling) {
             break;
         }
@@ -931,10 +927,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
     }
 
     if (!sibling) {
-        if (lybctx->ext) {
-            LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Failed to find matching hash for a node from \"%s\" extension instance node.",
-                    lybctx->ext->def->name);
-        } else if (mod) {
+        if (mod) {
             LOGERR(lybctx->parse_ctx->ctx, LY_EINT, "Failed to find matching hash for a top-level node from \"%s\".",
                     mod->name);
         } else {
@@ -952,33 +945,30 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 }
 
 /**
- * @brief Parse schema node name of a nested extension data node.
+ * @brief Parse schema node name of an extension data node.
  *
  * @param[in] lybctx LYB context.
  * @param[in] parent Data parent.
  * @param[in] mod_name Module name of the node.
- * @param[out] snode Parsed found schema node of a nested extension.
+ * @param[out] snode Parsed found schema node of an extension.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_schema_nested_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *parent, const char *mod_name,
+lyb_parse_schema_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *parent, const char *mod_name,
         const struct lysc_node **snode)
 {
     LY_ERR rc = LY_SUCCESS, r;
     char *name = NULL;
-    struct lysc_ext_instance *ext;
-
-    assert(parent);
 
     /* read schema node name */
     LY_CHECK_GOTO(rc = lyb_read_string(&name, lybctx->parse_ctx), cleanup);
 
     /* check for extension data */
-    r = ly_nested_ext_schema(parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0, LY_VALUE_JSON, NULL, name,
-            strlen(name), snode, &ext);
+    r = ly_find_ext_schema(lybctx->parse_ctx->ctx, parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0,
+            LY_VALUE_JSON, NULL, name, strlen(name), 0, snode, NULL);
     if (r == LY_ENOT) {
         /* failed to parse */
-        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Failed to parse node \"%s\" as nested extension instance data.", name);
+        LOGERR(lybctx->parse_ctx->ctx, LY_EINVAL, "Failed to parse node \"%s\" as extension instance data.", name);
         rc = LY_EINVAL;
         goto cleanup;
     } else if (r) {
@@ -1609,8 +1599,8 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         /* ext, read module name, always unshrinked format */
         LY_CHECK_GOTO(rc = lyb_parse_module(lybctx, &mod), cleanup);
 
-        /* read schema node name, find the nested ext schema node */
-        LY_CHECK_GOTO(rc = lyb_parse_schema_nested_ext(lybctx, parent, mod->name, &snode), cleanup);
+        /* read schema node name, find the ext schema node */
+        LY_CHECK_GOTO(rc = lyb_parse_schema_ext(lybctx, parent, mod->name, &snode), cleanup);
         break;
     }
 
@@ -1755,7 +1745,7 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 }
 
 LY_ERR
-lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
+lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *UNUSED(ext), struct lyd_node *parent,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
 {
@@ -1787,7 +1777,6 @@ lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     lybctx->val_opts = val_opts;
     lybctx->int_opts = int_opts;
     lybctx->free = lyb_parse_ctx_free;
-    lybctx->ext = ext;
 
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lybctx->op_node), cleanup);

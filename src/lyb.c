@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief LYB format common functionality.
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -81,17 +81,49 @@ lyb_get_hash(const struct lysc_node *node, uint8_t collision_id)
 LY_ERR
 lyb_cache_node_hash_cb(struct lysc_node *node, void *UNUSED(data), ly_bool *UNUSED(dfs_continue))
 {
+    uint8_t i;
+
     if (node->hash[0]) {
         /* already cached, stop the DFS */
         return LY_EEXIST;
     }
 
-    for (uint8_t i = 0; i < LYS_NODE_HASH_COUNT; ++i) {
+    for (i = 0; i < LYS_NODE_HASH_COUNT; ++i) {
         /* store the hash in the cache */
         node->hash[i] = lyb_generate_hash(node, i);
     }
 
     return LY_SUCCESS;
+}
+
+void
+lyb_cache_ext_node_hash(const struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_ext_instance *ext;
+    struct lysc_node *node;
+
+    LY_ARRAY_FOR(mod->compiled->exts, u) {
+        ext = &mod->compiled->exts[u];
+
+        /* data schema nodes */
+        lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof node, (const void **)&node);
+        LY_LIST_FOR(node, node) {
+            lysc_tree_dfs_full(node, lyb_cache_node_hash_cb, NULL);
+        }
+
+        /* op schema nodes */
+        lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof node, (const void **)&node);
+        LY_LIST_FOR(node, node) {
+            lysc_tree_dfs_full(node, lyb_cache_node_hash_cb, NULL);
+        }
+
+        /* notif schema nodes */
+        lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof node, (const void **)&node);
+        LY_LIST_FOR(node, node) {
+            lysc_tree_dfs_full(node, lyb_cache_node_hash_cb, NULL);
+        }
+    }
 }
 
 uint8_t

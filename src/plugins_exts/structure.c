@@ -593,17 +593,31 @@ structure_snode_xpath(struct lysc_ext_instance *ext, const struct lysc_node **sn
  */
 static LY_ERR
 structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
-        const char *prefix, uint32_t UNUSED(prefix_len), LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data),
-        const char *name, uint32_t UNUSED(name_len), const struct lysc_node **snode)
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, const struct lysc_node **snode)
 {
     struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
-
-    assert(!parent && !sparent && !prefix && !name);
+    const struct lys_module *mod;
 
     (void)parent;
     (void)sparent;
-    (void)prefix;
-    (void)name;
+
+    assert(!parent && !sparent);
+
+    if (prefix && prefix_len) {
+        /* check module */
+        mod = lyplg_type_identity_module(ext->module->ctx, NULL, prefix, prefix_len, format, prefix_data);
+        if (!mod || (ext->module != mod)) {
+            return LY_ENOT;
+        }
+    }
+
+    /* check name */
+    if (name && name_len) {
+        if (ly_strncmp(struct_cdata->top_cont->name, name, name_len)) {
+            return LY_ENOT;
+        }
+    }
 
     /* data tree start at the top-level virtual container */
     *snode = &struct_cdata->top_cont->node;

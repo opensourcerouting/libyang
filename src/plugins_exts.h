@@ -847,7 +847,7 @@ typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const st
         const struct lyd_node **node);
 
 /*
- * data snode xpath
+ * snode xpath
  */
 
 /**
@@ -864,15 +864,15 @@ typedef void (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const s
 
 /**
  * @brief Callback for getting a schema node for new YANG instance data described by an extension instance.
- * Needed only if the extension instance defines some instantiable YANG data nodes.
  *
  * 1) Schema nodes are compiled and connected to each other:
  *    - this callback is NOT called;
  *    - storage of a data-def-stmt is retrieved from the ext-inst and the nodes connected to it.
  *
  * 2) YANG instance data is being parsed:
- *    - this callback is called with @p in_xpath 0;
- *    - schema node that can be instantiated in data should be returned (matching any set parameters).
+ *    - this callback is called;
+ *    - schema node that can be instantiated in data should be returned (matching any set parameters);
+ *    - if this callback is not defined, the same process as in 1) is used.
  *
  * @param[in] ext Compiled extension instance.
  * @param[in] parent Parsed parent data node.

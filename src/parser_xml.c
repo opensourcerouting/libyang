@@ -577,8 +577,8 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
     mod = ly_ctx_get_module_implemented_ns(parent ? LYD_CTX(parent) : ctx, ns->uri);
     if (!mod) {
         /* check for extension data */
-        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name, name_len,
-                snode, ext);
+        r = ly_find_ext_schema(ctx, parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name, name_len,
+                0, snode, ext);
         if (r != LY_ENOT) {
             /* success or error */
             return r;
@@ -607,8 +607,8 @@ unknown_module:
     }
     if (!*snode) {
         /* check for extension data */
-        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name,
-                name_len, snode, ext);
+        r = ly_find_ext_schema(ctx, parent, NULL, prefix, prefix_len, LY_VALUE_XML, &lydctx->xmlctx->ns, name,
+                name_len, 0, snode, ext);
         if (r != LY_ENOT) {
             /* success or error */
             return r;

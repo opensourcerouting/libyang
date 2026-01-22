@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema tree implementation
  *
- * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -135,45 +135,17 @@ lys_getnext_into_case(const struct lysc_node_case *first_case, const struct lysc
     (*next) = (*next)->next;
 }
 
-/**
- * @brief Generic getnext function for ::lys_getnext() and ::lys_getnext_ext().
- *
- * Gets next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
- * be from an augment. If the @p ext is provided, the function is locked inside the schema tree defined in the
- * extension instance.
- *
- * ::lys_getnext_() is supposed to be called sequentially. In the first call, the @p last parameter is usually NULL
- * and function starts returning i) the first @p parent's child or ii) the first top level element specified in the
- * given extension (if provided) or iii) the first top level element of the @p module.
- * Consequent calls suppose to provide the previously returned node as the @p last parameter and still the same
- * @p parent and @p module parameters.
- *
- * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
- * data nodes in a data tree. By setting some @p options the behavior can be modified to the extent that
- * all the schema nodes are iteratively returned.
- *
- * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree where the function starts processing.
- * @param[in] module In case of iterating on top level elements, the @p parent is NULL and
- * module must be specified.
- * @param[in] ext The extension instance to provide a separate schema tree. To consider the top level elements in the tree,
- * the @p parent must be NULL. Aat least one of @p parent, @p module and @p ext parameters must be specified.
- * @param[in] options [ORed options](@ref sgetnextflags).
- * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
- */
-static const struct lysc_node *
-lys_getnext_(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module,
-        const struct lysc_ext_instance *ext, uint32_t options)
+LIBYANG_API_DEF const struct lysc_node *
+lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     const struct lysc_node *next = NULL;
     ly_bool action_flag = 0, notif_flag = 0, sm_flag = options & LYS_GETNEXT_WITHSCHEMAMOUNT ? 0 : 1;
     LY_ARRAY_COUNT_TYPE u;
     const struct ly_ctx *sm_ctx = NULL;
     const struct lys_module *mod;
-    struct lyplg_ext *plg_ext;
     uint32_t idx;
 
-    LY_CHECK_ARG_RET(NULL, last || parent || module || ext, NULL);
+    LY_CHECK_ARG_RET(NULL, last || parent || module, NULL);
 
 next:
     if (!last) {
@@ -185,23 +157,7 @@ next:
             next = last = lysc_node_child(parent);
         } else {
             /* top level data */
-            if (ext) {
-                plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
-                if (plg_ext && ((plg_ext->snode_xpath && (options & LYS_GETNEXT_EXT_XPATH)) ||
-                        (plg_ext->snode && !(options & LYS_GETNEXT_EXT_XPATH)))) {
-                    /* use the extension callback */
-                    if (options & LYS_GETNEXT_EXT_XPATH) {
-                        plg_ext->snode_xpath((struct lysc_ext_instance *)ext, &last);
-                    } else {
-                        plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &last);
-                    }
-                } else {
-                    last = NULL;
-                }
-                next = last;
-            } else {
-                next = last = module->data;
-            }
+            next = last = module->data;
         }
         if (!next) {
             /* try to get action or notification */
@@ -249,18 +205,14 @@ repeat:
             goto next;
         } else if (!action_flag) {
             action_flag = 1;
-            if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof next, (const void **)&next);
-            } else if (parent) {
+            if (parent) {
                 next = (struct lysc_node *)lysc_node_actions(parent);
             } else if (module) {
                 next = (struct lysc_node *)module->rpcs;
             }
         } else if (!notif_flag) {
             notif_flag = 1;
-            if (ext) {
-                lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof next, (const void **)&next);
-            } else if (parent) {
+            if (parent) {
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else if (module) {
                 next = (struct lysc_node *)module->notifs;
@@ -367,18 +319,6 @@ check:
     return next;
 }
 
-LIBYANG_API_DEF const struct lysc_node *
-lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
-{
-    return lys_getnext_(last, parent, module, NULL, options);
-}
-
-LIBYANG_API_DEF const struct lysc_node *
-lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_ext_instance *ext, uint32_t options)
-{
-    return lys_getnext_(last, parent, NULL, ext, options);
-}
-
 const struct lysc_node *
 lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module *module, const char *name, size_t name_len,
         uint16_t nodetype, uint32_t options)
@@ -404,8 +344,12 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
     plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
     if (plg_ext->snode_xpath && (options & LYS_GETNEXT_EXT_XPATH)) {
         plg_ext->snode_xpath((struct lysc_ext_instance *)ext, &node);
-    } else if (plg_ext->snode && !(options & LYS_GETNEXT_EXT_XPATH)) {
-        plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &node);
+    } else if (!(options & LYS_GETNEXT_EXT_XPATH)) {
+        if (plg_ext->snode) {
+            plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &node);
+        } else {
+            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof node, (const void **)&node);
+        }
     }
     for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
         if (!(node->nodetype & nodetype)) {
@@ -678,7 +622,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
+    ret = ly_path_compile(ctx, NULL, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* resolve */
@@ -713,7 +657,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, NULL, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
+    ret = ly_path_compile(ctx, NULL, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get last node */

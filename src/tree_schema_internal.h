@@ -460,8 +460,6 @@ LY_ERR lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
 /**
  * @brief Get schema node in extension instance according to the given parameters.
  *
- * Wraps ::lys_getnext_ext() and match according to the given arguments.
- *
  * @param[in] ext Extension instance which top-level schema node is being searched.
  * @param[in] module Optional parameter to match the extension instance's (and its data) module.
  * @param[in] name Name of the schema node to find, if the string is not NULL-terminated, the @p name_len must be set.

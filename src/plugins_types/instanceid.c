@@ -154,7 +154,7 @@ cleanup:
 static LY_ERR
 lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, struct lyd_value *storage, struct lys_glob_unres *unres,
+        const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage, struct lys_glob_unres *unres,
         struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -177,14 +177,8 @@ lyplg_type_store_instanceid(const struct ly_ctx *ctx, const struct lysc_type *ty
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile instance-identifier into path */
-    if (format == LY_VALUE_LYB) {
-        /* value in LYB format is the same as in JSON format. */
-        ret = lyplg_type_lypath_new(ctx, value, value_size, options, LY_VALUE_JSON, prefix_data, ctx_node,
-                top_ext, unres, &path, err);
-    } else {
-        ret = lyplg_type_lypath_new(ctx, value, value_size, options, format, prefix_data, ctx_node,
-                top_ext, unres, &path, err);
-    }
+    ret = lyplg_type_lypath_new(ctx, value, value_size, options, (format == LY_VALUE_LYB) ? LY_VALUE_JSON : format,
+            prefix_data, ctx_node, unres, &path, err);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* store value */

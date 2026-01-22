@@ -177,8 +177,6 @@ struct rb_node;
  * - ::lyd_parse_ext_data()
  * - ::lyd_parse_ext_op()
  *
- * - ::lys_getnext_ext()
- *
  * - ::lyd_new_ext_inner()
  * - ::lyd_new_ext_list()
  * - ::lyd_new_ext_term()

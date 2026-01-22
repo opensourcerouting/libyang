@@ -1858,7 +1858,7 @@ lysc_type_lref_target(const struct lysc_node *node, const struct lysc_type *type
     lref = (struct lysc_type_leafref *)type;
 
     /* compile the path */
-    if (ly_path_compile_leafref(node->module->ctx, node, NULL, lref->path,
+    if (ly_path_compile_leafref(node->module->ctx, node, lref->path,
             (node->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
             LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p)) {
         return NULL;

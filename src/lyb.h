@@ -216,6 +216,13 @@ LYB_HASH lyb_get_hash(const struct lysc_node *node, uint8_t collision_id);
 LY_ERR lyb_cache_node_hash_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue);
 
 /**
+ * @brief Cache LYB hashes for all the compiled nodes of ext instances.
+ *
+ * @param[in] mod Module to use.
+ */
+void lyb_cache_ext_node_hash(const struct lys_module *mod);
+
+/**
  * @brief Get a mask with specific number of rightmost bits set.
  *
  * @param[in] bit_count Number of bits to set in the mask.

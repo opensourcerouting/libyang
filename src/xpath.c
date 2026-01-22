@@ -4098,7 +4098,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
             oper = (sleaf->flags & LYS_IS_OUTPUT) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
-            r = ly_path_compile_leafref(set->ctx, &sleaf->node, NULL, lref->path, oper, LY_PATH_TARGET_MANY,
+            r = ly_path_compile_leafref(set->ctx, &sleaf->node, lref->path, oper, LY_PATH_TARGET_MANY,
                     LY_VALUE_SCHEMA_RESOLVED, lref->prefixes, &p);
             if (!r) {
                 /* get the target node */
@@ -6853,13 +6853,16 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
 
         /* only consider extension nodes after no local ones were found */
         if ((orig_used == set->used) && moveto_mod && ncname && ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) &&
-                (set->val.scnodes[i].type == LYXP_NODE_ELEM) && !ly_nested_ext_schema(NULL, set->val.scnodes[i].scnode,
-                moveto_mod->name, strlen(moveto_mod->name), LY_VALUE_JSON, NULL, ncname, ncname_len, &iter, NULL)) {
-            /* there is a matching node from an extension, use it */
-            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, axis, &idx));
-            if ((idx < orig_used) && (idx > i)) {
-                set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
-                temp_ctx = 1;
+                (set->val.scnodes[i].type == LYXP_NODE_ELEM)) {
+
+            iter = lys_find_child(set->val.scnodes[i].scnode, moveto_mod, ncname, ncname_len, 0, getnext_opts);
+            if (iter) {
+                /* there is a matching node from an extension, use it */
+                LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, axis, &idx));
+                if ((idx < orig_used) && (idx > i)) {
+                    set->val.scnodes[idx].in_ctx = LYXP_SET_SCNODE_ATOM_NEW_CTX;
+                    temp_ctx = 1;
+                }
             }
         }
     }
@@ -8014,7 +8017,7 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
 
     /* compile */
     rc = ly_path_compile_predicate(set->ctx, set->cur_node ? set->cur_node->schema : NULL, set->cur_mod, ctx_scnode,
-            set->ext, exp2, &pred_idx, LY_VALUE_JSON, NULL, predicates);
+            exp2, &pred_idx, LY_VALUE_JSON, NULL, predicates);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* success, the predicate must include all the needed information for hash-based search */

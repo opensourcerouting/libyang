@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Path structure and manipulation routines.
  *
- * Copyright (c) 2020 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -169,30 +169,24 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes in schema-nodeid
  * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node.
- * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
- * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
- * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
- * @param[in] limit_access_tree Whether to limit accessible tree.
+ * @param[in] is_xpath Whether we are compiling an XPath path and should limit the accessible tree.
  * @param[in] format Format of the path.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
-        ly_bool limit_access_tree, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
+        const struct lyxp_expr *expr, uint16_t oper, uint16_t target, ly_bool is_xpath, LY_VALUE_FORMAT format,
+        void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
  *
  * @param[in] ctx libyang context.
  * @param[in] ctx_node Context node.
- * @param[in] top_ext Extension instance containing the definition of the data being created. It is used to find the top-level
- * node inside the extension instance instead of a module. Note that this is the case not only if the @p ctx_node is NULL,
- * but also if the relative path starting in @p ctx_node reaches the document root via double dots.
  * @param[in] expr Parsed path.
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
@@ -201,9 +195,8 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
-LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr, uint16_t oper, uint16_t target,
-        LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
+LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const struct lyxp_expr *expr,
+        uint16_t oper, uint16_t target, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
@@ -213,7 +206,6 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
  * for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Context node, node for which the predicate is defined.
- * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
  * @param[in] format Format of the path.
@@ -222,8 +214,8 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-        const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext, const struct lyxp_expr *expr,
-        uint32_t *tok_idx, LY_VALUE_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates);
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
+        void *prefix_data, struct ly_path_predicate **predicates);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!

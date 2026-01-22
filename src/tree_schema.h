@@ -2249,24 +2249,9 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *las
         const struct lysc_module *module, uint32_t options);
 
 /**
- * @brief Get next schema (sibling) node element in the schema order of an extension that can be instantiated in
- * a data tree.
+ * @defgroup sgetnextflags Options for ::lys_getnext().
  *
- * It is just ::lys_getnext() for extensions.
- *
- * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree to iterate over. If set, @p ext is ignored.
- * @param[in] ext Extension instance with schema nodes to iterate over. If @p parent is NULL, it must be specified.
- * @param[in] options [ORed options](@ref sgetnextflags).
- * @return Next schema tree node, NULL in case there are no more.
- */
-LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node *last, const struct lysc_node *parent,
-        const struct lysc_ext_instance *ext, uint32_t options);
-
-/**
- * @defgroup sgetnextflags Options for ::lys_getnext() and ::lys_getnext_ext().
- *
- * Various options setting behavior of ::lys_getnext() and ::lys_getnext_ext().
+ * Various options setting behavior of ::lys_getnext().
  *
  * @{
  */
@@ -2279,7 +2264,7 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext_ext(const struct lysc_node 
 #define LYS_GETNEXT_WITHSCHEMAMOUNT 0x20    /**< ::lys_getnext() option to also traverse top-level nodes of all the mounted modules
                                                  on the parent mount point but note that if any such nodes are returned,
                                                  the caller **must free** their context */
-#define LYS_GETNEXT_EXT_XPATH    0x40 /**< ::lys_getnext_ext() option to differentiate between standard schema traversal
+#define LYS_GETNEXT_EXT_XPATH    0x40 /**< ::lys_getnext() option to differentiate between standard schema traversal
 +                                           and XPath accessible tree. */
 /** @} sgetnextflags */
 

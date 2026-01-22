@@ -278,7 +278,8 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
     if (!mod) {
         /* check for extension data */
-        r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
+        r = ly_find_ext_schema(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, parent, NULL, prefix, prefix_len,
+                LY_VALUE_JSON, NULL, name, name_len, 0, snode, ext);
         if (r != LY_ENOT) {
             /* success or error */
             ret = r;
@@ -302,7 +303,8 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
         }
         if (!*snode) {
             /* check for extension data */
-            r = ly_nested_ext_schema(parent, NULL, prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, snode, ext);
+            r = ly_find_ext_schema(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, parent, NULL, prefix, prefix_len,
+                    LY_VALUE_JSON, NULL, name, name_len, 0, snode, ext);
             if (r != LY_ENOT) {
                 /* success or error */
                 ret = r;

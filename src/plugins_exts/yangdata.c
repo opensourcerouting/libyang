@@ -20,7 +20,9 @@
 
 #include "compat.h"
 #include "libyang.h"
+#include "ly_common.h"
 #include "plugins_exts.h"
+#include "plugins_types.h"
 
 static void yangdata_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
@@ -193,20 +195,37 @@ yangdata_snode_xpath(struct lysc_ext_instance *ext, const struct lysc_node **sno
  */
 static LY_ERR
 yangdata_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
-        const char *prefix, uint32_t UNUSED(prefix_len), LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data),
-        const char *name, uint32_t UNUSED(name_len), const struct lysc_node **snode)
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, const struct lysc_node **snode)
 {
-    assert(!parent && !sparent && !prefix && !name);
+    const struct lysc_node *schema = ext->compiled;
+    const struct lys_module *mod;
 
     (void)parent;
     (void)sparent;
-    (void)prefix;
-    (void)name;
 
-    /* first top-level node */
-    *snode = ext->compiled;
+    assert(!parent && !sparent);
 
-    return LY_SUCCESS;
+    if (prefix && prefix_len) {
+        /* check module */
+        mod = lyplg_type_identity_module(ext->module->ctx, NULL, prefix, prefix_len, format, prefix_data);
+        if (!mod || (ext->module != mod)) {
+            return LY_ENOT;
+        }
+    }
+
+    /* check name */
+    if (name && name_len) {
+        LY_LIST_FOR(schema, schema) {
+            if (!ly_strncmp(schema->name, name, name_len)) {
+                break;
+            }
+        }
+    }
+
+    /* first top-level node or the found one, if any */
+    *snode = schema;
+    return schema ? LY_SUCCESS : LY_ENOT;
 }
 
 /**

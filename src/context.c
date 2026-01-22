@@ -664,6 +664,9 @@ ly_ctx_set_options(struct ly_ctx *ctx, uint32_t option)
 
             /* store all cached hashes for all the nodes */
             lysc_module_dfs_full(mod, lyb_cache_node_hash_cb, NULL);
+
+            /* cache hashes in nodes in extensions */
+            lyb_cache_ext_node_hash(mod);
         }
     }
 

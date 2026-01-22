@@ -227,6 +227,7 @@ test_parse(void **state)
             "</x>"
             "</struct>";
     const char *json = "{\"a:struct\":{\"x\":{\"x\":\"val\",\"y\":\"val\",\"z\":\"/a:x/x\",\"b:x2\":25}}}";
+    char *lyb;
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -253,6 +254,14 @@ test_parse(void **state)
     ly_in_memory(UTEST_IN, json);
     assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+
+    ly_out_new_memory(&lyb, 0, &UTEST_OUT);
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(UTEST_OUT, tree, LYD_LYB, 0));
+    ly_out_free(current_utest_context->out, NULL, 0);
+    lyd_free_all(tree);
+    ly_in_memory(UTEST_IN, lyb);
+    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(e, NULL, UTEST_IN, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    free(lyb);
     lyd_free_all(tree);
 }
 
