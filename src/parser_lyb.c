@@ -39,6 +39,7 @@
 #include "tree_data_internal.h"
 #include "tree_edit.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 #include "validation.h"
 #include "xml.h"
 
@@ -1004,12 +1005,8 @@ lyb_insert_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_
         struct ly_set *parsed)
 {
     /* insert, keep first pointer correct */
-    if (parent && (LYD_CTX(parent) != LYD_CTX(node))) {
-        lyplg_ext_insert(parent, node);
-    } else {
-        lyd_insert_node(parent, first_p, node,
-                lybctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
-    }
+    lyd_insert_node(parent, first_p, node,
+            lybctx->parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);
     while (!parent && (*first_p)->prev->next) {
         *first_p = (*first_p)->prev;
     }
@@ -1099,7 +1096,8 @@ lyb_finish_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, uint32_t fl
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count, uint32_t *flags, struct lyd_meta **meta)
+lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count,
+        uint32_t *flags, struct lyd_meta **meta)
 {
     /* create and read metadata */
     LY_CHECK_RET(lyb_parse_metadata(lybctx, sparent, metadata_count, meta));

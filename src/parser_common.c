@@ -48,6 +48,7 @@
 #include "parser_data.h"
 #include "path.h"
 #include "plugins_exts/metadata.h"
+#include "plugins_internal.h"
 #include "schema_compile_node.h"
 #include "schema_features.h"
 #include "set.h"
@@ -181,7 +182,7 @@ lyd_parser_node_schema(const struct lyd_node *node)
         }
 
         /* get schema node */
-        schema = lys_find_child(schema, mod, LYD_NAME(iter), 0, 0, 0);
+        schema = lys_find_child(NULL, schema, mod, LYD_NAME(iter), 0, 0);
 
         /* move to the descendant */
         ++i;
@@ -339,6 +340,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
 {
     struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
     struct lyd_ctx_ext_val *ext_val;
+    struct lyplg_ext *plg_ext;
 
     if (lydctx->parse_opts & LYD_PARSE_NO_NEW) {
         node->flags &= ~LYD_NEW;
@@ -382,9 +384,10 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
 
     if (ext) {
         /* parsed for an extension */
-        node->flags |= LYD_EXT;
+        assert(node->flags & LYD_EXT);
 
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+        plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+        if (!(lydctx->parse_opts & LYD_PARSE_ONLY) && plg_ext && plg_ext->validate) {
             /* rememeber for validation */
             ext_val = malloc(sizeof *ext_val);
             LY_CHECK_ERR_RET(!ext_val, LOGMEM(LYD_CTX(node)), LY_EMEM);
@@ -444,8 +447,8 @@ lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node)
 }
 
 LY_ERR
-lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
-        struct lyd_node *insert_anchor, uint32_t parse_opts, struct lyd_node *node)
+lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node *insert_anchor,
+        uint32_t parse_opts, struct lyd_node *node)
 {
     const struct lysc_node *skey = NULL;
     const struct lyd_node *key;
@@ -471,8 +474,6 @@ lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *par
     /* insert */
     if (insert_anchor) {
         LY_CHECK_RET(lyd_insert_after(insert_anchor, node));
-    } else if (ext) {
-        LY_CHECK_RET(lyplg_ext_insert(parent, node));
     } else {
         lyd_insert_node(parent, first_p, node,
                 parse_opts & LYD_PARSE_ORDERED ? LYD_INSERT_NODE_LAST : LYD_INSERT_NODE_DEFAULT);

@@ -462,7 +462,6 @@ void lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node);
 /**
  * @brief Insert a parsed node.
  *
- * @param[in] ext Extension instance if @p node was parsed for one.
  * @param[in] parent Data node parent, if any.
  * @param[in,out] first_p First sibling on the level, if any.
  * @param[in] insert_anchor Optional insert anchor to use.
@@ -470,8 +469,8 @@ void lyd_parser_node_free(struct lyd_node **first_p, struct lyd_node **node);
  * @param[in] node Node to insert.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parser_node_insert(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct lyd_node **first_p,
-        struct lyd_node *insert_anchor, uint32_t parse_opts, struct lyd_node *node);
+LY_ERR lyd_parser_node_insert(struct lyd_node *parent, struct lyd_node **first_p, struct lyd_node *insert_anchor,
+        uint32_t parse_opts, struct lyd_node *node);
 
 /**
  * @brief Parse an instance extension statement.

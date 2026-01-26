@@ -1935,14 +1935,14 @@ LY_ERR
 lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
 {
     struct lysc_ext_instance *exts;
-    struct lyplg_ext *ext_plg;
+    struct lyplg_ext *plg_ext;
     LY_ARRAY_COUNT_TYPE u;
 
     /* try to find a relevant extension instance with validation callback in the schema node ... */
     exts = node->schema->exts;
     LY_ARRAY_FOR(exts, u) {
-        ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
-        if (ext_plg && ext_plg->validate) {
+        plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+        if (plg_ext && plg_ext->validate) {
             /* store for validation */
             LY_CHECK_RET(lyd_validate_node_ext_add(node, &exts[u], ext_val));
         }
@@ -1952,8 +1952,8 @@ lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val)
     if (node->schema->nodetype & LYD_NODE_TERM) {
         exts = ((struct lysc_node_leaf *)node->schema)->type->exts;
         LY_ARRAY_FOR(exts, u) {
-            ext_plg = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
-            if (ext_plg && ext_plg->validate) {
+            plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+            if (plg_ext && plg_ext->validate) {
                 /* store for validation */
                 LY_CHECK_RET(lyd_validate_node_ext_add(node, &exts[u], ext_val));
             }

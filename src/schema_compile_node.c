@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of common nodes.
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1580,6 +1580,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
     struct lysc_type_union *un;
     struct lys_type_item *tpdf_item;
     const struct lysp_type *base_type_p;
+    struct lysc_prefix *prefixes;
     uint32_t i;
 
     /* alloc and init */
@@ -1826,6 +1827,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_pnode, uint16_
             LY_CHECK_GOTO(rc = lyxp_expr_dup(ctx->ctx, type_p->path, 0, 0, &lref->path), cleanup);
             LY_CHECK_GOTO(lyplg_type_prefix_data_new(ctx->ctx, type_p->path->expr, strlen(type_p->path->expr),
                     LY_VALUE_SCHEMA, type_p->pmod, &format, (void **)&lref->prefixes), cleanup);
+
+            /* non-prefixed nodes in path are supposed to be from the module where the leafref type is instantiated */
+            assert(format == LY_VALUE_SCHEMA_RESOLVED);
+            prefixes = lref->prefixes;
+            assert(!prefixes[0].prefix);
+            prefixes[0].mod = ctx->cur_mod;
         } else if (base) {
             LY_CHECK_GOTO(rc = lyxp_expr_dup(ctx->ctx, ((struct lysc_type_leafref *)base)->path, 0, 0, &lref->path), cleanup);
             LY_CHECK_GOTO(rc = lyplg_type_prefix_data_dup(ctx->ctx, LY_VALUE_SCHEMA_RESOLVED,
@@ -3041,11 +3048,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 /* only input or output is valid */
                 ctx_node = NULL;
             }
-        } else if (ctx->ext && !ctx_node) {
-            /* top-level extension nodes */
-            ctx_node = lysc_ext_find_node(ctx->ext, mod, name, name_len, 0, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
         } else {
-            ctx_node = lys_find_child(ctx_node, mod, name, name_len, 0,
+            ctx_node = lys_find_child(ctx->ctx, ctx_node, mod, name, name_len,
                     getnext_extra_flag | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
             getnext_extra_flag = 0;
         }
@@ -3253,7 +3257,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         }
 
         /* key node must be present */
-        key = (struct lysc_node_leaf *)lys_find_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE);
+        key = (struct lysc_node_leaf *)lys_find_child(NULL, node, node->module, keystr, len, LYS_GETNEXT_NOCHOICE);
+        if (key && (key->nodetype != LYS_LEAF)) {
+            key = NULL;
+        }
         if (!key) {
             LOGVAL(ctx->ctx, LYVE_REFERENCE, "The list's key \"%.*s\" not found.", (int)len, keystr);
             return LY_EVALID;
@@ -3407,7 +3414,10 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, struct lysp_qname *dflt, stru
         mod = ch->module;
     }
 
-    ch->dflt = (struct lysc_node_case *)lys_find_child(&ch->node, mod, name, 0, LYS_CASE, LYS_GETNEXT_WITHCASE);
+    ch->dflt = (struct lysc_node_case *)lys_find_child(NULL, &ch->node, mod, name, 0, LYS_GETNEXT_WITHCASE);
+    if (ch->dflt && (ch->dflt->nodetype != LYS_CASE)) {
+        ch->dflt = NULL;
+    }
     if (!ch->dflt) {
         LOGVAL(ctx->ctx, LYVE_SEMANTICS,
                 "Default case \"%s\" not found.", dflt->str);

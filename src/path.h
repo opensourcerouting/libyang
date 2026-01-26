@@ -166,8 +166,6 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @brief Compile path into ly_path structure.
  *
  * @param[in] ctx libyang context.
- * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes in schema-nodeid
- * without a prefix for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Optional context node.
  * @param[in] expr Parsed path.
  * @param[in] oper Oper option (@ref path_oper_options).
@@ -178,9 +176,9 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
-LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-        const struct lyxp_expr *expr, uint16_t oper, uint16_t target, ly_bool is_xpath, LY_VALUE_FORMAT format,
-        void *prefix_data, struct ly_path **path);
+LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const struct lyxp_expr *expr,
+        uint16_t oper, uint16_t target, ly_bool is_xpath, LY_VALUE_FORMAT format, void *prefix_data,
+        struct ly_path **path);
 
 /**
  * @brief Compile path into ly_path structure. Any predicates of a leafref are only checked, not compiled.
@@ -203,8 +201,6 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  *
  * @param[in] ctx libyang context.
  * @param[in] cur_node Optional current (original context) node.
- * @param[in] cur_mod Current module of the path (where it was "instantiated"). Used for nodes without a prefix
- * for ::LY_VALUE_SCHEMA and ::LY_VALUE_SCHEMA_RESOLVED format.
  * @param[in] ctx_node Context node, node for which the predicate is defined.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
@@ -213,7 +209,7 @@ LY_ERR ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[out] predicates Compiled predicates.
  * @return LY_ERR value.
  */
-LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
+LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node,
         const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint32_t *tok_idx, LY_VALUE_FORMAT format,
         void *prefix_data, struct ly_path_predicate **predicates);
 

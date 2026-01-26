@@ -398,7 +398,7 @@ test_target(void **state)
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_int_equal(LY_SUCCESS, ly_path_parse(UTEST_LYCTX, NULL, path_str, strlen(path_str), 0, LY_PATH_BEGIN_EITHER,
             LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
-    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, NULL, exp, LY_PATH_OPER_INPUT,
+    assert_int_equal(LY_SUCCESS, ly_path_compile(UTEST_LYCTX, NULL, exp, LY_PATH_OPER_INPUT,
             LY_PATH_TARGET_SINGLE, 1, LY_VALUE_JSON, NULL, &path));
     assert_int_equal(LY_SUCCESS, lyd_find_target(path, tree, (struct lyd_node **)&term));
 

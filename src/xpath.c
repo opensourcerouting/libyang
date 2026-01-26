@@ -5919,7 +5919,9 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
 {
     const struct lyd_node *next = NULL;
     enum lyxp_node_type next_type = 0;
-    struct lyplg_ext *ext_plg;
+    const struct lysc_node *schema;
+    struct lysc_ext_instance *ext;
+    struct lyplg_ext *plg_ext = NULL;
 
     assert(!*iter);
     assert(!*iter_type);
@@ -5951,11 +5953,21 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
             assert(!node);
 
-            /* search in all the trees */
-            if (set->ext && set->ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(set->ext->def->plugin_ref))->node_xpath) {
-                /* extensions instance calllback */
-                ext_plg->node_xpath((struct lysc_ext_instance *)set->ext, set->tree, &next);
+            if (set->tree->flags & LYD_EXT) {
+                schema = set->tree->schema;
+
+                /* do not set XPath, we are just looking for a specific ext instance that created these data */
+                if (!ly_find_ext_schema(set->ctx, NULL, NULL, schema->module->name, strlen(schema->module->name),
+                        LY_VALUE_JSON, NULL, schema->name, strlen(schema->name), 0, &schema, &ext)) {
+                    /* try to find an extension instance callback */
+                    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+                }
+            }
+            if (plg_ext && plg_ext->node_xpath) {
+                /* use the ext instance callback */
+                plg_ext->node_xpath(ext, set->tree, &next);
             } else {
+                /* search in all the trees */
                 next = set->tree;
             }
             next_type = next ? LYXP_NODE_ELEM : 0;
@@ -5969,9 +5981,17 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
     case LYXP_AXIS_DESCENDANT:
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
             /* top-level nodes */
-            if (set->ext && set->ext->def->plugin_ref && (ext_plg = LYSC_GET_EXT_PLG(set->ext->def->plugin_ref))->node_xpath) {
-                /* extensions instance calllback */
-                ext_plg->node_xpath((struct lysc_ext_instance *)set->ext, set->tree, &next);
+            if (set->tree->flags & LYD_EXT) {
+                schema = set->tree->schema;
+                if (!ly_find_ext_schema(set->ctx, NULL, NULL, schema->module->name, strlen(schema->module->name),
+                        LY_VALUE_JSON, NULL, schema->name, strlen(schema->name), 0, &schema, &ext)) {
+                    /* try to find an extension instance callback */
+                    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+                }
+            }
+            if (plg_ext && plg_ext->node_xpath) {
+                /* use the ext instance callback */
+                plg_ext->node_xpath(ext, set->tree, &next);
             } else {
                 next = set->tree;
             }
@@ -6524,7 +6544,6 @@ moveto_axis_scnode_next_first(const struct lysc_node **iter, enum lyxp_node_type
 {
     const struct lysc_node *next = NULL;
     enum lyxp_node_type next_type = 0;
-    struct lyplg_ext *plg_ext;
 
     assert(!*iter);
     assert(!*iter_type);
@@ -6554,26 +6573,18 @@ moveto_axis_scnode_next_first(const struct lysc_node **iter, enum lyxp_node_type
     case LYXP_AXIS_DESCENDANT:
     case LYXP_AXIS_CHILD:
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
-            if (set->ext && set->ext->def->plugin_ref && (plg_ext = LYSC_GET_EXT_PLG(set->ext->def->plugin_ref))->snode_xpath) {
-                /* extensions instance callback */
-                plg_ext->snode_xpath((struct lysc_ext_instance *)set->ext, &next);
-                if (next) {
-                    next_type = LYXP_NODE_ELEM;
+            /* it can actually be in any module, it's all <running>, and even if it's moveto_mod (if set),
+             * it can be in a top-level augment */
+            while ((*iter_mod = ly_ctx_get_module_iter(set->ctx, iter_mod_idx))) {
+                /* module may not be implemented or not compiled yet */
+                if (!(*iter_mod)->compiled) {
+                    continue;
                 }
-            } else {
-                /* it can actually be in any module, it's all <running>, and even if it's moveto_mod (if set),
-                 * it can be in a top-level augment */
-                while ((*iter_mod = ly_ctx_get_module_iter(set->ctx, iter_mod_idx))) {
-                    /* module may not be implemented or not compiled yet */
-                    if (!(*iter_mod)->compiled) {
-                        continue;
-                    }
 
-                    /* get next node */
-                    if ((next = lys_getnext(NULL, NULL, (*iter_mod)->compiled, getnext_opts))) {
-                        next_type = LYXP_NODE_ELEM;
-                        break;
-                    }
+                /* get next node */
+                if ((next = lys_getnext(NULL, NULL, (*iter_mod)->compiled, getnext_opts))) {
+                    next_type = LYXP_NODE_ELEM;
+                    break;
                 }
             }
         } else if (node_type == LYXP_NODE_ELEM) {
@@ -6801,7 +6812,8 @@ static LY_ERR
 moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const char *ncname,
         uint32_t ncname_len, enum lyxp_axis axis, uint32_t options)
 {
-    ly_bool temp_ctx = 0;
+    LY_ERR r;
+    ly_bool temp_ctx = 0, is_node;
     uint32_t getnext_opts, orig_used, i, mod_idx, idx;
     const struct lys_module *mod = NULL;
     const struct lysc_node *iter;
@@ -6852,11 +6864,19 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
         }
 
         /* only consider extension nodes after no local ones were found */
-        if ((orig_used == set->used) && moveto_mod && ncname && ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) &&
+        if ((set->val.scnodes[i].type == LYXP_NODE_ROOT) || (set->val.scnodes[i].type == LYXP_NODE_ROOT_CONFIG) ||
                 (set->val.scnodes[i].type == LYXP_NODE_ELEM)) {
+            is_node = 1;
+        } else {
+            is_node = 0;
+        }
+        if ((orig_used == set->used) && moveto_mod && ncname &&
+                ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) && is_node) {
+            r = ly_find_ext_schema(set->ctx, NULL, set->val.scnodes[i].scnode, moveto_mod->name,
+                    strlen(moveto_mod->name), LY_VALUE_JSON, NULL, ncname, ncname_len, 1, &iter, NULL);
+            LY_CHECK_RET(r && (r != LY_ENOT), r);
 
-            iter = lys_find_child(set->val.scnodes[i].scnode, moveto_mod, ncname, ncname_len, 0, getnext_opts);
-            if (iter) {
+            if (!r) {
                 /* there is a matching node from an extension, use it */
                 LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, axis, &idx));
                 if ((idx < orig_used) && (idx > i)) {
@@ -8016,8 +8036,8 @@ eval_name_test_try_compile_predicates(const struct lyxp_expr *exp, uint32_t *tok
             LY_PATH_PRED_SIMPLE, &exp2), cleanup);
 
     /* compile */
-    rc = ly_path_compile_predicate(set->ctx, set->cur_node ? set->cur_node->schema : NULL, set->cur_mod, ctx_scnode,
-            exp2, &pred_idx, LY_VALUE_JSON, NULL, predicates);
+    rc = ly_path_compile_predicate(set->ctx, set->cur_node ? set->cur_node->schema : NULL, ctx_scnode, exp2, &pred_idx,
+            LY_VALUE_JSON, NULL, predicates);
     LY_CHECK_GOTO(rc, cleanup);
 
     /* success, the predicate must include all the needed information for hash-based search */
@@ -8066,7 +8086,7 @@ continue_search:
                     continue;
                 }
 
-                scnode = lys_find_child(NULL, mod, name, name_len, 0, 0);
+                scnode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
                 if (scnode) {
                     /* we have found a match */
                     break;
@@ -8079,7 +8099,7 @@ continue_search:
             }
         } else {
             /* search in top-level */
-            scnode = lys_find_child(NULL, moveto_mod, name, name_len, 0, 0);
+            scnode = lys_find_child(NULL, NULL, moveto_mod, name, name_len, 0);
         }
     } else if (node->schema && (!*found || (lysc_data_parent(*found) != node->schema))) {
         if ((format == LY_VALUE_JSON) && !moveto_mod) {
@@ -8090,8 +8110,8 @@ continue_search:
         /* search in children, do not repeat the same search */
         if (node->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             /* make sure the node is unique, whether in input or output */
-            scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
-            scnode2 = lys_find_child(node->schema, moveto_mod, name, name_len, 0, LYS_GETNEXT_OUTPUT);
+            scnode = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, 0);
+            scnode2 = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, LYS_GETNEXT_OUTPUT);
             if (scnode && scnode2) {
                 /* conflict, do not use hashes */
                 scnode = NULL;
@@ -8099,7 +8119,7 @@ continue_search:
                 scnode = scnode2;
             }
         } else {
-            scnode = lys_find_child(node->schema, moveto_mod, name, name_len, 0, 0);
+            scnode = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, 0);
         }
     } /* else skip redundant search */
 

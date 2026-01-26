@@ -171,8 +171,8 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
             LY_PATH_PRED_KEYS, &expr), cleanup);
 
     /* compile them */
-    LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module->ctx, NULL, NULL, schema, expr, &exp_idx,
-            LY_VALUE_JSON, NULL, &predicates), cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module->ctx, NULL, schema, expr, &exp_idx, LY_VALUE_JSON,
+            NULL, &predicates), cleanup);
 
     /* create the list node */
     LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, NULL, store_only, top_ext, node), cleanup);
@@ -468,8 +468,11 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0,
-            LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, output ? LYS_GETNEXT_OUTPUT : 0);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, output ? LYS_GETNEXT_OUTPUT : 0);
+    if (schema && !(schema->nodetype & (LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
+        schema = NULL;
+    }
+
     if (!schema && parent) {
         r = ly_find_ext_schema(ctx, parent, NULL, module->name, strlen(module->name), LY_VALUE_JSON, NULL, name,
                 strlen(name), 0, &schema, &ext);
@@ -501,7 +504,11 @@ lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct 
 
     LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
 
-    schema = lysc_ext_find_node(ext, NULL, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, 0);
+    schema = lysc_ext_find_node(ext, NULL, 0, 0, NULL, name, 0, 0);
+    if (schema && !(schema->nodetype & (LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
+        schema = NULL;
+    }
+
     if (!schema) {
         if (ext->argument) {
             LOGERR(ctx, LY_EINVAL, "Inner node (not a list) \"%s\" not found in instance \"%s\" of extension %s.",
@@ -544,7 +551,11 @@ _lyd_new_list_node(const struct ly_ctx *ctx, const struct lyd_node *parent, cons
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    if (schema && (schema->nodetype != LYS_LIST)) {
+        schema = NULL;
+    }
+
     if (!schema && parent) {
         r = ly_find_ext_schema(ctx, parent, NULL, module->name, strlen(module->name), LY_VALUE_JSON, NULL, name,
                 strlen(name), 0, &schema, &ext);
@@ -633,7 +644,11 @@ lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, uint32_t
     LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
-    schema = lysc_ext_find_node(ext, NULL, name, 0, LYS_LIST, 0);
+    schema = lysc_ext_find_node(ext, NULL, 0, 0, NULL, name, 0, 0);
+    if (schema && (schema->nodetype != LYS_LIST)) {
+        schema = NULL;
+    }
+
     if (!schema) {
         if (ext->argument) {
             LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found in instance \"%s\" of extension %s.",
@@ -695,7 +710,11 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     }
 
     /* find schema node */
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    if (schema && (schema->nodetype != LYS_LIST)) {
+        schema = NULL;
+    }
+
     if (!schema && parent) {
         r = ly_find_ext_schema(ctx, parent, NULL, module->name, strlen(module->name), LY_VALUE_JSON, NULL, name,
                 strlen(name), 0, &schema, &ext);
@@ -813,7 +832,11 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_TERM, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    if (schema && !(schema->nodetype & LYD_NODE_TERM)) {
+        schema = NULL;
+    }
+
     if (!schema && parent) {
         r = ly_find_ext_schema(ctx, parent, NULL, module->name, strlen(module->name), LY_VALUE_JSON, NULL, name,
                 strlen(name), 0, &schema, &ext);
@@ -871,7 +894,11 @@ lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const vo
     LY_CHECK_RET(lyd_new_val_get_format(options, &format));
     LY_CHECK_ARG_RET(ctx, !(store_only && (format == LY_VALUE_CANON || format == LY_VALUE_LYB)), LY_EINVAL);
 
-    schema = lysc_ext_find_node(ext, NULL, name, 0, LYD_NODE_TERM, 0);
+    schema = lysc_ext_find_node(ext, NULL, 0, 0, NULL, name, 0, 0);
+    if (schema && !(schema->nodetype & LYD_NODE_TERM)) {
+        schema = NULL;
+    }
+
     if (!schema) {
         if (ext->argument) {
             LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found in instance \"%s\" of extension %s.",
@@ -909,7 +936,11 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_ANY, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    if (schema && !(schema->nodetype & LYD_NODE_ANY)) {
+        schema = NULL;
+    }
+
     if (!schema && parent) {
         r = ly_find_ext_schema(ctx, parent, NULL, module->name, strlen(module->name), LY_VALUE_JSON, NULL, name,
                 strlen(name), 0, &schema, &ext);
@@ -942,7 +973,11 @@ lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const voi
 
     LY_CHECK_ARG_RET(ctx, ext, node, name, LY_EINVAL);
 
-    schema = lysc_ext_find_node(ext, NULL, name, 0, LYD_NODE_ANY, 0);
+    schema = lysc_ext_find_node(ext, NULL, 0, 0, NULL, name, 0, 0);
+    if (schema && !(schema->nodetype & LYD_NODE_ANY)) {
+        schema = NULL;
+    }
+
     if (!schema) {
         if (ext->argument) {
             LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found in instance \"%s\" of extension %s.",
@@ -1880,7 +1915,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const struct ly
             LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
-    LY_CHECK_GOTO(ret = ly_path_compile(ctx, NULL, lyd_node_schema(parent), exp, options & LYD_NEW_VAL_OUTPUT ?
+    LY_CHECK_GOTO(ret = ly_path_compile(ctx, lyd_node_schema(parent), exp, options & LYD_NEW_VAL_OUTPUT ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* create nodes */

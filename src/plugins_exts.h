@@ -856,7 +856,9 @@ typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const st
  * @param[in] ext Compiled extension instance.
  * @param[out] snode First XPath document root child schema node, if any.
  */
-typedef void (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const struct lysc_node **snode);
+typedef LY_ERR (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len,
+        LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len, uint32_t options,
+        const struct lysc_node **snode);
 
 /*
  * data snode
@@ -1161,16 +1163,6 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_get_data(const struct ly_ctx *ctx, const struc
  * @return LY_ERR on error.
  */
 LIBYANG_API_DECL LY_ERR lyplg_ext_set_parent_ctx(struct ly_ctx *ctx, const struct ly_ctx *parent_ctx);
-
-/**
- * @brief Insert extension instance data into a parent.
- *
- * @param[in] parent Parent node to insert into.
- * @param[in] first First top-level sibling node to insert.
- * @return LY_SUCCESS on success.
- * @return LY_ERR error on error.
- */
-LIBYANG_API_DECL LY_ERR lyplg_ext_insert(struct lyd_node *parent, struct lyd_node *first);
 
 /**
  * @brief Expand parent-reference xpath expressions

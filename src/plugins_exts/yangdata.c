@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - yang-data (RFC 8040)
  *
- * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -24,6 +24,9 @@
 #include "plugins_exts.h"
 #include "plugins_types.h"
 
+static LY_ERR yangdata_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, const struct lysc_node **snode);
 static void yangdata_cfree(const struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
@@ -183,11 +186,11 @@ yangdata_printer_info(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_b
 /**
  * @brief Snode xpath callback for yang-data.
  */
-static void
-yangdata_snode_xpath(struct lysc_ext_instance *ext, const struct lysc_node **snode)
+static LY_ERR
+yangdata_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *name, uint32_t name_len, uint32_t UNUSED(options), const struct lysc_node **snode)
 {
-    /* first top-level node */
-    *snode = ext->compiled;
+    return yangdata_snode(ext, NULL, NULL, prefix, prefix_len, format, prefix_data, name, name_len, snode);
 }
 
 /**
@@ -201,10 +204,10 @@ yangdata_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, con
     const struct lysc_node *schema = ext->compiled;
     const struct lys_module *mod;
 
-    (void)parent;
-    (void)sparent;
-
-    assert(!parent && !sparent);
+    if (parent || sparent) {
+        /* matches only top-level data */
+        return LY_ENOT;
+    }
 
     if (prefix && prefix_len) {
         /* check module */

@@ -579,13 +579,31 @@ structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *tree,
 /**
  * @brief Snode xpath callback for structure.
  */
-static void
-structure_snode_xpath(struct lysc_ext_instance *ext, const struct lysc_node **snode)
+static LY_ERR
+structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *name, uint32_t name_len, uint32_t options, const struct lysc_node **snode)
 {
     struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
+    const struct lysc_node *schema = NULL;
+    const struct lys_module *mod;
 
-    /* XPath starts at the substatements */
-    *snode = struct_cdata->top_cont->child;
+    if (prefix && prefix_len) {
+        /* check module */
+        mod = lyplg_type_identity_module(ext->module->ctx, NULL, prefix, prefix_len, format, prefix_data);
+        if (!mod || (ext->module != mod)) {
+            return LY_ENOT;
+        }
+    }
+
+    /* find the schema node in the substatements */
+    while ((schema = lys_getnext(schema, &struct_cdata->top_cont->node, NULL, options))) {
+        if (!ly_strncmp(schema->name, name, name_len)) {
+            *snode = schema;
+            return LY_SUCCESS;
+        }
+    }
+
+    return LY_ENOT;
 }
 
 /**

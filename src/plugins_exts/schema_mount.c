@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - Schema Mount (RFC 8528)
  *
- * Copyright (c) 2021 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -434,7 +434,7 @@ schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node
     *content_id = NULL;
 
     /* find the content-id node */
-    snode = lys_find_child(ext_yl_data->schema, ext_yl_data->schema->module, "content-id", 0, 0, 0);
+    snode = lys_find_child(NULL, ext_yl_data->schema, ext_yl_data->schema->module, "content-id", 0, 0);
     assert(snode);
 
     /* get yang-library content-id */
@@ -924,6 +924,33 @@ cleanup:
 }
 
 /**
+ * @brief Snode xpath callback for schema mount.
+ */
+static LY_ERR
+structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *name, uint32_t name_len, uint32_t options, const struct lysc_node **snode)
+{
+    LY_ERR r;
+    const struct lys_module *mod;
+    const struct ly_ctx *ext_ctx = NULL;
+
+    /* get context based on ietf-yang-library data */
+    if ((r = lyplg_ext_schema_mount_get_ctx(ext, NULL, &ext_ctx))) {
+        return r;
+    }
+
+    /* get the module */
+    mod = lyplg_type_identity_module(ext_ctx, NULL, prefix, prefix_len, format, prefix_data);
+    if (!mod) {
+        return LY_ENOT;
+    }
+
+    /* get the top-level schema node */
+    *snode = lys_find_child(NULL, NULL, mod, name, name_len, options);
+    return *snode ? LY_SUCCESS : LY_ENOT;
+}
+
+/**
  * @brief Snode callback for schema mount.
  * Check if data are valid for schema mount and returns their schema node.
  */
@@ -957,7 +984,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     }
 
     /* get the top-level schema node */
-    *snode = lys_find_child(NULL, mod, name, name_len, 0, 0);
+    *snode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
     return *snode ? LY_SUCCESS : LY_ENOT;
 }
 
@@ -1245,7 +1272,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     LY_LIST_FOR(sibling, iter) {
         iter->flags |= LYD_EXT;
     }
-    lyplg_ext_insert(orig_parent, sibling);
+    lyd_insert_child(orig_parent, sibling);
 
     if (ret) {
         goto cleanup;
@@ -1262,7 +1289,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         if ((ret = lyd_dup_single(lyd_parent(sibling), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
             goto cleanup;
         }
-        if ((ret = lyplg_ext_insert(diff_parent, ext_diff))) {
+        if ((ret = lyd_insert_child(diff_parent, ext_diff))) {
             goto cleanup;
         }
         ext_diff = NULL;
@@ -1571,7 +1598,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.printer_ctree = schema_mount_sprinter_ctree,
         .plugin.printer_ptree = schema_mount_sprinter_ptree,
         .plugin.node_xpath = NULL,
-        .plugin.snode_xpath = NULL,
+        .plugin.snode_xpath = structure_snode_xpath,
         .plugin.snode = schema_mount_snode,
         .plugin.validate = schema_mount_validate,
         .plugin.pfree = NULL,

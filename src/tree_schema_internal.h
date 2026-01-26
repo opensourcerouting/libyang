@@ -468,8 +468,53 @@ LY_ERR lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
  * @param[in] options ORed [lys_getnext options](@ref sgetnextflags).
  * @return Found schema node if there is some satisfy the provided requirements.
  */
-const struct lysc_node *lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module *module,
-        const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
+const struct lysc_node *lysc_ext_find_node(const struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len,
+        LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len, uint32_t options);
+
+/**
+ * @brief Try to get schema node for data with a parent based on an extension instance.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] parent Parsed parent data node.
+ * @param[in] sparent Schema parent node.
+ * @param[in] prefix Element prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific data.
+ * @param[in] name Element name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] in_xpath Set if searching for nodes in an XPath expression.
+ * @param[out] snode Found schema node, NULL if no suitable was found.
+ * @param[out] ext Optional extension instance that provided @p snode.
+ * @return LY_SUCCESS on success;
+ * @return LY_ENOT if no extension instance parsed the data;
+ * @return LY_ERR on error.
+ */
+LY_ERR ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode, struct lysc_ext_instance **ext);
+
+/**
+ * @brief Find a schema node of a parent, top-level in a module, or an extension.
+ *
+ * @param[in] ctx Context to use for searching the target module.
+ * @param[in] parent Parent of the node, if any.
+ * @param[in] prefix Module prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific data.
+ * @param[in] name Node name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] options ORed [lys_getnext options](@ref sgetnextflags).
+ * @param[out] snode Found schema node.
+ * @param[out] ext Optional ext instance of @p snode.
+ * @return LY_SUCCESS on success;
+ * @return LY_ENOT if not found;
+ * @return LY_ERR on error.
+ */
+LY_ERR lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, const char *prefix,
+        uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len,
+        uint32_t options, const struct lysc_node **snode, struct lysc_ext_instance **ext);
 
 /**
  * @brief When the module comes from YIN format, the argument name is unknown because of missing extension definition

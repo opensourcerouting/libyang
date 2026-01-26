@@ -1845,11 +1845,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
 
             /* insert it at the end */
             if (parent_node) {
-                if (match->flags & LYD_EXT) {
-                    r = lyplg_ext_insert(parent_node, match);
-                } else {
-                    r = lyd_insert_child(parent_node, match);
-                }
+                r = lyd_insert_child(parent_node, match);
             } else {
                 r = lyd_insert_sibling(*first_node, match, first_node);
             }

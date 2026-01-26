@@ -320,20 +320,11 @@ check:
 }
 
 const struct lysc_node *
-lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module *module, const char *name, size_t name_len,
-        uint16_t nodetype, uint32_t options)
+lysc_ext_find_node(const struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *name, uint32_t name_len, uint32_t options)
 {
-    const struct lysc_node *node = NULL;
+    const struct lysc_node *snode = NULL;
     struct lyplg_ext *plg_ext;
-
-    LY_CHECK_ARG_RET(NULL, ext, name, NULL);
-    if (!nodetype) {
-        nodetype = LYS_NODETYPE_MASK;
-    }
-
-    if (module && (module != ext->module)) {
-        return NULL;
-    }
 
     plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
     if (!plg_ext) {
@@ -341,85 +332,171 @@ lysc_ext_find_node(const struct lysc_ext_instance *ext, const struct lys_module 
     }
 
     /* standard nodes */
-    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
-    if (plg_ext->snode_xpath && (options & LYS_GETNEXT_EXT_XPATH)) {
-        plg_ext->snode_xpath((struct lysc_ext_instance *)ext, &node);
+    if (options & LYS_GETNEXT_EXT_XPATH) {
+        if (plg_ext->snode_xpath) {
+            plg_ext->snode_xpath((struct lysc_ext_instance *)ext, prefix, prefix_len, format, prefix_data, name,
+                    name_len, options, &snode);
+        } else {
+            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof snode, (const void **)&snode);
+        }
     } else if (!(options & LYS_GETNEXT_EXT_XPATH)) {
         if (plg_ext->snode) {
-            plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, NULL, 0, 0, NULL, NULL, 0, &node);
+            plg_ext->snode((struct lysc_ext_instance *)ext, NULL, NULL, prefix, prefix_len, format, prefix_data, name,
+                    name_len, &snode);
         } else {
-            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof node, (const void **)&node);
-        }
-    }
-    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
-        if (!(node->nodetype & nodetype)) {
-            continue;
-        }
-
-        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
-            return node;
+            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof snode, (const void **)&snode);
         }
     }
 
-    /* op nodes */
-    lyplg_ext_get_storage(ext, LY_STMT_OP_MASK, sizeof node, (const void **)&node);
-    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
-        if (!(node->nodetype & nodetype)) {
-            continue;
+    return snode;
+}
+
+LY_ERR
+ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, const struct lysc_node *sparent,
+        const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
+        uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode, struct lysc_ext_instance **ext)
+{
+    LY_ERR r;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysc_ext_instance *exts;
+    struct lyplg_ext *plg_ext;
+    const struct lys_module *mod;
+    uint32_t getnext_opts = in_xpath ? LYS_GETNEXT_EXT_XPATH : 0;
+
+    /* check if there are any nested extension instances */
+    if (parent && parent->schema) {
+        exts = parent->schema->exts;
+    } else if (sparent) {
+        exts = sparent->exts;
+    } else {
+        exts = NULL;
+    }
+    LY_ARRAY_FOR(exts, u) {
+        plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+        if (!in_xpath && plg_ext && plg_ext->snode) {
+            /* try to get the schema node */
+            r = plg_ext->snode(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
+            if (!r) {
+                if (ext) {
+                    /* schema node found, remember the ext instance */
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            } else if (r != LY_ENOT) {
+                /* fatal error */
+                return r;
+            }
+        } else {
+            *snode = lysc_ext_find_node(&exts[u], prefix, prefix_len, format, prefix_data, name, name_len, getnext_opts);
+            if (*snode) {
+                if (ext) {
+                    /* schema node found, remember the ext instance */
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            }
         }
 
-        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
-            return node;
+        /* data was not from this ext instance, continue */
+    }
+
+    /* check if there are global module ext instances */
+    mod = lyplg_type_identity_module(ctx, sparent, prefix, prefix_len, format, prefix_data);
+    if (mod && mod->implemented) {
+        exts = mod->compiled->exts;
+    } else {
+        exts = NULL;
+    }
+    LY_ARRAY_FOR(exts, u) {
+        plg_ext = LYSC_GET_EXT_PLG(exts[u].def->plugin_ref);
+        if (!in_xpath && plg_ext && plg_ext->snode) {
+            r = plg_ext->snode(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len, snode);
+            if (!r) {
+                if (ext) {
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            } else if (r != LY_ENOT) {
+                return r;
+            }
+        } else {
+            *snode = lysc_ext_find_node(&exts[u], prefix, prefix_len, format, prefix_data, name, name_len, getnext_opts);
+            if (*snode) {
+                if (ext) {
+                    *ext = &exts[u];
+                }
+                return LY_SUCCESS;
+            }
         }
     }
 
-    /* notif nodes */
-    lyplg_ext_get_storage(ext, LY_STMT_NOTIFICATION, sizeof node, (const void **)&node);
-    for ( ; node; node = lys_getnext(node, NULL, NULL, options)) {
-        if (!(node->nodetype & nodetype)) {
-            continue;
-        }
+    /* no extensions or none matched */
+    return LY_ENOT;
+}
 
-        if ((name_len && !ly_strncmp(node->name, name, name_len)) || (!name_len && !strcmp(node->name, name))) {
-            return node;
+LY_ERR
+lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, const char *prefix, uint32_t prefix_len,
+        LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len, uint32_t options,
+        const struct lysc_node **snode, struct lysc_ext_instance **ext)
+{
+    const struct lys_module *mod;
+    const struct lysc_node *node = NULL;
+    ly_bool in_xpath;
+
+    *snode = NULL;
+    if (ext) {
+        *ext = NULL;
+    }
+
+    /* look for a standard schema node */
+    mod = lyplg_type_identity_module(ctx, parent, prefix, prefix_len, format, prefix_data);
+    if (mod && mod->implemented) {
+        while ((node = lys_getnext(node, parent, mod->compiled, options))) {
+            if (node->module != mod) {
+                continue;
+            }
+
+            if (name_len) {
+                if (!ly_strncmp(node->name, name, name_len)) {
+                    *snode = node;
+                    return LY_SUCCESS;
+                }
+            } else {
+                if (!strcmp(node->name, name)) {
+                    *snode = node;
+                    return LY_SUCCESS;
+                }
+            }
         }
     }
 
-    return NULL;
+    /* look for an ext instance node */
+    in_xpath = (options & LYS_GETNEXT_EXT_XPATH) ? 1 : 0;
+    return ly_find_ext_schema(ctx, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len, in_xpath,
+            snode, ext);
 }
 
 LIBYANG_API_DEF const struct lysc_node *
-lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
-        uint16_t nodetype, uint32_t options)
+lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent, const struct lys_module *mod, const char *name,
+        uint32_t name_len, uint32_t options)
 {
-    const struct lysc_node *node = NULL;
+    const struct lysc_node *snode = NULL;
 
-    LY_CHECK_ARG_RET(NULL, module, name, NULL);
-    LY_CHECK_CTX_EQUAL_RET(__func__, parent ? parent->module->ctx : NULL, module->ctx, NULL);
-    if (!nodetype) {
-        nodetype = LYS_NODETYPE_MASK;
+    LY_CHECK_ARG_RET(NULL, ctx || parent || mod, name, NULL);
+
+    if (parent) {
+        ctx = parent->module->ctx;
+    } else if (mod) {
+        ctx = mod->ctx;
     }
 
-    while ((node = lys_getnext(node, parent, module->compiled, options))) {
-        if (!(node->nodetype & nodetype)) {
-            continue;
-        }
-        if (node->module != module) {
-            continue;
-        }
-
-        if (name_len) {
-            if (!ly_strncmp(node->name, name, name_len)) {
-                return node;
-            }
-        } else {
-            if (!strcmp(node->name, name)) {
-                return node;
-            }
-        }
+    if (name && !name_len) {
+        name_len = strlen(name);
     }
 
-    return NULL;
+    lys_find_child_node(ctx, parent, mod ? mod->name : NULL, mod ? strlen(mod->name) : 0, LY_VALUE_JSON, NULL, name,
+            name_len, options, &snode, NULL);
+    return snode;
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -622,7 +699,7 @@ lys_find_path_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
+    ret = ly_path_compile(ctx, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* resolve */
@@ -657,7 +734,7 @@ lys_find_path(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
 
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
-    ret = ly_path_compile(ctx, NULL, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
+    ret = ly_path_compile(ctx, ctx_node, expr, oper, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get last node */

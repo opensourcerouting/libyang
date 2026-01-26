@@ -307,7 +307,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_lypath_check_status(const struct lysc_node *c
  *
  * Use only in implementations of ::lyplg_type_store_clb which provide all the necessary parameters for this function.
  *
- * @param[in] ctx libyang context.
+ * @param[in] ctx Context to use for searching for modules.
  * @param[in] ctx_node Schema node where the value is instantiated to determine the module in case of unprefixed value
  * in specific @p format.
  * @param[in] prefix Prefix to resolve - identified beginning of a prefix in ::lyplg_type_store_clb's value parameter.

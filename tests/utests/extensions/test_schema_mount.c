@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for Schema Mount extension support
  *
- * Copyright (c) 2021 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1900,6 +1900,7 @@ test_xpath(void **state)
 {
     const char *xml;
     struct lyd_node *data;
+    struct ly_set *set;
 
     ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
             "<root xmlns=\"urn:sm\">"
@@ -1983,6 +1984,11 @@ test_xpath(void **state)
             "</root>\n";
     CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
     lyd_free_siblings(data);
+
+    /* find nodes */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath(UTEST_LYCTX, NULL, "/sm:root/mount:root/l1", 0, &set));
+    assert_int_equal(set->count, 1);
+    ly_set_free(set, NULL);
 }
 
 int

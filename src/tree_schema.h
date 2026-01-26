@@ -2269,19 +2269,18 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *las
 /** @} sgetnextflags */
 
 /**
- * @brief Get child node according to the specified criteria.
+ * @brief Get a child node according to the specified criteria.
  *
- * @param[in] parent Optional parent of the node to find. If not specified, the module's top-level nodes are searched.
- * @param[in] module module of the node to find. It is also limitation for the children node of the given parent.
+ * @param[in] ctx Context to use.
+ * @param[in] parent Optional parent of the node to find. If not specified, top-level nodes are searched.
+ * @param[in] mod Optional module of the node to find.
  * @param[in] name Name of the node to find.
- * @param[in] name_len Optional length of the name in case it is not NULL-terminated string.
- * @param[in] nodetype Optional criteria (to speedup) specifying nodetype(s) of the node to find.
- * Used as a bitmask, so multiple nodetypes can be specified.
+ * @param[in] name_len Optional length of @p name if not 0-terminated.
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Found node if any.
  */
-LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
-        const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
+LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent,
+        const struct lys_module *mod, const char *name, uint32_t name_len, uint32_t options);
 
 /**
  * @brief Make the specific module implemented.

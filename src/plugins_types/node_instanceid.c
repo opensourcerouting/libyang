@@ -225,7 +225,7 @@ lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_typ
 
     /* resolve it on schema tree, use JSON format instead of LYB because for this type they are equal but for some
      * nested types (such as numbers in predicates in the path) LYB would be invalid */
-    ret = ly_path_compile(ctx, NULL, ctx_node, exp, (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ?
+    ret = ly_path_compile(ctx, ctx_node, exp, (ctx_node && (ctx_node->flags & LYS_IS_OUTPUT)) ?
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 1, (format == LY_VALUE_LYB) ?
             LY_VALUE_JSON : format, prefix_data, &path);
     if (ret) {

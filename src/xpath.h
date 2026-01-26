@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions header
  *
- * Copyright (c) 2015 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2025 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -396,7 +396,7 @@ LY_ERR lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const
  *        Indirectly context position aware.
  *
  * @param[in] set Set to cast.
- * @param[in] target Target type to cast \p set into.
+ * @param[in] target Target type to cast @p set into.
  * @return LY_ERR
  */
 LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target);
