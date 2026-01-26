@@ -2509,8 +2509,8 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     LY_CHECK_GOTO(rc = lyd_validate_must(op_node, 0, int_opts, LYXP_IGNORE_WHEN, NULL), cleanup);
 
     /* final validation of all the descendants */
-    rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, NULL, 0,
-            int_opts | LYD_INTOPT_SKIP_SIBLINGS, LYXP_IGNORE_WHEN, getnext_ht);
+    rc = lyd_validate_final_r(lyd_child(op_node), op_node, op_node->schema, NULL, NULL, 0, int_opts, LYXP_IGNORE_WHEN,
+            getnext_ht);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
