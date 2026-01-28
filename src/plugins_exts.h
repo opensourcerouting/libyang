@@ -109,7 +109,7 @@ extern "C" {
 /**
  * @brief Extensions API version
  */
-#define LYPLG_EXT_API_VERSION 10
+#define LYPLG_EXT_API_VERSION 11
 
 /**
  * @brief Mask for an operation statement.
