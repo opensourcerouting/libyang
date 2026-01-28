@@ -77,7 +77,7 @@ lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_n
             has_prefix = 1;
 
             /* resolve the module in the original format */
-            mod = lyplg_type_identity_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
+            mod = lys_find_module(resolve_ctx, NULL, str_begin, len, resolve_format, resolve_prefix_data);
             if (!mod && is_nametest) {
                 ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Failed to resolve prefix \"%.*s\".",
                         (int)len, str_begin);

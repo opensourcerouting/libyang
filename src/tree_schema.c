@@ -48,6 +48,7 @@
 #include "tree_edit.h"
 #include "tree_schema_free.h"
 #include "tree_schema_internal.h"
+#include "xml.h"
 #include "xpath.h"
 
 const char * const ly_devmod_list[] = {
@@ -117,6 +118,141 @@ lysc_module_dfs_full(const struct lys_module *mod, lysc_dfs_clb dfs_clb, void *d
     }
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Find import prefix in imports.
+ */
+static const struct lys_module *
+ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, uint32_t prefix_len, const void *prefix_data)
+{
+    const struct lysp_module *prefix_mod = prefix_data;
+    LY_ARRAY_COUNT_TYPE u;
+    const char *local_prefix;
+
+    local_prefix = prefix_mod->is_submod ? ((struct lysp_submodule *)prefix_mod)->prefix : prefix_mod->mod->prefix;
+    if (!prefix_len || !ly_strncmp(local_prefix, prefix, prefix_len)) {
+        /* it is the prefix of the module itself */
+        return prefix_mod->mod;
+    }
+
+    /* search in imports */
+    LY_ARRAY_FOR(prefix_mod->imports, u) {
+        if (!ly_strncmp(prefix_mod->imports[u].prefix, prefix, prefix_len)) {
+            return prefix_mod->imports[u].module;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Find resolved module for a prefix in prefix - module pairs.
+ */
+static const struct lys_module *
+ly_schema_resolved_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, uint32_t prefix_len,
+        const void *prefix_data)
+{
+    const struct lysc_prefix *prefixes = prefix_data;
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(prefixes, u) {
+        if ((!prefixes[u].prefix && !prefix_len) || (prefixes[u].prefix && !ly_strncmp(prefixes[u].prefix, prefix, prefix_len))) {
+            return prefixes[u].mod;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Find XML namespace prefix in XML namespaces, which are then mapped to modules.
+ */
+static const struct lys_module *
+ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, uint32_t prefix_len, const void *prefix_data)
+{
+    const struct lys_module *mod;
+    const struct lyxml_ns *ns;
+    const struct ly_set *ns_set = prefix_data;
+
+    ns = lyxml_ns_get(ns_set, prefix, prefix_len);
+    if (!ns) {
+        return NULL;
+    }
+
+    mod = ly_ctx_get_module_implemented_ns(ctx, ns->uri);
+    if (!mod) {
+        /* for YIN extension prefix resolution */
+        mod = ly_ctx_get_module_latest_ns(ctx, ns->uri);
+    }
+    return mod;
+}
+
+/**
+ * @brief Find module name.
+ */
+static const struct lys_module *
+ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, uint32_t prefix_len, const void *UNUSED(prefix_data))
+{
+    return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
+}
+
+const struct lys_module *
+ly_resolve_prefix(const struct ly_ctx *ctx, const void *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        const void *prefix_data)
+{
+    const struct lys_module *mod = NULL;
+
+    LY_CHECK_ARG_RET(ctx, prefix, prefix_len, NULL);
+
+    switch (format) {
+    case LY_VALUE_SCHEMA:
+        mod = ly_schema_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    case LY_VALUE_SCHEMA_RESOLVED:
+        mod = ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    case LY_VALUE_XML:
+    case LY_VALUE_STR_NS:
+        mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    case LY_VALUE_CANON:
+    case LY_VALUE_JSON:
+    case LY_VALUE_LYB:
+        mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    }
+
+    return mod;
+}
+
+LIBYANG_API_DEF const struct lys_module *
+lys_find_module(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *prefix, uint32_t prefix_len,
+        LY_VALUE_FORMAT format, const void *prefix_data)
+{
+    if (prefix_len) {
+        return ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
+    } else {
+        switch (format) {
+        case LY_VALUE_SCHEMA:
+            /* use local module */
+            return ly_schema_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        case LY_VALUE_SCHEMA_RESOLVED:
+            /* use local module */
+            return ly_schema_resolved_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        case LY_VALUE_CANON:
+        case LY_VALUE_JSON:
+        case LY_VALUE_LYB:
+        case LY_VALUE_STR_NS:
+            /* use context node module (as specified) */
+            return ctx_node ? ctx_node->module : NULL;
+        case LY_VALUE_XML:
+            /* use the default namespace */
+            return ly_xml_resolve_prefix(ctx, NULL, 0, prefix_data);
+        }
+    }
+
+    return NULL;
 }
 
 static void
@@ -401,7 +537,7 @@ ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, cons
     }
 
     /* check if there are global module ext instances */
-    mod = lyplg_type_identity_module(ctx, sparent, prefix, prefix_len, format, prefix_data);
+    mod = lys_find_module(ctx, sparent, prefix, prefix_len, format, prefix_data);
     if (mod && mod->implemented) {
         exts = mod->compiled->exts;
     } else {
@@ -449,7 +585,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     }
 
     /* look for a standard schema node */
-    mod = lyplg_type_identity_module(ctx, parent, prefix, prefix_len, format, prefix_data);
+    mod = lys_find_module(ctx, parent, prefix, prefix_len, format, prefix_data);
     if (mod && mod->implemented) {
         while ((node = lys_getnext(node, parent, mod->compiled, options))) {
             if (node->module != mod) {

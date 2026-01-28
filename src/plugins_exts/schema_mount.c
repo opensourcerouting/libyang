@@ -940,7 +940,7 @@ structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_
     }
 
     /* get the module */
-    mod = lyplg_type_identity_module(ext_ctx, NULL, prefix, prefix_len, format, prefix_data);
+    mod = lys_find_module(ext_ctx, NULL, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         return LY_ENOT;
     }
@@ -972,7 +972,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     }
 
     /* get the module */
-    mod = lyplg_type_identity_module(ext_ctx, parent ? parent->schema : sparent, prefix, prefix_len, format, prefix_data);
+    mod = lys_find_module(ext_ctx, parent ? parent->schema : sparent, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         return LY_ENOT;
     }

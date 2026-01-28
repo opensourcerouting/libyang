@@ -302,26 +302,6 @@ LIBYANG_API_DECL LY_ERR lyplg_type_lypath_check_status(const struct lysc_node *c
         LY_VALUE_FORMAT format, void *prefix_data, struct ly_err_item **err);
 
 /**
- * @brief Get the corresponding module for the identity value.
- *
- * Use only in implementations of ::lyplg_type_store_clb which provide all the necessary parameters for this function.
- *
- * @param[in] ctx Context to use for searching for modules.
- * @param[in] ctx_node Schema node where the value is instantiated to determine the module in case of unprefixed value
- * in specific @p format.
- * @param[in] prefix Prefix to resolve - identified beginning of a prefix in ::lyplg_type_store_clb's value parameter.
- * If NULL, an unprefixed identity is resolved.
- * @param[in] prefix_len Length of @p prefix.
- * @param[in] format Format of the prefix (::lyplg_type_store_clb's format parameter).
- * @param[in] prefix_data Format-specific data (::lyplg_type_store_clb's prefix_data parameter).
- * @return Resolved prefix module,
- * @return NULL otherwise.
- */
-LIBYANG_API_DECL const struct lys_module *lyplg_type_identity_module(const struct ly_ctx *ctx,
-        const struct lysc_node *ctx_node, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        const void *prefix_data);
-
-/**
  * @brief Implement a module (just like ::lys_set_implemented()), but keep maintaining unresolved items.
  *
  * Use only in implementations of ::lyplg_type_store_clb which provide all the necessary parameters for this function.

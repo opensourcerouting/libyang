@@ -211,7 +211,7 @@ yangdata_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, con
 
     if (prefix && prefix_len) {
         /* check module */
-        mod = lyplg_type_identity_module(ext->module->ctx, NULL, prefix, prefix_len, format, prefix_data);
+        mod = lys_find_module(ext->module->ctx, NULL, prefix, prefix_len, format, prefix_data);
         if (!mod || (ext->module != mod)) {
             return LY_ENOT;
         }

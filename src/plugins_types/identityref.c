@@ -109,7 +109,7 @@ identityref_str2ident(const char *value, uint32_t value_size, LY_VALUE_FORMAT fo
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty identityref value.");
     }
 
-    mod = lyplg_type_identity_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
+    mod = lys_find_module(ctx, ctx_node, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL,
                 "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_size, value);
