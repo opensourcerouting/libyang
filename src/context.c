@@ -298,7 +298,7 @@ ly_ctx_new(const char *search_dir, uint32_t options, struct ly_ctx **new_ctx)
     /* plugins */
     builtin_plugins_only = (options & LY_CTX_BUILTIN_PLUGINS_ONLY) ? 1 : 0;
     static_plugins_only = (options & LY_CTX_STATIC_PLUGINS_ONLY) ? 1 : 0;
-    LY_CHECK_ERR_GOTO(lyplg_init(builtin_plugins_only, static_plugins_only), LOGINT(NULL); rc = LY_EINT, cleanup);
+    LY_CHECK_GOTO(rc = lyplg_init(builtin_plugins_only, static_plugins_only), cleanup);
 
     /* options */
     ctx->opts = options;

@@ -840,10 +840,10 @@ LIBYANG_API_DECL LY_ERR lyplg_ext_sprinter_ptree_add_nodes(const struct lyspr_tr
  * @brief Callback for getting the first child data node of an XPath document root of the extension instance.
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] tree Whole data tree.
+ * @param[in] cur_node Current (original context) node.
  * @param[out] node First XPath document root child node, if any.
  */
-typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const struct lyd_node *tree,
+typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const struct lyd_node *cur_node,
         const struct lyd_node **node);
 
 /*
@@ -866,6 +866,9 @@ typedef LY_ERR (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const
 
 /**
  * @brief Callback for getting a schema node for new YANG instance data described by an extension instance.
+ *
+ * If this callback is defined, ::lyplg_ext_data_validate_clb must also be defined for validating the data node subtrees
+ * parsed using this callback.
  *
  * 1) Schema nodes are compiled and connected to each other:
  *    - this callback is NOT called;
@@ -903,21 +906,23 @@ typedef LY_ERR (*lyplg_ext_data_snode_clb)(struct lysc_ext_instance *ext, const 
  * @brief Callback for validating parsed YANG instance data described by an extension instance.
  *
  * This callback is called in 2 distinct cases:
- * 1) For nested data definition (with a standard YANG schema parent) when all @p sibling nodes have ::LYD_EXT flag set;
- * 2) For data nodes of a) schema nodes or b) their types with the extension instance (no special flag).
+ * 1) For data nodes created by ::lyplg_ext_data_snode_clb with @p node flag ::LYD_EXT set. If this callback is
+ *    defined, the whole subtree is validated by this callback;
+ * 2) For any data nodes whose a) schema node or b) their type has the extension instance. These nodes are also always
+ *    validated according to the standard YANG node validation rules.
  *
  * @param[in] ext Compiled extension instance.
- * @param[in] sibling First sibling with schema node returned by ::lyplg_ext_data_snode_clb for nested data, otherwise
- * the data node with the extension instance.
+ * @param[in] node Node/subtree to validate.
  * @param[in] dep_tree Tree to be used for validating references from the operation subtree, if operation.
  * @param[in] data_type Validated data type, can be ::LYD_TYPE_DATA_YANG, ::LYD_TYPE_RPC_YANG, ::LYD_TYPE_NOTIF_YANG,
  * or ::LYD_TYPE_REPLY_YANG.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
+ * @return LY_ENOT if @p node are not data matching this extension instance.
  * @return LY_ERR on error.
  */
-typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *sibling,
+typedef LY_ERR (*lyplg_ext_data_validate_clb)(struct lysc_ext_instance *ext, struct lyd_node *node,
         const struct lyd_node *dep_tree, enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff);
 
 /*

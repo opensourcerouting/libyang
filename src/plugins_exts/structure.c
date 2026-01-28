@@ -560,20 +560,24 @@ structure_sprinter_ptree(struct lysp_ext_instance *ext, const struct lyspr_tree_
  * @brief Node xpath callback for structure.
  */
 static void
-structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *tree, const struct lyd_node **node)
+structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *cur_node, const struct lyd_node **node)
 {
     *node = NULL;
 
-    if (!tree) {
+    if (!cur_node) {
         return;
     }
 
+    while (!(cur_node->flags & LYD_EXT)) {
+        cur_node = lyd_parent(cur_node);
+    }
+
     /* virtual top-level container expected */
-    assert(!strcmp(ext->argument, LYD_NAME(tree)));
+    assert(!strcmp(ext->argument, LYD_NAME(cur_node)));
     (void)ext;
 
     /* return the child */
-    *node = lyd_child(tree);
+    *node = lyd_child(cur_node);
 }
 
 /**
@@ -617,10 +621,9 @@ structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, co
     struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
     const struct lys_module *mod;
 
+    /* may be anywhere in the data. in top-level or nested */
     (void)parent;
     (void)sparent;
-
-    assert(!parent && !sparent);
 
     if (prefix && prefix_len) {
         /* check module */
@@ -641,6 +644,22 @@ structure_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, co
     *snode = &struct_cdata->top_cont->node;
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Validate callback for structure.
+ */
+static LY_ERR
+structure_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const struct lyd_node *UNUSED(dep_tree),
+        enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
+{
+    if (data_type != LYD_TYPE_DATA_YANG) {
+        /* not supported */
+        return LY_ENOT;
+    }
+
+    /* validate all the modules with data */
+    return lyd_validate_ext(&node, ext, val_opts, diff);
 }
 
 /**
@@ -715,7 +734,7 @@ const struct lyplg_ext_record plugins_structure[] = {
         .plugin.node_xpath = structure_node_xpath,
         .plugin.snode_xpath = structure_snode_xpath,
         .plugin.snode = structure_snode,
-        .plugin.validate = NULL,
+        .plugin.validate = structure_validate,
         .plugin.pfree = structure_pfree,
         .plugin.cfree = structure_cfree,
         .plugin.compiled_size = structure_compiled_size,

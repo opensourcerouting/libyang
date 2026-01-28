@@ -814,6 +814,7 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     LY_ERR r, rc = LY_SUCCESS;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
     uint32_t prev_parse_opts = lydctx->parse_opts;
+    struct lyplg_ext *plg_ext;
 
     *node = NULL;
 
@@ -844,8 +845,11 @@ lydxml_subtree_inner(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, 
     LY_CHECK_GOTO(rc, cleanup);
 
     if (ext) {
-        /* only parse these extension data and validate afterwards */
-        lydctx->parse_opts |= LYD_PARSE_ONLY;
+        plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+        if (plg_ext && plg_ext->validate) {
+            /* only parse these extension data and validate afterwards */
+            lydctx->parse_opts |= LYD_PARSE_ONLY;
+        }
     }
 
     /* process children */
@@ -1117,12 +1121,6 @@ node_parsed:
         /* add/correct flags */
         r = lyd_parser_set_data_flags(node, &meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-            /* store for ext instance node validation, if needed */
-            r = lyd_validate_node_ext(node, &lydctx->ext_val);
-            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-        }
     }
 
     /* parser next */

@@ -1,9 +1,10 @@
 /**
  * @file plugins.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Manipulate with the type and extension plugins.
  *
- * Copyright (c) 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2021 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -318,26 +319,32 @@ static LY_ERR
 plugins_insert(struct ly_ctx *ctx, enum LYPLG type, const void *recs)
 {
     struct ly_set *plugins;
+    const struct lyplg_ext_record *rec_ext;
+    const struct lyplg_type_record *rec_type;
+    uint32_t i;
 
     if (!recs) {
         return LY_SUCCESS;
     }
 
     if (type == LYPLG_EXTENSION) {
-        const struct lyplg_ext_record *rec = (const struct lyplg_ext_record *)recs;
-
+        rec_ext = (const struct lyplg_ext_record *)recs;
         plugins = ctx ? &ctx->plugins_extensions : &ly_plugins_extensions;
 
-        for (uint32_t i = 0; rec[i].name; i++) {
-            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
+        for (i = 0; rec_ext[i].name; i++) {
+            if (rec_ext[i].plugin.snode && !rec_ext[i].plugin.validate) {
+                LOGERR(ctx, LY_EINT, "Ext plugin \"%s\" has no validate() callback defined.", rec_ext[i].name);
+                return LY_EINT;
+            }
+
+            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec_ext[i], 0, NULL));
         }
     } else { /* LYPLG_TYPE */
-        const struct lyplg_type_record *rec = (const struct lyplg_type_record *)recs;
-
+        rec_type = (const struct lyplg_type_record *)recs;
         plugins = ctx ? &ctx->plugins_types : &ly_plugins_types;
 
-        for (uint32_t i = 0; rec[i].name; i++) {
-            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec[i], 0, NULL));
+        for (i = 0; rec_type[i].name; i++) {
+            LY_CHECK_RET(ly_set_add(plugins, (void *)&rec_type[i], 0, NULL));
         }
     }
 

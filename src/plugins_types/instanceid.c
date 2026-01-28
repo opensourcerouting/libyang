@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Built-in instance-identifier type plugin.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include "plugins_types.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -225,13 +226,16 @@ cleanup:
 
 static LY_ERR
 lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
+        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct lysc_ext_instance *top_ext,
         struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)storage->realtype;
     const char *value;
     char *path;
+
+    /* instance-identifier must be a leaf or leaf-list */
+    assert(ctx_node);
 
     *err = NULL;
 
@@ -241,7 +245,7 @@ lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_
     }
 
     /* find the target in data */
-    if ((ret = ly_path_eval(storage->target, tree, NULL, top_ext, NULL))) {
+    if ((ret = ly_path_eval(storage->target, ctx_node, NULL, top_ext, NULL))) {
         value = lyd_value_get_canonical(ctx, storage);
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
         return ly_err_new(err, ret, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);

@@ -232,6 +232,22 @@ yangdata_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent, con
 }
 
 /**
+ * @brief Validate callback for yang-data.
+ */
+static LY_ERR
+yangdata_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const struct lyd_node *UNUSED(dep_tree),
+        enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
+{
+    if (data_type != LYD_TYPE_DATA_YANG) {
+        /* not supported */
+        return LY_ENOT;
+    }
+
+    /* validate all the modules with data */
+    return lyd_validate_ext(&node, ext, val_opts, diff);
+}
+
+/**
  * @brief Free parsed yang-data extension instance data.
  *
  * Implementation of ::lyplg_clb_parse_free_clb callback set as lyext_plugin::pfree.
@@ -341,7 +357,7 @@ const struct lyplg_ext_record plugins_yangdata[] = {
         .plugin.node_xpath = NULL,
         .plugin.snode_xpath = yangdata_snode_xpath,
         .plugin.snode = yangdata_snode,
-        .plugin.validate = NULL,
+        .plugin.validate = yangdata_validate,
         .plugin.pfree = yangdata_pfree,
         .plugin.cfree = yangdata_cfree,
         .plugin.compiled_size = yandgata_compiled_size,

@@ -108,7 +108,6 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     uint32_t i, int_opts = 0;
     const struct ly_err_item *eitem;
     ly_bool subtree_sibling = 0;
-    struct lyd_node *next, *iter;
 
     assert(ctx && (parent || first_p));
 
@@ -168,20 +167,10 @@ lyd_parse(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct 
     }
 
     if (!(parse_opts & LYD_PARSE_ONLY)) {
-        if (ext) {
-            /* special ext instance data validation */
-            LY_LIST_FOR_SAFE(*first_p, next, iter) {
-                r = lyd_validate_ext_tree(&iter, ext, val_opts, 0, &lydctx->node_when, &lydctx->node_types,
-                        &lydctx->meta_types, &lydctx->ext_val, NULL);
-                LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-            }
-            *first_p = lyd_first_sibling(*first_p);
-        } else {
-            /* validate data */
-            r = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
-                    &lydctx->ext_val, NULL);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-        }
+        /* validate data */
+        r = lyd_validate(first_p, NULL, ctx, val_opts, 0, &lydctx->node_when, &lydctx->node_types, &lydctx->meta_types,
+                &lydctx->ext_val, NULL);
+        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
     /* set the operation node */

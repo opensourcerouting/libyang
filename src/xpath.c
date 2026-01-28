@@ -5837,6 +5837,53 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
     return LY_SUCCESS;
 }
 
+const struct lyd_node *
+lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd_node *tree)
+{
+    const struct lyd_node *top_node, *first = NULL;
+    const struct ly_ctx *ctx;
+    const char *mod_name, *name;
+    const struct lysc_node *schema;
+    struct lysc_ext_instance *ext;
+    struct lyplg_ext *plg_ext = NULL;
+
+    assert(cur_node || (tree && !tree->parent));
+
+    if (cur_node) {
+        /* try to find an ext instance data node */
+        top_node = cur_node;
+        while (top_node->parent && !(top_node->flags & LYD_EXT)) {
+            top_node = lyd_parent(top_node);
+        }
+    } else {
+        /* just use the first top-level node */
+        top_node = tree;
+    }
+
+    if (top_node->flags & LYD_EXT) {
+        ctx = cur_node ? LYD_CTX(cur_node) : LYD_CTX(tree);
+        mod_name = top_node->schema->module->name;
+        name = LYD_NAME(top_node);
+
+        /* do not set XPath, we are just looking for a specific ext instance that created these data */
+        if (!ly_find_ext_schema(ctx, NULL, NULL, mod_name, strlen(mod_name), LY_VALUE_JSON, NULL, name, strlen(name), 0,
+                &schema, &ext)) {
+            /* try to find an extension instance callback */
+            plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
+        }
+    }
+
+    if (plg_ext && plg_ext->node_xpath) {
+        /* use the ext instance callback */
+        plg_ext->node_xpath(ext, cur_node, &first);
+    } else {
+        /* search in all the trees */
+        first = lyd_first_sibling(top_node);
+    }
+
+    return first;
+}
+
 /**
  * @brief Get the next node in a forward DFS.
  *
@@ -5919,9 +5966,6 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
 {
     const struct lyd_node *next = NULL;
     enum lyxp_node_type next_type = 0;
-    const struct lysc_node *schema;
-    struct lysc_ext_instance *ext;
-    struct lyplg_ext *plg_ext = NULL;
 
     assert(!*iter);
     assert(!*iter_type);
@@ -5953,23 +5997,8 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
             assert(!node);
 
-            if (set->tree->flags & LYD_EXT) {
-                schema = set->tree->schema;
-
-                /* do not set XPath, we are just looking for a specific ext instance that created these data */
-                if (!ly_find_ext_schema(set->ctx, NULL, NULL, schema->module->name, strlen(schema->module->name),
-                        LY_VALUE_JSON, NULL, schema->name, strlen(schema->name), 0, &schema, &ext)) {
-                    /* try to find an extension instance callback */
-                    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
-                }
-            }
-            if (plg_ext && plg_ext->node_xpath) {
-                /* use the ext instance callback */
-                plg_ext->node_xpath(ext, set->tree, &next);
-            } else {
-                /* search in all the trees */
-                next = set->tree;
-            }
+            /* start from the first document root child */
+            next = lyxp_node_first_doc_root_child(set->cur_node, set->tree);
             next_type = next ? LYXP_NODE_ELEM : 0;
         } else {
             /* search in children */
@@ -5980,21 +6009,8 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
 
     case LYXP_AXIS_DESCENDANT:
         if ((node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT)) {
-            /* top-level nodes */
-            if (set->tree->flags & LYD_EXT) {
-                schema = set->tree->schema;
-                if (!ly_find_ext_schema(set->ctx, NULL, NULL, schema->module->name, strlen(schema->module->name),
-                        LY_VALUE_JSON, NULL, schema->name, strlen(schema->name), 0, &schema, &ext)) {
-                    /* try to find an extension instance callback */
-                    plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
-                }
-            }
-            if (plg_ext && plg_ext->node_xpath) {
-                /* use the ext instance callback */
-                plg_ext->node_xpath(ext, set->tree, &next);
-            } else {
-                next = set->tree;
-            }
+            /* start from the first document root child */
+            next = lyxp_node_first_doc_root_child(set->cur_node, set->tree);
             next_type = LYXP_NODE_ELEM;
         } else if (node_type == LYXP_NODE_ELEM) {
             /* start from the context node */

@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Validation routines.
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -120,10 +120,20 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
         uint32_t val_opts, uint32_t int_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
- * @brief Validate data node with an extension instance, if any, by storing it in its unres set.
+ * @brief Validate data tree created by an extension instance by storing it in unres.
+ *
+ * @param[in] node Node with ::LYD_EXT flag whose subtree needs to be validated by an ext instance callback.
+ * @param[in] ext Extension instance with the validation callback. If not set, is found first.
+ * @param[in,out] ext_val Set with data to validate.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_validate_tree_ext(struct lyd_node *node, const struct lysc_ext_instance *ext, struct ly_set *ext_val);
+
+/**
+ * @brief Validate data node with an extension instance, if any, by storing it in unres.
  *
  * @param[in] node Node to check for an extension instance with a validate callback.
- * @param[in,out] ext_val Set with data nodes to validate.
+ * @param[in,out] ext_val Set with data to validate.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
@@ -144,25 +154,6 @@ LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
-        ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
-        struct ly_set *ext_val_p, struct lyd_node **diff);
-
-/**
- * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of
- * normal YANG data.
- *
- * @param[in,out] subtree Data subtree to validate, nodes may be autodeleted.
- * @param[in] ext Extension instance whose data to validate.
- * @param[in] val_opts Validation options, see @ref datavalidationoptions.
- * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
- * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
- * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
- * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
- * @param[in] ext_val_p Set of unres extension data to validate, if NULL a local set is used.
- * @param[out] diff Generated validation diff, not generated if NULL.
- * @return LY_ERR value.
- */
-LY_ERR lyd_validate_ext_tree(struct lyd_node **subtree, const struct lysc_ext_instance *ext, uint32_t val_opts,
         ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
         struct ly_set *ext_val_p, struct lyd_node **diff);
 

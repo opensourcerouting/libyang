@@ -675,7 +675,7 @@ parse_ext_inst_data(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *
     }
 
     /* validate extension instance data */
-    ret = lyd_validate_ext(tree, yo->ext, yo->data_validate_options, oper_tree, NULL);
+    ret = lyd_validate_ext(tree, yo->ext, yo->data_validate_options, NULL);
 
     yo->data_ext = 0;
     return ret;

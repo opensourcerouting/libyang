@@ -363,7 +363,7 @@ ly_find_ext_schema(const struct ly_ctx *ctx, const struct lyd_node *parent, cons
     const struct lys_module *mod;
     uint32_t getnext_opts = in_xpath ? LYS_GETNEXT_EXT_XPATH : 0;
 
-    /* check if there are any nested extension instances */
+    /* check if there are any nested parent extension instances */
     if (parent && parent->schema) {
         exts = parent->schema->exts;
     } else if (sparent) {

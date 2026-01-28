@@ -261,7 +261,9 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     uint32_t getnext_opts = lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
 
     *snode = NULL;
-    *ext = NULL;
+    if (ext) {
+        *ext = NULL;
+    }
 
     /* try to find parent schema node */
     r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, lyd_parser_node_schema(parent), prefix,
@@ -546,7 +548,6 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node, *attr, *next, *meta_iter;
-    struct lysc_ext_instance *ext;
     uint64_t instance = 0;
     const char *prev = NULL;
     uint32_t log_location_items = 0;
@@ -617,7 +618,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 lydjson_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
                         &prefix, &prefix_len, &is_attr);
                 assert(is_attr);
-                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode, &ext);
+                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode, NULL);
 
                 if (snode != node->schema) {
                     continue;
@@ -656,7 +657,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 }
 
                 /* add/correct flags */
-                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, ext);
+                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
                 break;
             }
@@ -1509,12 +1510,6 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
         /* add/correct flags */
         r = lyd_parser_set_data_flags(*node, &(*node)->meta, (struct lyd_ctx *)lydctx, ext);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-            /* store for ext instance node validation, if needed */
-            r = lyd_validate_node_ext(*node, &lydctx->ext_val);
-            LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-        }
     } else if (r == LY_ENOT) {
         /* parse it again as an opaq node */
         r = lydjson_parse_opaq(lydctx, name, name_len, prefix, prefix_len, parent, status, status, first_p, node);

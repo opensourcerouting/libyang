@@ -339,8 +339,6 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
         const struct lysc_ext_instance *ext)
 {
     struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
-    struct lyd_ctx_ext_val *ext_val;
-    struct lyplg_ext *plg_ext;
 
     if (lydctx->parse_opts & LYD_PARSE_NO_NEW) {
         node->flags &= ~LYD_NEW;
@@ -382,19 +380,14 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
         prev_meta = meta2;
     }
 
-    if (ext) {
-        /* parsed for an extension */
-        assert(node->flags & LYD_EXT);
-
-        plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
-        if (!(lydctx->parse_opts & LYD_PARSE_ONLY) && plg_ext && plg_ext->validate) {
-            /* rememeber for validation */
-            ext_val = malloc(sizeof *ext_val);
-            LY_CHECK_ERR_RET(!ext_val, LOGMEM(LYD_CTX(node)), LY_EMEM);
-            ext_val->ext = (struct lysc_ext_instance *)ext;
-            ext_val->sibling = node;
-            LY_CHECK_RET(ly_set_add(&lydctx->ext_val, ext_val, 1, NULL));
+    if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
+        if (ext) {
+            /* parsed for an extension, validate the subtree using the same extension */
+            LY_CHECK_RET(lyd_validate_tree_ext(node, ext, &lydctx->ext_val));
         }
+
+        /* store for ext instance node validation, if needed */
+        LY_CHECK_RET(lyd_validate_node_ext(node, &lydctx->ext_val));
     }
 
     return LY_SUCCESS;

@@ -1157,6 +1157,7 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, con
     const struct lysc_node *node2, *cur_node, *op, *prev_ctx_node = NULL;
     struct ly_path *p = NULL;
     struct lysc_ext_instance *ext = NULL;
+    ly_bool is_abs;
 
     assert(ctx);
     assert(!lref || ctx_node);
@@ -1190,11 +1191,13 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, con
         goto cleanup;
     } else if (expr->tokens[tok_idx] == LYXP_TOKEN_OPER_PATH) {
         /* absolute path */
+        is_abs = 1;
         ctx_node = NULL;
 
         ++tok_idx;
     } else {
         /* relative path */
+        is_abs = 0;
         if (!ctx_node) {
             LOGVAL(ctx, LYVE_XPATH, "No initial schema parent for a relative path.");
             rc = LY_EVALID;
@@ -1247,9 +1250,14 @@ _ly_path_compile(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, con
         ctx_node = node2;
 
         /* new path segment */
+        if (*path) {
+            /* nested path segment */
+            is_abs = 0;
+        }
         LY_ARRAY_NEW_GOTO(ctx, *path, p, rc, cleanup);
         p->node = ctx_node;
         p->ext = ext;
+        p->doc_root = is_abs;
 
         /* compile any predicates */
         if (lref) {
@@ -1301,26 +1309,21 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 }
 
 LY_ERR
-ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
         const struct lysc_ext_instance *top_ext, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
     uint64_t pos;
 
-    assert(path && start);
+    assert(path && ctx_node);
 
-    if (lysc_data_parent(path[0].node)) {
+    if (!path[0].doc_root) {
         /* relative path, start from the parent children */
-        start = lyd_child(start);
+        ctx_node = lyd_child(ctx_node);
     } else {
-        /* absolute path, start from the first top-level sibling */
-        while (start->parent) {
-            start = lyd_parent(start);
-        }
-        while (start->prev->next) {
-            start = start->prev;
-        }
+        /* absolute path, start from the first document root child */
+        ctx_node = lyxp_node_first_doc_root_child(ctx_node, NULL);
     }
 
     LY_ARRAY_FOR(path, u) {
@@ -1330,7 +1333,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
                 /* we cannot use hashes and want an instance on a specific position */
                 pos = 1;
                 node = NULL;
-                LYD_LIST_FOR_INST(start, path[u].node, elem) {
+                LYD_LIST_FOR_INST(ctx_node, path[u].node, elem) {
                     if (pos == path[u].predicates[0].position) {
                         node = elem;
                         break;
@@ -1343,21 +1346,21 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
                 LY_CHECK_RET(lyd_create_term(path[u].node, path[u].predicates[0].value,
                         strlen(path[u].predicates[0].value) * 8, 1, 1, NULL, LY_VALUE_CANON, NULL, LYD_HINT_DATA,
                         top_ext, NULL, &target));
-                lyd_find_sibling_first(start, target, &node);
+                lyd_find_sibling_first(ctx_node, target, &node);
                 lyd_free_tree(target);
                 break;
             case LY_PATH_PREDTYPE_LIST_VAR:
             case LY_PATH_PREDTYPE_LIST:
                 /* we will use hashes to find one list instance */
                 LY_CHECK_RET(lyd_create_list(path[u].node, path[u].predicates, vars, 1, top_ext, &target));
-                lyd_find_sibling_first(start, target, &node);
+                lyd_find_sibling_first(ctx_node, target, &node);
                 lyd_free_tree(target);
                 break;
             }
         } else {
             /* we will use hashes to find one any/container/leaf instance */
-            if (lyd_find_sibling_val(start, path[u].node, NULL, 0, &node) && with_opaq) {
-                if (!lyd_find_sibling_opaq_next(start, path[u].node->name, &node) &&
+            if (lyd_find_sibling_val(ctx_node, path[u].node, NULL, 0, &node) && with_opaq) {
+                if (!lyd_find_sibling_opaq_next(ctx_node, path[u].node->name, &node) &&
                         (lyd_node_module(node) != path[u].node->module)) {
                     /* non-matching opaque node */
                     node = NULL;
@@ -1374,7 +1377,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
         prev_node = node;
 
         /* next path segment, if any */
-        start = lyd_child(node);
+        ctx_node = lyd_child(node);
     }
 
     if (node) {
@@ -1409,13 +1412,13 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, c
 }
 
 LY_ERR
-ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
         const struct lysc_ext_instance *top_ext, struct lyd_node **match)
 {
     LY_ERR ret;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, start, vars, top_ext, 0, NULL, &m);
+    ret = ly_path_eval_partial(path, ctx_node, vars, top_ext, 0, NULL, &m);
 
     if (ret == LY_SUCCESS) {
         /* last node was found */
@@ -1448,6 +1451,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
         (*dup)[u].node = path[u].node;
         (*dup)[u].ext = path[u].ext;
         LY_CHECK_RET(ret = ly_path_dup_predicates(ctx, path[u].predicates, &(*dup)[u].predicates), ret);
+        (*dup)[u].doc_root = path[u].doc_root;
     }
 
     return LY_SUCCESS;

@@ -1185,28 +1185,28 @@ cleanup:
  * @brief Validate callback for schema mount.
  */
 static LY_ERR
-schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, const struct lyd_node *dep_tree,
+schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, const struct lyd_node *dep_tree,
         enum lyd_type data_type, uint32_t val_opts, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
-    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(sibling), *op_tree;
+    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(node), *op_tree;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
 
-    if (!sibling) {
+    if (!node) {
         /* some data had to be parsed for this callback to be called */
         EXT_LOGERR_INT_RET(NULL, ext);
     }
 
-    if (!(sibling->flags & LYD_EXT)) {
+    if (!(node->flags & LYD_EXT)) {
         /* no validation of the node with the mount-point */
         goto cleanup;
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(sibling), (void **)&ext_data, &ext_data_free))) {
+    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(node), (void **)&ext_data, &ext_data_free))) {
         goto cleanup;
     }
     if (!ext_data) {
@@ -1234,45 +1234,45 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
     }
 
     /* duplicate the referenced parent nodes into ext context */
-    if ((ret = schema_mount_dup_parent_ref(ext, orig_parent, ext_data, LYD_CTX(sibling), &ref_set))) {
+    if ((ret = schema_mount_dup_parent_ref(ext, orig_parent, ext_data, LYD_CTX(node), &ref_set))) {
         goto cleanup;
     }
 
     if (data_type != LYD_TYPE_DATA_YANG) {
         /* remember the operation data tree, it may be moved */
-        op_tree = sibling;
+        op_tree = node;
     }
 
     /* create accessible tree, remove LYD_EXT to not call this callback recursively */
-    LY_CHECK_GOTO(lyd_unlink_siblings(sibling), cleanup);
-    LY_LIST_FOR(sibling, iter) {
+    LY_CHECK_GOTO(lyd_unlink_siblings(node), cleanup);
+    LY_LIST_FOR(node, iter) {
         iter->flags &= ~LYD_EXT;
     }
     if (ref_set->count) {
-        if ((ret = lyd_insert_sibling(sibling, ref_set->dnodes[0], &sibling))) {
+        if ((ret = lyd_insert_sibling(node, ref_set->dnodes[0], &node))) {
             goto cleanup;
         }
     }
 
     if (data_type == LYD_TYPE_DATA_YANG) {
         /* validate all the modules with data */
-        ret = lyd_validate_all(&sibling, NULL, val_opts | LYD_VALIDATE_PRESENT, diff ? &ext_diff : NULL);
+        ret = lyd_validate_all(&node, NULL, val_opts | LYD_VALIDATE_PRESENT, diff ? &ext_diff : NULL);
     } else {
         /* validate the operation */
         ret = lyd_validate_op(op_tree, dep_tree, data_type, diff ? &ext_diff : NULL);
     }
 
-    /* restore sibling tree */
+    /* restore node tree */
     for (i = 0; i < ref_set->count; ++i) {
-        if (ref_set->dnodes[i] == sibling) {
-            sibling = sibling->next;
+        if (ref_set->dnodes[i] == node) {
+            node = node->next;
         }
         lyd_free_tree(ref_set->dnodes[i]);
     }
-    LY_LIST_FOR(sibling, iter) {
+    LY_LIST_FOR(node, iter) {
         iter->flags |= LYD_EXT;
     }
-    lyd_insert_child(orig_parent, sibling);
+    lyd_insert_child(orig_parent, node);
 
     if (ret) {
         goto cleanup;
@@ -1286,7 +1286,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *sibling, c
         }
 
         /* create the parent and insert the diff */
-        if ((ret = lyd_dup_single(lyd_parent(sibling), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
+        if ((ret = lyd_dup_single(lyd_parent(node), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
             goto cleanup;
         }
         if ((ret = lyd_insert_child(diff_parent, ext_diff))) {

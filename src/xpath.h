@@ -478,6 +478,15 @@ LY_ERR lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint
         struct lyxp_expr **dup);
 
 /**
+ * @brief Get the first XPath document root child, use ext instance callbacks if needed.
+ *
+ * @param[in] cur_node Current (original context) node.
+ * @param[in] tree Full data tree
+ * @return First document root child.
+ */
+const struct lyd_node *lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd_node *tree);
+
+/**
  * @brief Look at the next token and check its kind.
  *
  * @param[in] ctx Context for logging, not logged if NULL.

@@ -76,11 +76,11 @@ struct ly_path_predicate {
  * simple predicates. Is used as a [sized array](@ref sizedarrays).
  */
 struct ly_path {
-    const struct lysc_node *node; /**< Schema node representing the path segment, first node has special meaning:
-                                       - is a top-level node - path is absolute,
-                                       - is inner node - path is relative */
-    const struct lysc_ext_instance *ext;    /**< Extension instance of @p node, if any */
-    struct ly_path_predicate *predicates;   /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+    const struct lysc_node *node; /**< Schema node representing the path segment. */
+    const struct lysc_ext_instance *ext;    /**< Extension instance of @p node, if any. */
+    struct ly_path_predicate *predicates;   /**< [Sized array](@ref sizedarrays) of the path segment's predicates. */
+    ly_bool doc_root;                       /**< Node is relative to the document root, set for the first node in an
+                                                 absolute path, unset for all nodes in a relative path. */
 };
 
 /**
@@ -217,7 +217,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!
  *
  * @param[in] path Path structure specifying the target.
- * @param[in] start Starting node for relative paths, can be any for absolute paths.
+ * @param[in] ctx_node Context node for relative paths, can be any for absolute paths.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in] with_opaq Whether to consider opaque nodes or not.
@@ -228,14 +228,14 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
         const struct lysc_ext_instance *top_ext, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!
  *
  * @param[in] path Path structure specifying the target.
- * @param[in] start Starting node for relative paths, can be any for absolute paths.
+ * @param[in] ctx_node Context node for relative paths, can be any for absolute paths.
  * @param[in] vars Array of defined variables to use in predicates, may be NULL.
  * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] match Found matching node, can be NULL, set to NULL if not found.
@@ -243,7 +243,7 @@ LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *s
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *start, const struct lyxp_var *vars,
+LY_ERR ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
         const struct lysc_ext_instance *top_ext, struct lyd_node **match);
 
 /**

@@ -216,17 +216,8 @@ test_parse(void **state)
 {
     struct lys_module *mod;
     struct lysc_ext_instance *e;
-    struct lyd_node *tree = NULL;
-    const char *yang;
-    const char *xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
-            "<x>"
-            "<x>val</x>"
-            "<y>val</y>"
-            "<z xmlns:a=\"urn:tests:extensions:structure:a\">/a:x/a:x</z>"
-            "<x2 xmlns=\"urn:tests:extensions:structure:b\">25</x2>"
-            "</x>"
-            "</struct>";
-    const char *json = "{\"a:struct\":{\"x\":{\"x\":\"val\",\"y\":\"val\",\"z\":\"/a:x/x\",\"b:x2\":25}}}";
+    struct lyd_node *tree = NULL, *node;
+    const char *yang, *xml, *json;
     char *lyb;
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
@@ -246,11 +237,21 @@ test_parse(void **state)
     /* get extension after recompilation */
     assert_non_null(e = mod->compiled->exts);
 
+    /* structure data, in all the formats */
+    xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<x>val</x>"
+            "<y>val</y>"
+            "<z xmlns:a=\"urn:tests:extensions:structure:a\">/a:x/a:x</z>"
+            "<x2 xmlns=\"urn:tests:extensions:structure:b\">25</x2>"
+            "</x>"
+            "</struct>";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
     assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
     lyd_free_all(tree);
 
+    json = "{\"a:struct\":{\"x\":{\"x\":\"val\",\"y\":\"val\",\"z\":\"/a:x/x\",\"b:x2\":25}}}";
     ly_in_memory(UTEST_IN, json);
     assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
@@ -262,6 +263,48 @@ test_parse(void **state)
     ly_in_memory(UTEST_IN, lyb);
     assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     free(lyb);
+    lyd_free_all(tree);
+
+    /* nested structure */
+    xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<struct>"
+            "<x>"
+            "<x>val</x>"
+            "<y>val</y>"
+            "<z xmlns:a=\"urn:tests:extensions:structure:a\">/a:x/a:y</z>"
+            "<x2 xmlns=\"urn:tests:extensions:structure:b\">25</x2>"
+            "</x>"
+            "</struct>"
+            "</x>"
+            "</struct>";
+    ly_in_memory(UTEST_IN, xml);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+    lyd_free_all(tree);
+
+    json = "{\"a:struct\":{\"x\":{\"struct\":{\"x\":{\"x\":\"val\",\"y\":\"val\",\"z\":\"/a:x/y\",\"b:x2\":25}}}}}";
+    ly_in_memory(UTEST_IN, json);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+
+    ly_out_new_memory(&lyb, 0, &UTEST_OUT);
+    assert_int_equal(LY_SUCCESS, lyd_print_tree(UTEST_OUT, tree, LYD_LYB, 0));
+    ly_out_free(current_utest_context->out, NULL, 0);
+    lyd_free_all(tree);
+    ly_in_memory(UTEST_IN, lyb);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    free(lyb);
+
+    /* invalid data */
+    node = lyd_child(lyd_child(lyd_child(lyd_child(tree))));
+    assert_string_equal(LYD_NAME(node->next), "y");
+    lyd_free_tree(node->next);
+    assert_string_equal(LYD_NAME(node), "x");
+    lyd_free_tree(node);
+    assert_int_equal(LY_ENOTFOUND, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    CHECK_LOG_CTX("Invalid instance-identifier \"/a:x/y\" value - required instance not found.",
+            "/a:struct/x/struct/x/z", 0);
     lyd_free_all(tree);
 }
 
