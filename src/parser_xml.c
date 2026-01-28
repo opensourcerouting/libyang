@@ -273,6 +273,13 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Check the current element is a valid list instance.
+ *
+ * @param[in] lydctx Parsed context.
+ * @param[in] list List schema node to use.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lydxml_check_list(struct lyd_xml_ctx *lydctx, const struct lysc_node *list)
 {
@@ -316,7 +323,7 @@ lydxml_check_list(struct lyd_xml_ctx *lydctx, const struct lysc_node *list)
         if (i < key_set.count) {
             /* validate the value */
             r = ly_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns,
-                    LYD_HINT_DATA, lydctx->ext);
+                    LYD_HINT_DATA);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -424,8 +431,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
     if ((*snode)->nodetype & LYD_NODE_TERM) {
         /* value may not be valid in which case we parse it as an opaque node */
         prev_lo = ly_temp_log_options(&temp_lo);
-        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns,
-                LYD_HINT_DATA, lydctx->ext);
+        r = ly_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len * 8, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA);
         ly_temp_log_options(prev_lo);
         if (r) {
             LOGVRB("Parsing opaque term node \"%s\" with invalid value \"%.*s\".", (*snode)->name, (int)xmlctx->value_len,
@@ -1232,9 +1238,9 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
@@ -1254,7 +1260,6 @@ lyd_parse_xml(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, str
     lydctx->val_opts = val_opts;
     lydctx->int_opts = int_opts;
     lydctx->free = lyd_xml_ctx_free;
-    lydctx->ext = ext;
 
     /* find the operation node if it exists already */
     LY_CHECK_GOTO(rc = lyd_parser_find_operation(parent, int_opts, &lydctx->op_node), cleanup);
@@ -1476,9 +1481,9 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type,
-        struct lyd_node **envp, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
+lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, enum lyd_type data_type, struct lyd_node **envp, struct ly_set *parsed,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
@@ -1498,7 +1503,6 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, const struct lysc_ext_instance *
     lydctx->parse_opts = parse_opts;
     lydctx->val_opts = val_opts;
     lydctx->free = lyd_xml_ctx_free;
-    lydctx->ext = ext;
 
     switch (data_type) {
     case LYD_TYPE_RPC_NETCONF:

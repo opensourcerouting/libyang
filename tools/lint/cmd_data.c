@@ -70,9 +70,7 @@ cmd_data_help_type(void)
             "                        element without <eventTime>).\n"
             "        nc-notif      - Similar to 'notif' but expect and check also the NETCONF\n"
             "                        envelope <notification> with element <eventTime> and its\n"
-            "                        sibling as the actual notification.\n"
-            "        ext           - Validates extension data based on loaded YANG modules.\n"
-            "                        Need to be used with -k parameter.\n");
+            "                        sibling as the actual notification.\n");
 }
 
 static void
@@ -144,9 +142,6 @@ cmd_data_help(void)
             "  -R FILE, --reply-rpc=FILE\n"
             "                Provide source RPC for parsing of the 'nc-reply' TYPE. The FILE\n"
             "                is supposed to contain the source 'nc-rpc' operation of the reply.\n"
-            "  -k, --ext-inst <name>\n"
-            "                Name of extension instance in format:\n"
-            "                <module-name>:<extension-name>:<argument>\n"
             "  -A, --anydata-strict\n"
             "                Enable strict parsing of anydata content\n");
     cmd_data_help_format();
@@ -176,7 +171,6 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
         {"anydata-strict",  no_argument,       NULL, 'A'},
         {"type",            required_argument, NULL, 't'},
         {"xpath",           required_argument, NULL, 'x'},
-        {"ext-inst",        required_argument, NULL, 'k'},
         {NULL, 0, NULL, 0}
     };
 
@@ -270,12 +264,6 @@ cmd_data_opt(struct yl_opt *yo, const char *cmdline, char ***posv, int *posc)
                 return 1;
             }
             break;
-        case 'k': /* --ext-inst */
-            if (parse_ext_string(optarg, yo)) {
-                YLMSG_E("Invalid name of extension instance.");
-                return 1;
-            }
-            break;
 
         case 'h': /* --help */
             cmd_data_help();
@@ -328,8 +316,8 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         return 1;
     }
 
-    if (yo->data_operational.path && (!yo->data_type && !yo->data_ext)) {
-        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification/Extensions input data types.");
+    if (yo->data_operational.path && !yo->data_type) {
+        YLMSG_W("Operational datastore takes effect only with RPCs/Actions/Replies/Notification input data types.");
         yo->data_operational.path = NULL;
     }
 
@@ -365,23 +353,6 @@ cmd_data_dep(struct yl_opt *yo, int posc)
         if (get_input(yo->reply_rpc.path, NULL, &yo->reply_rpc.format, &yo->reply_rpc.in)) {
             return -1;
         }
-    }
-
-    if (yo->data_ext && !yo->mod_name) {
-        if (yo->interactive) {
-            YLMSG_E("When using '-i' the '-k' parameter need to be also set.");
-        } else {
-            YLMSG_E("When using '-t ext' the '-k' parameter need to be also set.");
-        }
-        return 1;
-    }
-    if (!yo->data_ext && yo->mod_name) {
-        if (yo->interactive) {
-            YLMSG_E("When using '-k' parameter the '-i' need to be also set.");
-        } else {
-            YLMSG_E("When using '-k' parameter the '-t ext' need to be also set.");
-        }
-        return 1;
     }
 
     return 0;
@@ -455,35 +426,6 @@ evaluate_xpath(const struct lyd_node *tree, const char *xpath)
     return 0;
 }
 
-int
-parse_ext_string(const char *extension_instance, struct yl_opt *yo)
-{
-    const char *start = extension_instance;
-    char *end;
-
-    end = strchr(start, ':');
-    if (!end) {
-        return -1;
-    }
-    yo->mod_name = strndup(start, end - start);
-    start = end + 1;
-
-    end = strchr(start, ':');
-    if (!end) {
-        return -1;
-    }
-    yo->name = strndup(start, end - start);
-    start = end + 1;
-
-    if (*start == '\0') {
-        return -1;
-    }
-
-    yo->argument = strdup(start);
-
-    return 0;
-}
-
 /**
  * @brief Checking that a parent data node exists in the datastore for the nested-notification and action.
  *
@@ -536,42 +478,6 @@ cleanup:
     free(path);
 
     return ret;
-}
-
-/**
- * @brief Iterate trough modules to find extension instance
- *
- * @param[in] ctx libyang context with schema.
- * @param[in] yo context for yanglint.
- * @return 0 on success.
- */
-static int
-find_extension(struct ly_ctx *ctx, struct yl_opt *yo)
-{
-    struct lys_module *module;
-    uint32_t idx = 0;
-    LY_ARRAY_COUNT_TYPE i;
-
-    while ((module = ly_ctx_get_module_iter(ctx, &idx))) {
-        if (!strcmp(module->name, yo->mod_name)) {
-            break;
-        }
-    }
-
-    if (!module) {
-        YLMSG_E("Cannot find the \"%s\" name in yang modules.", yo->name);
-        return 1;
-    }
-
-    /* get the extension from module that user is looking for */
-    LY_ARRAY_FOR(module->compiled->exts, i) {
-        if (!strcmp(module->compiled->exts[i].def->name, yo->name) &&
-                !strcmp(module->compiled->exts[i].argument, yo->argument)) {
-            yo->ext = &module->compiled->exts[i];
-            return 0;
-        }
-    }
-    return 1;
 }
 
 /**
@@ -643,44 +549,6 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
     return ret;
 }
 
-/**
- * @brief Parses and validates data for a specific YANG extension instance.
- *
- * @param[in] ctx libyang context with schema.
- * @param[in] yo Context for yanglint.
- * @param[in] input_f Data input file.
- * @param[in] oper_tree Operational data tree.
- * @param[out] tree Extension instance data tree.
- * @return LY_ERR value.
- */
-static LY_ERR
-parse_ext_inst_data(struct ly_ctx *ctx, struct yl_opt *yo, struct cmdline_file *input_f,
-        struct lyd_node *oper_tree, struct lyd_node **tree)
-{
-    LY_ERR ret = LY_SUCCESS;
-
-    if (find_extension(ctx, yo)) {
-        YLMSG_E("Extension '%s:%s:%s' not found in module.", yo->mod_name, yo->name, yo->argument);
-        return LY_ENOTFOUND;
-    }
-
-    if ((ret = lyd_parse_ext_data(yo->ext, NULL, input_f->in, input_f->format, LYD_PARSE_ONLY, 0, tree))) {
-        YLMSG_E("Parsing of extension data failed.")
-        return ret;
-    }
-
-    if (!(*tree)) {
-        YLMSG_E("Nothing to validate in the extension input data.");
-        return LY_EDENIED;
-    }
-
-    /* validate extension instance data */
-    ret = lyd_validate_ext(tree, yo->ext, yo->data_validate_options, NULL);
-
-    yo->data_ext = 0;
-    return ret;
-}
-
 int
 cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
 {
@@ -702,13 +570,8 @@ cmd_data_process(struct ly_ctx *ctx, struct yl_opt *yo)
     for (u = 0; u < yo->data_inputs.count; ++u) {
         struct cmdline_file *input_f = (struct cmdline_file *)yo->data_inputs.objs[u];
 
-        if (yo->data_ext) {
-            ret = parse_ext_inst_data(ctx, yo, input_f, oper_tree, &tree);
-        } else {
-            ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options,
-                    &tree, &op, &yo->reply_rpc);
-        }
-
+        ret = parse_input_by_type(ctx, yo->data_type, input_f, yo->data_parse_options, yo->data_validate_options,
+                &tree, &op, &yo->reply_rpc);
         if (ret) {
             YLMSG_E("Failed to parse input data file \"%s\".", input_f->path);
             goto cleanup;

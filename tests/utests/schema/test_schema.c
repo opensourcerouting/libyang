@@ -2126,9 +2126,7 @@ test_compiled_print(void **state)
     void *mem, *mem_end;
     struct lyd_node *tree = NULL;
     struct ly_ctx *printed_ctx = NULL, *printed_ctx2 = NULL;
-    struct lys_module *mod = NULL;
     const char *yang, *xml;
-    struct lysc_ext_instance *ext;
     const char *features[] = {"feat", NULL};
 
     /* recreate the context, using builtin/static plugins only */
@@ -2186,7 +2184,7 @@ test_compiled_print(void **state)
     yang = "module m3 {yang-version 1.1; namespace urn:m3; prefix m3;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct { container a { leaf b { type string;}}}}";
-    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
 
     /* load a structure augment extension module */
     yang = "module m4 {yang-version 1.1; namespace urn:m4; prefix m4;"
@@ -2216,10 +2214,6 @@ test_compiled_print(void **state)
 
     /* try to create another printed ctx from the same address, it should fail */
     assert_int_equal(LY_EEXIST, ly_ctx_new_printed(mem, &printed_ctx2));
-
-    /* get the structure extension from the printed context */
-    mod = ly_ctx_get_module_implemented(printed_ctx, "m3");
-    assert_non_null(ext = &mod->compiled->exts[0]);
 
     /* try to parse data with the printed ctx */
     xml = "<root xmlns=\"urn:m1\">\n"
@@ -2258,7 +2252,7 @@ test_compiled_print(void **state)
             "  </a>\n"
             "</struct>\n";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
-    assert_int_equal(LY_SUCCESS, lyd_parse_ext_data(ext, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
 
     CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, 0);
 

@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief API for (user) types plugins
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ struct lyd_value;
 struct lyd_value_xpath10;
 struct lys_module;
 struct lys_glob_unres;
-struct lysc_ext_instance;
 struct lysc_ident;
 struct lysc_node;
 struct lysc_pattern;
@@ -533,7 +532,6 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ly_resolve_prefix()).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node Schema context node of @p value, may be NULL for metadata.
- * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[out] storage Storage for the value in the type's specific encoding. Except for _canonical_, all the members
  * should be filled by the plugin (if it fills them at all).
  * @param[in,out] unres Global unres structure for newly implemented modules.
@@ -546,8 +544,7 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
         const void *value, uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
-        struct lys_glob_unres *unres, struct ly_err_item **err);
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Callback to validate the stored value local semantic constraints of the type.
@@ -577,7 +574,6 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_value_clb)(const struct ly
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
  * @param[in] ctx_node Value data context node for validation.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
- * @param[in] top_ext Extension instance containing the definition of the data being created.
  * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  * error message is prepared instead. The error structure can be created by ::ly_err_new().
@@ -585,8 +581,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_value_clb)(const struct ly
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_tree_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
-        struct lyd_value *storage, struct ly_err_item **err);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
@@ -761,8 +756,7 @@ LIBYANG_API_DECL void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struc
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
         uint32_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext, struct lyd_value *storage,
-        struct lys_glob_unres *unres, struct ly_err_item **err);
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
  * @brief Implementation of ::lyplg_type_validate_value_clb for the string type.
@@ -881,14 +875,12 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(const struct ly_ctx *ctx, s
  * @param[in] node Context node.
  * @param[in] value Target value.
  * @param[in] tree Full data tree to search in.
- * @param[in] top_ext Extension instance whose XPath context we are evaluating in.
  * @param[out] targets Pointer to set of target nodes, optional.
  * @param[out] errmsg Error message in case of error.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
-        struct lyd_value *value, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext,
-        struct ly_set **targets, char **errmsg);
+        struct lyd_value *value, const struct lyd_node *tree, struct ly_set **targets, char **errmsg);
 
 /**
  * @brief Learn the position of the highest set bit in a number. Represents also the least amount of bits

@@ -509,8 +509,7 @@ ly_err_print_build_path(const struct ly_ctx *ctx, const struct lyd_node *node, c
 LY_ERR
 lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
         uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, const struct lysc_ext_instance *top_ext,
-        ly_bool *incomplete)
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete)
 {
     LY_ERR r;
     struct ly_err_item *err = NULL;
@@ -535,7 +534,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
     }
 
     r = LYSC_GET_TYPE_PLG(type->plugin_ref)->store(ctx, type, value, value_size_bits, options, format, prefix_data,
-            hints, ctx_node, top_ext, val, NULL, &err);
+            hints, ctx_node, val, NULL, &err);
     if (dynamic) {
         *dynamic = 0;
     }
@@ -559,7 +558,7 @@ lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct ly
 
 LY_ERR
 lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lysc_ext_instance *top_ext)
+        const struct lyd_node *ctx_node, const struct lyd_node *tree)
 {
     LY_ERR ret;
     struct ly_err_item *err = NULL;
@@ -568,7 +567,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
     assert(type_plg && type_plg->validate_tree);
 
-    ret = type_plg->validate_tree(ctx, type, ctx_node, tree, top_ext, val, &err);
+    ret = type_plg->validate_tree(ctx, type, ctx_node, tree, val, &err);
     if (ret) {
         if (err) {
             ly_err_print_build_path(ctx, ctx_node, NULL, err);
@@ -585,7 +584,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 
 LY_ERR
 ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value, uint32_t value_size_bits,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_ext_instance *top_ext)
+        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_err_item *err = NULL;
@@ -601,7 +600,7 @@ ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const 
 
     type = ((struct lysc_node_leaf *)node)->type;
     rc = LYSC_GET_TYPE_PLG(type->plugin_ref)->store(ctx ? ctx : node->module->ctx, type, value,
-            value_size_bits, 0, format, prefix_data, hints, node, top_ext, &storage, NULL, &err);
+            value_size_bits, 0, format, prefix_data, hints, node, &storage, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success */
         rc = LY_SUCCESS;
@@ -625,7 +624,7 @@ lyd_value_validate(const struct lysc_node *schema, const char *value, uint32_t v
 {
     LY_CHECK_ARG_RET(NULL, schema, !value_len || value, LY_EINVAL);
 
-    return lyd_value_validate3(schema, value, value_len, LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node, NULL,
+    return lyd_value_validate3(schema, value, value_len, LY_VALUE_JSON, NULL, LYD_HINT_DATA, ctx_node,
             1, realtype, canonical);
 }
 
@@ -636,13 +635,13 @@ lyd_value_validate_dflt(const struct lysc_node *schema, const char *value, struc
     LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
 
     return lyd_value_validate3(schema, value, value ? strlen(value) : 0, LY_VALUE_SCHEMA_RESOLVED, prefixes,
-            LYD_HINT_SCHEMA, ctx_node, NULL, 1, realtype, canonical);
+            LYD_HINT_SCHEMA, ctx_node, 1, realtype, canonical);
 }
 
 LY_ERR
 lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t value_len, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node, const struct lysc_ext_instance *top_ext,
-        int log, const struct lysc_type **realtype, const char **canonical)
+        void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node, int log, const struct lysc_type **realtype,
+        const char **canonical)
 {
     LY_ERR rc;
     const struct ly_ctx *ctx;
@@ -661,14 +660,14 @@ lyd_value_validate3(const struct lysc_node *schema, const char *value, size_t va
     type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
 
     /* store */
-    rc = type_plg->store(ctx, type, value, value_len * 8, 0, format, prefix_data, hints, schema, top_ext, &val, NULL, &err);
+    rc = type_plg->store(ctx, type, value, value_len * 8, 0, format, prefix_data, hints, schema, &val, NULL, &err);
     if (!rc || (rc == LY_EINCOMPLETE)) {
         stored = 1;
     }
 
     if (ctx_node && (rc == LY_EINCOMPLETE)) {
         /* resolve */
-        rc = type_plg->validate_tree(ctx, type, ctx_node, ctx_node, top_ext, &val, &err);
+        rc = type_plg->validate_tree(ctx, type, ctx_node, ctx_node, &val, &err);
     }
 
     if (rc && (rc != LY_EINCOMPLETE) && err) {
@@ -720,7 +719,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, uint32_t 
     /* store the value */
     LOG_LOCSET(NULL, &node->node);
     ret = lyd_value_store(ctx, &val, type, value, value_len * 8, 0, 0, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
-            node->schema, NULL, NULL);
+            node->schema, NULL);
     LOG_LOCBACK(0, 1);
     LY_CHECK_RET(ret);
 
@@ -864,7 +863,7 @@ lyd_parse_opaq_list_error(const struct lyd_node *node, const struct lysc_node *s
         /* check value */
         opaq_k = (struct lyd_node_opaq *)child;
         ret = ly_value_validate(LYD_CTX(node), key, opaq_k->value, strlen(opaq_k->value) * 8, opaq_k->format,
-                opaq_k->val_prefix_data, opaq_k->hints, NULL);
+                opaq_k->val_prefix_data, opaq_k->hints);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
@@ -971,7 +970,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     if (snode->nodetype & LYD_NODE_TERM) {
         /* leaf / leaf-list */
         rc = ly_value_validate(ctx, snode, opaq->value, strlen(opaq->value) * 8, opaq->format, opaq->val_prefix_data,
-                opaq->hints, NULL);
+                opaq->hints);
         LY_CHECK_GOTO(rc, cleanup);
     } else if (snode->nodetype == LYS_LIST) {
         /* list */

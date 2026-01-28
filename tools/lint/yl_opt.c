@@ -86,11 +86,6 @@ yl_opt_erase(struct yl_opt *yo)
     /* context */
     free(yo->searchpaths);
 
-    /*extension instance string*/
-    free(yo->mod_name);
-    free(yo->name);
-    free(yo->argument);
-
     /* --reply-rpc */
     ly_in_free(yo->reply_rpc.in, 1);
 
@@ -201,8 +196,6 @@ yl_opt_update_data_type(const char *arg, struct yl_opt *yo)
     } else if (!strcasecmp(arg, "data")) {
         /* default option but uses a specific validation flag */
         yo->data_validate_options |= LYD_VALIDATE_OPERATIONAL;
-    } else if (!strcasecmp(arg, "ext")) {
-        yo->data_ext = 1;
     } else {
         return 1;
     }

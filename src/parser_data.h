@@ -59,11 +59,8 @@ struct ly_in;
  *     example the *:operational* datastore is not necessarily valid and results of the NETCONF's \<get\> or \<get-config\>
  *     oprations used with filters will be incomplete (and thus invalid). This can be allowed using ::LYD_PARSE_ONLY,
  *     the ::LYD_PARSE_NO_STATE should be used for the data returned by \<get-config\> operation.
- * - ::lyd_parse_ext_data() is used for parsing configuration data trees defined inside extension instances, such as
- *   instances of yang-data extension specified in [RFC 8040](http://tools.ietf.org/html/rfc8040).
  * - ::lyd_parse_op() is used for parsing RPCs/actions, replies, and notifications. Even NETCONF rpc, rpc-reply, and
  *   notification messages are supported.
- * - ::lyd_parse_ext_op() is used for parsing RPCs/actions, replies, and notifications defined inside extension instances.
  *
  * Further information regarding the processing input instance data can be found on the following pages.
  * - @subpage howtoDataValidation
@@ -75,9 +72,7 @@ struct ly_in;
  * - ::lyd_parse_data_mem()
  * - ::lyd_parse_data_fd()
  * - ::lyd_parse_data_path()
- * - ::lyd_parse_ext_data()
  * - ::lyd_parse_op()
- * - ::lyd_parse_ext_op()
  */
 
 /**
@@ -309,28 +304,6 @@ LIBYANG_API_DECL LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char
         uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
 
 /**
- * @brief Parse (and validate) data from the input handler as an extension data tree following the schema tree of the given
- * extension instance.
- *
- * Note that the data being parsed are limited only to the schema tree specified by the given extension, it does not allow
- * to mix them with the standard data from any module.
- *
- * Directly applicable to data defined as [yang-data](@ref howtoDataYangdata).
- *
- * @param[in] ext Extension instance providing the specific schema tree to match with the data being parsed.
- * @param[in] parent Optional parent to connect the parsed nodes to.
- * @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).
- * @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.
- * @param[in] parse_options Options for parser, see @ref dataparseroptions.
- * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
- * @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, set to NULL.
- * @return LY_SUCCESS in case of successful parsing (and validation).
- * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
- */
-LIBYANG_API_DECL LY_ERR lyd_parse_ext_data(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in,
-        LYD_FORMAT format, uint32_t parse_options, uint32_t validate_options, struct lyd_node **tree);
-
-/**
  * @brief Parse data from the input handler as a bare JSON value and connect it to the node parsed from the path.
  *
  * @param[in] ctx Context to connect with the tree being built here.
@@ -459,51 +432,6 @@ enum lyd_type {
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);
-
-/**
- * @brief Parse extension data into an operation data tree following only the specification from the given extension instance.
- *
- * Directly applicable to data defined as [yang-data](@ref howtoDataYangdata).
- *
- * At least one of @p parent, @p tree, or @p op must always be set.
- *
- * Specific @p data_type values have different parameter meaning as follows:
- * - ::LYD_TYPE_RPC_NETCONF:
- *   - @p parent - must be NULL, the whole RPC is expected;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be provided, the RPC/action data tree itself will be returned here, pointing to the operation;
- *
- * - ::LYD_TYPE_NOTIF_NETCONF:
- *   - @p parent - must be NULL, the whole notification is expected;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
- *
- * - ::LYD_TYPE_REPLY_NETCONF:
- *   - @p parent - must be set, pointing to the invoked RPC operation (RPC or action) node;
- *   - @p format - must be ::LYD_XML, NETCONF supports only this format;
- *   - @p tree - must be provided, all the NETCONF-specific XML envelopes will be returned here as
- *               a separate opaque data tree, even if the function fails, this may be returned;
- *   - @p op - must be NULL, the reply is appended to the RPC;
- *   Note that there are 3 kinds of NETCONF replies - ok, error, and data. Only data reply appends any nodes to the RPC.
- *
- * @param[in] ext Extension instance providing the specific schema tree to match with the data being parsed.
- * @param[in] parent Optional parent to connect the parsed nodes to.
- * @param[in] in Input handle to read the input from.
- * @param[in] format Expected format of the data in @p in.
- * @param[in] data_type Expected operation to parse (@ref datatype).
- * @param[in] parse_options Options for parser are set based on @p data_type but either of ::LYD_PARSE_STRICT and
- * ::LYD_PARSE_OPAQ can be added, see @ref dataparseroptions.
- * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
- * @param[out] op Optional pointer to the operation (action/RPC) node.
- * @return LY_ERR value.
- * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
- */
-LIBYANG_API_DECL LY_ERR lyd_parse_ext_op(const struct lysc_ext_instance *ext, struct lyd_node *parent, struct ly_in *in,
-        LYD_FORMAT format, enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @brief Validate a data subtree of an extension instance, which is assumed to be a separate data tree independent of

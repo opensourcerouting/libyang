@@ -1174,7 +1174,7 @@ lyds_create_metadata(struct lyd_node *leader, struct lyd_meta **meta_p)
 
     /* create new metadata, its rbt is NULL */
     ret = lyd_create_meta(leader, &meta, modyang, "lyds_tree", 9, NULL, 0, 0, 1, NULL, LY_VALUE_CANON, NULL,
-            LYD_HINT_DATA, NULL, NULL, 0, NULL);
+            LYD_HINT_DATA, NULL, 0, NULL);
     LY_CHECK_RET(ret);
 
     if (meta_p) {

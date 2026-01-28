@@ -2862,7 +2862,7 @@ lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_node, 
     const char *canon;
 
     r = lyd_value_validate3(schema, val->str, strlen(val->str), LY_VALUE_SCHEMA_RESOLVED, val->prefixes,
-            LYD_HINT_SCHEMA, ctx_node, NULL, 1, NULL, &canon);
+            LYD_HINT_SCHEMA, ctx_node, 1, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         return -1;
     }

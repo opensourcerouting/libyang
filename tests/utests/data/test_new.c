@@ -528,7 +528,6 @@ test_path_ext(void **state)
 {
     LY_ERR ret;
     struct lyd_node *root, *node;
-    struct lys_module *mod;
     const char *mod_str = "module ext {yang-version 1.1; namespace urn:tests:extensions:ext; prefix e;"
             "import ietf-restconf {revision-date 2017-01-26; prefix rc;}"
             "rc:yang-data template {container c {leaf x {type string;} leaf y {type string;} leaf z {type string;}}}}";
@@ -536,10 +535,10 @@ test_path_ext(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
     assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-restconf", "2017-01-26", NULL));
 
-    UTEST_ADD_MODULE(mod_str, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(mod_str, LYS_IN_YANG, NULL, NULL);
 
     /* create x */
-    ret = lyd_new_ext_path(NULL, &mod->compiled->exts[0], "/ext:c/x", "xxx", 0, &root);
+    ret = lyd_new_path(NULL, UTEST_LYCTX, "/ext:c/x", "xxx", 0, &root);
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "c");
@@ -548,7 +547,7 @@ test_path_ext(void **state)
     assert_string_equal("xxx", lyd_get_value(node));
 
     /* append y */
-    ret = lyd_new_ext_path(root, &mod->compiled->exts[0], "/ext:c/y", "yyy", 0, &node);
+    ret = lyd_new_path(root, NULL, "/ext:c/y", "yyy", 0, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(node->schema->name, "y");
     assert_string_equal("yyy", lyd_get_value(node));

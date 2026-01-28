@@ -1749,9 +1749,9 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 }
 
 LY_ERR
-lyd_parse_lyb(const struct ly_ctx *ctx, const struct lysc_ext_instance *UNUSED(ext), struct lyd_node *parent,
-        struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p)
+lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
+        struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_lyb_ctx *lybctx = NULL;

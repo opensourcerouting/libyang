@@ -656,8 +656,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
                 /* do not store the canonical value, only validate */
                 LOG_LOCSET(key, NULL);
-                r = lyd_value_validate3(key, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, NULL, 1, NULL,
-                        &p->value);
+                r = lyd_value_validate3(key, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, 1, NULL, &p->value);
                 LOG_LOCBACK(1, 0);
                 LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
@@ -715,8 +714,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
         /* do not store the value, only validate */
         LOG_LOCSET(ctx_node, NULL);
-        r = lyd_value_validate3(ctx_node, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, NULL, 1, NULL,
-                &p->value);
+        r = lyd_value_validate3(ctx_node, val, val_len, format, prefix_data, LYD_HINT_DATA, NULL, 1, NULL, &p->value);
         LOG_LOCBACK(1, 0);
         LY_CHECK_ERR_GOTO(r && (r != LY_EINCOMPLETE), rc = r, cleanup);
 
@@ -1310,7 +1308,7 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
-        const struct lysc_ext_instance *top_ext, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
+        ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
@@ -1345,14 +1343,14 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
                 /* we will use hashes to find one leaf-list instance */
                 LY_CHECK_RET(lyd_create_term(path[u].node, path[u].predicates[0].value,
                         strlen(path[u].predicates[0].value) * 8, 1, 1, NULL, LY_VALUE_CANON, NULL, LYD_HINT_DATA,
-                        top_ext, NULL, &target));
+                        NULL, &target));
                 lyd_find_sibling_first(ctx_node, target, &node);
                 lyd_free_tree(target);
                 break;
             case LY_PATH_PREDTYPE_LIST_VAR:
             case LY_PATH_PREDTYPE_LIST:
                 /* we will use hashes to find one list instance */
-                LY_CHECK_RET(lyd_create_list(path[u].node, path[u].predicates, vars, 1, top_ext, &target));
+                LY_CHECK_RET(lyd_create_list(path[u].node, path[u].predicates, vars, 1, &target));
                 lyd_find_sibling_first(ctx_node, target, &node);
                 lyd_free_tree(target);
                 break;
@@ -1413,12 +1411,12 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
 
 LY_ERR
 ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
-        const struct lysc_ext_instance *top_ext, struct lyd_node **match)
+        struct lyd_node **match)
 {
     LY_ERR ret;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, ctx_node, vars, top_ext, 0, NULL, &m);
+    ret = ly_path_eval_partial(path, ctx_node, vars, 0, NULL, &m);
 
     if (ret == LY_SUCCESS) {
         /* last node was found */

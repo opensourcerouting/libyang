@@ -171,17 +171,7 @@ struct rb_node;
  * connection to RESTCONF protocol. The extension allows to define a separated YANG trees usable separately from any
  * datastore.
  *
- * libyang implements support for yang-data internally as an [extension plugin](@ref howtoPluginsExtensions). To ease the
- * use of yang-data with libyang, there are several generic functions, which are usable for yang-data:
- *
- * - ::lyd_parse_ext_data()
- * - ::lyd_parse_ext_op()
- *
- * - ::lyd_new_ext_inner()
- * - ::lyd_new_ext_list()
- * - ::lyd_new_ext_term()
- * - ::lyd_new_ext_any()
- * - ::lyd_new_ext_path()
+ * libyang implements support for yang-data internally as an [extension plugin](@ref howtoPluginsExtensions).
  *
  * @section howtoDataMountpoint mount-point Support
  *
@@ -230,12 +220,6 @@ struct rb_node;
  * about the modified data, and is generally simpler to use. Actually the third way is duplicating the existing data using
  * ::lyd_dup_single(), ::lyd_dup_siblings() and ::lyd_dup_meta_single().
  *
- * Note, that in case the node is defined in an extension instance, the functions mentioned above do not work until you
- * provide parent where the new node is supposed to be inserted. The reason is that all the functions searches for the
- * top-level nodes directly inside modules. To create a top-level node defined in an extension instance, use
- * ::lyd_new_ext_inner(), ::lyd_new_ext_term(), ::lyd_new_ext_any(), ::lyd_new_ext_list() and ::lyd_new_ext_path()
- * functions.
- *
  * The [metadata](@ref howtoDataMetadata) (and attributes in opaq nodes) can be created with ::lyd_new_meta()
  * and ::lyd_new_attr().
  *
@@ -280,12 +264,6 @@ struct rb_node;
  * - ::lyd_new_meta()
  * - ::lyd_new_path()
  * - ::lyd_new_path2()
- *
- * - ::lyd_new_ext_inner()
- * - ::lyd_new_ext_term()
- * - ::lyd_new_ext_list()
- * - ::lyd_new_ext_any()
- * - ::lyd_new_ext_path()
  *
  * - ::lyd_dup_single()
  * - ::lyd_dup_siblings()
@@ -621,7 +599,6 @@ struct lyd_value_union {
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ly_resolve_prefix()) */
     const struct lysc_node *ctx_node;           /**< Context schema node. */
-    const struct lysc_ext_instance *top_ext;    /**< Extension instance whose XPath context we are evaluating in. */
 };
 
 /**
@@ -1238,8 +1215,6 @@ LIBYANG_API_DECL ly_bool lyd_meta_is_internal(const struct lyd_meta *meta);
  *
  * To create list, use ::lyd_new_list() or ::lyd_new_list2().
  *
- * To create a top-level inner node defined in an extension instance, use ::lyd_new_ext_inner().
- *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
@@ -1250,21 +1225,6 @@ LIBYANG_API_DECL ly_bool lyd_meta_is_internal(const struct lyd_meta *meta);
  */
 LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name,
         ly_bool output, struct lyd_node **node);
-
-/**
- * @brief Create a new top-level inner node defined in the given extension instance.
- *
- * To create list, use ::lyd_new_list() or ::lyd_new_list2().
- *
- * To create an inner node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
- * node of a standard module's tree, use ::lyd_new_inner().
- *
- * @param[in] ext Extension instance where the inner node being created is defined.
- * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
- * @param[out] node The created node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_inner(const struct lysc_ext_instance *ext, const char *name, struct lyd_node **node);
 
 /**
  * @ingroup datatree
@@ -1326,24 +1286,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_m
         uint32_t options, struct lyd_node **node, ...);
 
 /**
- * @brief Create a new top-level list node defined in the given extension instance.
- *
- * To create a list node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
- * list node of a standard module's tree, use ::lyd_new_list() or ::lyd_new_list2().
- *
- * @param[in] ext Extension instance where the list node being created is defined.
- * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
- * @param[in] options Bitmask of options, see @ref newvaloptions.
- * @param[out] node The created node.
- * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
- * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for key-less lists.
- * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its size in bits (uint32_t).
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_list(const struct lysc_ext_instance *ext, const char *name, uint32_t options,
-        struct lyd_node **node, ...);
-
-/**
  * @brief Create a new list node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
@@ -1378,7 +1320,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_
 /**
  * @brief Create a new term node in the data tree.
  *
- * To create a top-level term node defined in an extension instance, use ::lyd_new_ext_term().
  * To create a term node based on binary value, use ::lyd_new_term_bin().
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
@@ -1408,26 +1349,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct l
         const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **node);
 
 /**
- * @brief Create a new top-level term node defined in the given extension instance.
- *
- * To create a term node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
- * node of a standard module's tree, use ::lyd_new_term().
- *
- * @param[in] ext Extension instance where the term node being created is defined.
- * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
- * @param[in] value Value of the node in JSON format unless changed by @p options.
- * @param[in] value_size_bits Size of @p value in bits.
- * @param[in] options Bitmask of options, see @ref newvaloptions.
- * @param[out] node The created node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, const char *name, const void *value,
-        uint32_t value_size_bits, uint32_t options, struct lyd_node **node);
-
-/**
  * @brief Create a new any node in the data tree.
- *
- * To create a top-level any node defined in an extension instance, use ::lyd_new_ext_any().
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -1440,23 +1362,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_ext_term(const struct lysc_ext_instance *ext, co
  */
 LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const void *value, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
-
-/**
- * @brief Create a new top-level any node defined in the given extension instance.
- *
- * To create an any node with parent (no matter if defined inside extension instance or a standard tree) or a top-level
- * any node of a standard module's tree, use ::lyd_new_any().
- *
- * @param[in] ext Extension instance where the any node being created is defined.
- * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
- * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] value_type Type of the provided value in @p value.
- * @param[in] options Bitmask of options, see @ref newvaloptions.
- * @param[out] node The created node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_any(const struct lysc_ext_instance *ext, const char *name, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new metadata.
@@ -1555,8 +1460,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
  * @brief Create a new node in the data tree based on a path. If creating anyxml/anydata nodes, ::lyd_new_path2
  * should be used instead, this function expects the value as string.
  *
- * If creating data nodes defined inside an extension instance, use ::lyd_new_ext_path().
- *
  * If @p path points to a list key, the key value from the predicate is used and @p value is ignored.
  * Also, if a leaf-list is being created and both a predicate is defined in @p path
  * and @p value is set, the predicate is preferred.
@@ -1609,31 +1512,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
         uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
-
-/**
- * @brief Create a new node defined in the given extension instance. In case of anyxml/anydata nodes, this function expects
- * the @p value as string.
- *
- * If creating data nodes defined in a module's standard tree, use ::lyd_new_path() or ::lyd_new_path2().
- *
- * Details are mentioned in ::lyd_new_path().
- *
- * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
- * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
- * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
- * @param[in] ext Extension instance where the node being created is defined.
- * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list. For other node types, it should be NULL.
- * @param[in] options Bitmask of options, see @ref newvaloptions.
- * @param[out] node Optional first created node.
- * @return LY_SUCCESS on success.
- * @return LY_EEXIST if the final node to create exists (unless ::LYD_NEW_PATH_UPDATE is used).
- * @return LY_EINVAL on invalid arguments including invalid @p path.
- * @return LY_EVALID on invalid @p value.
- * @return LY_ERR on other errors.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_ext_path(struct lyd_node *parent, const struct lysc_ext_instance *ext, const char *path,
-        const char *value, uint32_t options, struct lyd_node **node);
 
 /**
  * @ingroup datatree
@@ -2377,7 +2255,7 @@ LIBYANG_API_DECL LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, st
  */
 typedef enum {
     LYD_PATH_STD, /**< Generic data path used for logging, node searching (::lyd_find_xpath(), ::lys_find_path()) as well as
-                       creating new nodes (::lyd_new_path(), ::lyd_new_path2(), ::lyd_new_ext_path()). */
+                       creating new nodes (::lyd_new_path(), ::lyd_new_path2()). */
     LYD_PATH_STD_NO_LAST_PRED  /**< Similar to ::LYD_PATH_STD except there is never a predicate on the last node. While it
                                     can be used to search for nodes, do not use it to create new data nodes (lists). */
 } LYD_PATH_TYPE;

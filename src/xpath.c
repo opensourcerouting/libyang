@@ -900,7 +900,6 @@ set_init(struct lyxp_set *new, const struct lyxp_set *set)
     new->format = set->format;
     new->prefix_data = set->prefix_data;
     new->vars = set->vars;
-    new->ext = set->ext;
 }
 
 /**
@@ -1710,7 +1709,7 @@ set_comp_canonize(struct lyxp_set *set, const struct lyxp_set_node *xp_node)
 
     /* print canonized string, ignore errors, the value may not satisfy schema constraints */
     r = lyd_value_validate3(xp_node->node->schema, set->val.str, strlen(set->val.str), set->format, set->prefix_data,
-            LYD_HINT_DATA, NULL, set->ext, 0, NULL, &canon);
+            LYD_HINT_DATA, NULL, 0, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         /* invalid value, fine */
         return LY_SUCCESS;
@@ -3629,7 +3628,7 @@ warn_equality_value(const struct lyxp_expr *exp, struct lyxp_set *set, uint32_t 
         if (type->basetype != LY_TYPE_IDENT) {
             type_plg = LYSC_GET_TYPE_PLG(type->plugin_ref);
             rc = type_plg->store(set->ctx, type, value, strlen(value) * 8, 0, set->format, set->prefix_data,
-                    LYD_HINT_DATA, scnode, set->ext, &storage, NULL, &err);
+                    LYD_HINT_DATA, scnode, &storage, NULL, &err);
             if (rc == LY_EINCOMPLETE) {
                 rc = LY_SUCCESS;
             }
@@ -4010,7 +4009,7 @@ xpath_deref_type(struct lyd_node_term *leaf, struct lysc_node_leaf *sleaf, struc
         if (cur_type->basetype == LY_TYPE_LEAFREF) {
             /* find leafref target */
             r = lyplg_type_resolve_leafref((struct lysc_type_leafref *)cur_type, &leaf->node, value, set->tree,
-                    set->ext, &targets, &errmsg);
+                    &targets, &errmsg);
             if (r) {
                 if (log) {
                     LOGERR(set->ctx, LY_EINVAL, "%s", errmsg);
@@ -4025,7 +4024,7 @@ xpath_deref_type(struct lyd_node_term *leaf, struct lysc_node_leaf *sleaf, struc
                 set_insert_node(set, targets->dnodes[i], 0, LYXP_NODE_ELEM, 0);
             }
         } else if (cur_type->basetype == LY_TYPE_INST) {
-            if (ly_path_eval(value->target, set->tree, NULL, set->ext, &node)) {
+            if (ly_path_eval(value->target, set->tree, NULL, &node)) {
                 if (log) {
                     LOGERR(set->ctx, LY_EINVAL, "Invalid instance-identifier \"%s\" value - required instance not found.",
                             lyd_get_value(&leaf->node));
@@ -6307,10 +6306,10 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
 
     /* create specific data instance if needed */
     if (scnode->nodetype == LYS_LIST) {
-        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, 1, set->ext, &inst), cleanup);
+        LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, 1, &inst), cleanup);
     } else if (scnode->nodetype == LYS_LEAFLIST) {
         LY_CHECK_GOTO(ret = lyd_create_term(scnode, predicates[0].value, strlen(predicates[0].value) * 8, 1, 1, NULL,
-                LY_VALUE_CANON, NULL, LYD_HINT_DATA, set->ext, NULL, &inst), cleanup);
+                LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, &inst), cleanup);
     }
 
     for (i = 0; i < set->used; ++i) {
@@ -6748,11 +6747,6 @@ moveto_axis_scnode_next(const struct lysc_node **iter, enum lyxp_node_type *iter
             /* nodes from a single module */
             if ((next = lys_getnext(*iter, lysc_data_parent(*iter), (*iter)->module->compiled, getnext_opts))) {
                 next_type = LYXP_NODE_ELEM;
-                break;
-            }
-
-            if (set->ext && set->ext->def->plugin_ref && LYSC_GET_EXT_PLG(set->ext->def->plugin_ref)->snode) {
-                /* all the nodes traversed with an extensions instance calllback */
                 break;
             }
 
@@ -7843,7 +7837,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* get its atoms */
     cur_scnode = set->cur_node ? set->cur_node->schema : NULL;
     LY_CHECK_GOTO(rc = lyxp_atomize(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, cur_scnode,
-            ctx_scnode, set->ext, &set2, LYXP_SCNODE), cleanup);
+            ctx_scnode, &set2, LYXP_SCNODE), cleanup);
 
     /* check whether we can compile a single predicate (evaluation result value is always the same) */
     for (i = 0; i < set2.used; ++i) {
@@ -7883,7 +7877,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     /* evaluate the value subexpression with the root context node */
     lyxp_set_free_content(&set2);
     LY_CHECK_GOTO(rc = lyxp_eval(set->ctx, val_exp, set->cur_mod, set->format, set->prefix_data, set->cur_node,
-            ctx_node, set->tree, NULL, set->ext, &set2, 0), cleanup);
+            ctx_node, set->tree, NULL, &set2, 0), cleanup);
 
     /* cast it into a string */
     LY_CHECK_GOTO(rc = lyxp_set_cast(&set2, LYXP_SET_STRING), cleanup);
@@ -9813,8 +9807,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 LY_ERR
 lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lyd_node *cur_node, const struct lyd_node *ctx_node,
-        const struct lyd_node *tree, const struct lyxp_var *vars, const struct lysc_ext_instance *top_ext,
-        struct lyxp_set *set, uint32_t options)
+        const struct lyd_node *tree, const struct lyxp_var *vars, struct lyxp_set *set, uint32_t options)
 {
     uint32_t tok_idx = 0;
     LY_ERR rc;
@@ -9856,7 +9849,6 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
     set->format = format;
     set->prefix_data = prefix_data;
     set->vars = vars;
-    set->ext = top_ext;
 
     if (set->cur_node) {
         LOG_LOCSET(NULL, set->cur_node);
@@ -10106,7 +10098,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target)
 LY_ERR
 lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct lys_module *cur_mod,
         LY_VALUE_FORMAT format, void *prefix_data, const struct lysc_node *cur_scnode,
-        const struct lysc_node *ctx_scnode, const struct lysc_ext_instance *top_ext, struct lyxp_set *set, uint32_t options)
+        const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options)
 {
     LY_ERR rc;
     uint32_t tok_idx = 0;
@@ -10132,7 +10124,6 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     set->cur_mod = cur_mod;
     set->format = format;
     set->prefix_data = prefix_data;
-    set->ext = top_ext;
 
     if (set->cur_scnode) {
         LOG_LOCSET(set->cur_scnode, NULL);

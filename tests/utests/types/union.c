@@ -164,10 +164,10 @@ test_plugin_sort(void **state)
 
     v1 = "1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val1, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
     v2 = "-1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val2, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_int_equal(0, type->sort(UTEST_LYCTX, &val1, &val1));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
@@ -176,10 +176,10 @@ test_plugin_sort(void **state)
 
     v1 = "-1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v1, strlen(v1) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val1, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val1, NULL, &err));
     v2 = "-2";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, v2, strlen(v2) * 8,
-            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, NULL, &val2, NULL, &err));
+            0, LY_VALUE_JSON, NULL, LYD_VALHINT_DECNUM, NULL, &val2, NULL, &err));
     assert_true(0 < type->sort(UTEST_LYCTX, &val1, &val2));
     assert_true(0 > type->sort(UTEST_LYCTX, &val2, &val1));
     type->free(UTEST_LYCTX, &val1);
@@ -333,7 +333,7 @@ test_validation_store_only(void **state)
     err = NULL;
     val_text = "1";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
-            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     assert_int_equal(value.subvalue->value.realtype->basetype, LY_TYPE_INT8);
     type->free(UTEST_LYCTX, &value);
     ly_err_free(err);
@@ -342,7 +342,7 @@ test_validation_store_only(void **state)
     err = NULL;
     val_text = "6";
     assert_int_equal(LY_SUCCESS, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
-            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+            LYPLG_TYPE_STORE_ONLY, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     assert_int_equal(value.subvalue->value.realtype->basetype, LY_TYPE_STRING);
     type->free(UTEST_LYCTX, &value);
     ly_err_free(err);
@@ -351,7 +351,7 @@ test_validation_store_only(void **state)
     err = NULL;
     val_text = "10";
     assert_int_equal(LY_EVALID, type->store(UTEST_LYCTX, lysc_type, val_text, strlen(val_text) * 8,
-            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, NULL, &value, NULL, &err));
+            0, LY_VALUE_CANON, NULL, LYD_VALHINT_STRING | LYD_VALHINT_DECNUM, NULL, &value, NULL, &err));
     ly_err_free(err);
     UTEST_LOG_CTX_CLEAN;
 }

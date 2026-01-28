@@ -168,8 +168,7 @@ cleanup:
 static LY_ERR
 lyplg_type_store_node_instanceid(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        const struct lysc_ext_instance *UNUSED(top_ext), struct lyd_value *storage, struct lys_glob_unres *unres,
-        struct ly_err_item **err)
+        struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
