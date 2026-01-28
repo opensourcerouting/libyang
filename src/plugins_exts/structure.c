@@ -568,9 +568,10 @@ structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *cur_n
         return;
     }
 
-    while (!(cur_node->flags & LYD_EXT)) {
+    while (cur_node && !(cur_node->flags & LYD_EXT)) {
         cur_node = lyd_parent(cur_node);
     }
+    assert(cur_node);
 
     /* virtual top-level container expected */
     assert(!strcmp(ext->argument, LYD_NAME(cur_node)));
