@@ -266,8 +266,8 @@ lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *pref
     }
 
     /* try to find parent schema node */
-    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, lyd_parser_node_schema(parent), prefix,
-            prefix_len, LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->jsonctx->ctx, NULL, lyd_parser_node_schema(parent),
+            prefix, prefix_len, LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
     LY_CHECK_RET(r && (r != LY_ENOT), r);
 
     if (!r) {

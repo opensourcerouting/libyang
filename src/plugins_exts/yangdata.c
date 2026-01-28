@@ -188,7 +188,7 @@ yangdata_printer_info(struct lyspr_ctx *ctx, struct lysc_ext_instance *ext, ly_b
  */
 static LY_ERR
 yangdata_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        void *prefix_data, const char *name, uint32_t name_len, uint32_t UNUSED(options), const struct lysc_node **snode)
+        void *prefix_data, const char *name, uint32_t name_len, const struct lysc_node **snode)
 {
     return yangdata_snode(ext, NULL, NULL, prefix, prefix_len, format, prefix_data, name, name_len, snode);
 }

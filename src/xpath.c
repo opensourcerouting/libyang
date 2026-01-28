@@ -5865,8 +5865,8 @@ lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd
         name = LYD_NAME(top_node);
 
         /* do not set XPath, we are just looking for a specific ext instance that created these data */
-        if (!ly_find_ext_schema(ctx, NULL, NULL, mod_name, strlen(mod_name), LY_VALUE_JSON, NULL, name, strlen(name), 0,
-                &schema, &ext)) {
+        if (!lys_find_child_node_ext(ctx, NULL, NULL, NULL, mod_name, strlen(mod_name), LY_VALUE_JSON, NULL, name,
+                strlen(name), 0, &schema, &ext)) {
             /* try to find an extension instance callback */
             plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
         }
@@ -6882,7 +6882,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
         }
         if ((orig_used == set->used) && moveto_mod && ncname &&
                 ((axis == LYXP_AXIS_DESCENDANT) || (axis == LYXP_AXIS_CHILD)) && is_node) {
-            r = ly_find_ext_schema(set->ctx, NULL, set->val.scnodes[i].scnode, moveto_mod->name,
+            r = lys_find_child_node_ext(set->ctx, moveto_mod, NULL, set->val.scnodes[i].scnode, moveto_mod->name,
                     strlen(moveto_mod->name), LY_VALUE_JSON, NULL, ncname, ncname_len, 1, &iter, NULL);
             LY_CHECK_RET(r && (r != LY_ENOT), r);
 

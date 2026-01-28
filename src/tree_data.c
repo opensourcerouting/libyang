@@ -2091,8 +2091,9 @@ lyd_find_ext_ctx(const struct lyd_node *orig_node, const struct lyd_node *dup_pa
     }
 
     /* find the extension context to use from the target context */
-    r = ly_find_ext_schema(*trg_ctx, dup_parent, dup_sparent, orig_node->schema->module->name, strlen(orig_node->schema->module->name),
-            LY_VALUE_JSON, NULL, LYD_NAME(orig_node), strlen(LYD_NAME(orig_node)), 0, &snode, NULL);
+    r = lys_find_child_node_ext(*trg_ctx, NULL, dup_parent, dup_sparent, orig_node->schema->module->name,
+            strlen(orig_node->schema->module->name), LY_VALUE_JSON, NULL, LYD_NAME(orig_node),
+            strlen(LYD_NAME(orig_node)), 0, &snode, NULL);
     if (r == LY_ENOT) {
         path = lyd_path(orig_node, LYD_PATH_STD, NULL, 0);
         LOGERR(*trg_ctx, LY_ENOTFOUND, "Schema node of an extension node \"%s\" not found in the target context.", path);

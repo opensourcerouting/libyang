@@ -854,11 +854,16 @@ typedef void (*lyplg_ext_node_xpath_clb)(struct lysc_ext_instance *ext, const st
  * @brief Callback for getting the first child schema node of an XPath document root of the extension instance.
  *
  * @param[in] ext Compiled extension instance.
+ * @param[in] prefix Node prefix, if any.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of @p prefix.
+ * @param[in] prefix_data Format-specific prefix data.
+ * @param[in] name Node name.
+ * @param[in] name_len Length of @p name.
  * @param[out] snode First XPath document root child schema node, if any.
  */
 typedef LY_ERR (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len,
-        LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len, uint32_t options,
-        const struct lysc_node **snode);
+        LY_VALUE_FORMAT format, void *prefix_data, const char *name, uint32_t name_len, const struct lysc_node **snode);
 
 /*
  * data snode
@@ -882,12 +887,11 @@ typedef LY_ERR (*lyplg_ext_snode_xpath_clb)(struct lysc_ext_instance *ext, const
  * @param[in] ext Compiled extension instance.
  * @param[in] parent Parsed parent data node.
  * @param[in] sparent Schema parent node.
- * @param[in] prefix Element prefix, if any.
+ * @param[in] prefix Node prefix, if any.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of @p prefix.
  * @param[in] prefix_data Format-specific prefix data.
- * @param[in] name Element name. If NULL, the first node should be returned (top-level, @p parent and @p sparent will
- * not be set).
+ * @param[in] name Node name.
  * @param[in] name_len Length of @p name.
  * @param[out] snode Schema node to use for parsing the node.
  * @return LY_SUCCESS on success.

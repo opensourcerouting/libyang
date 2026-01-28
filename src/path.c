@@ -557,7 +557,7 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     }
 
     /* find schema node */
-    r = lys_find_child_node(prev_ctx_node ? prev_ctx_node->module->ctx : ctx, prev_ctx_node, pref, len, format,
+    r = lys_find_child_node(prev_ctx_node ? prev_ctx_node->module->ctx : ctx, NULL, prev_ctx_node, pref, len, format,
             prefix_data, name, name_len, getnext_opts, snode, ext);
     if (r == LY_ENOT) {
         mod = lys_find_module(prev_ctx_node ? prev_ctx_node->module->ctx : ctx, prev_ctx_node, pref, len, format,

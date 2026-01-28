@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang extension plugin - structure (RFC 8791)
  *
- * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -585,7 +585,7 @@ structure_node_xpath(struct lysc_ext_instance *ext, const struct lyd_node *cur_n
  */
 static LY_ERR
 structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        void *prefix_data, const char *name, uint32_t name_len, uint32_t options, const struct lysc_node **snode)
+        void *prefix_data, const char *name, uint32_t name_len, const struct lysc_node **snode)
 {
     struct lysc_ext_instance_structure *struct_cdata = ext->compiled;
     const struct lysc_node *schema = NULL;
@@ -600,7 +600,7 @@ structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_
     }
 
     /* find the schema node in the substatements */
-    while ((schema = lys_getnext(schema, &struct_cdata->top_cont->node, NULL, options))) {
+    while ((schema = lys_getnext(schema, &struct_cdata->top_cont->node, NULL, 0))) {
         if (!ly_strncmp(schema->name, name, name_len)) {
             *snode = schema;
             return LY_SUCCESS;

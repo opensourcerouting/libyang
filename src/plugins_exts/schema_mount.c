@@ -927,8 +927,8 @@ cleanup:
  * @brief Snode xpath callback for schema mount.
  */
 static LY_ERR
-structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        void *prefix_data, const char *name, uint32_t name_len, uint32_t options, const struct lysc_node **snode)
+schema_mount_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
+        void *prefix_data, const char *name, uint32_t name_len, const struct lysc_node **snode)
 {
     LY_ERR r;
     const struct lys_module *mod;
@@ -946,7 +946,7 @@ structure_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint32_
     }
 
     /* get the top-level schema node */
-    *snode = lys_find_child(NULL, NULL, mod, name, name_len, options);
+    *snode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
     return *snode ? LY_SUCCESS : LY_ENOT;
 }
 
@@ -1598,7 +1598,7 @@ const struct lyplg_ext_record plugins_schema_mount[] = {
         .plugin.printer_ctree = schema_mount_sprinter_ctree,
         .plugin.printer_ptree = schema_mount_sprinter_ptree,
         .plugin.node_xpath = NULL,
-        .plugin.snode_xpath = structure_snode_xpath,
+        .plugin.snode_xpath = schema_mount_snode_xpath,
         .plugin.snode = schema_mount_snode,
         .plugin.validate = schema_mount_validate,
         .plugin.pfree = NULL,

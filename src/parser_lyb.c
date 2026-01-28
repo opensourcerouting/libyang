@@ -966,7 +966,7 @@ lyb_parse_schema_ext(struct lyd_lyb_ctx *lybctx, const struct lyd_node *parent, 
     LY_CHECK_GOTO(rc = lyb_read_string(&name, lybctx->parse_ctx), cleanup);
 
     /* check for extension data */
-    r = ly_find_ext_schema(lybctx->parse_ctx->ctx, parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0,
+    r = lys_find_child_node_ext(lybctx->parse_ctx->ctx, NULL, parent, NULL, mod_name, mod_name ? strlen(mod_name) : 0,
             LY_VALUE_JSON, NULL, name, strlen(name), 0, snode, ext);
     if (r == LY_ENOT) {
         /* failed to parse */
