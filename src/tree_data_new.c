@@ -455,8 +455,9 @@ LIBYANG_API_DEF LY_ERR
 lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, ly_bool output,
         struct lyd_node **node)
 {
+    LY_ERR r;
     struct lyd_node *ret = NULL;
-    const struct lysc_node *schema;
+    const struct lysc_node *schema = NULL;
     struct lysc_ext_instance *ext = NULL;
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
 
@@ -467,11 +468,12 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, output ? LYS_GETNEXT_OUTPUT : 0);
-    if (schema && !(schema->nodetype & (LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
-        schema = NULL;
+    r = lys_find_child_node(ctx, parent ? parent->schema : NULL, module, module->name, strlen(module->name),
+            LY_VALUE_JSON, NULL, name, 0, output ? LYS_GETNEXT_OUTPUT : 0, &schema, &ext);
+    if (!r && !(schema->nodetype & (LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
+        r = LY_ENOT;
     }
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node (container, notif, RPC, or action) \"%s\" not found.",
+    LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "Inner node (container, notif, RPC, or action) \"%s\" not found.",
             name), LY_ENOTFOUND);
 
     LY_CHECK_RET(lyd_create_inner(schema, &ret));
@@ -503,8 +505,9 @@ static LY_ERR
 _lyd_new_list_node(const struct ly_ctx *ctx, const struct lyd_node *parent, const struct lys_module *module,
         const char *name, uint32_t options, struct lyd_node **node)
 {
+    LY_ERR r;
     struct lyd_node *ret = NULL;
-    const struct lysc_node *schema;
+    const struct lysc_node *schema = NULL;
     struct lysc_ext_instance *ext = NULL;
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
 
@@ -512,11 +515,12 @@ _lyd_new_list_node(const struct ly_ctx *ctx, const struct lyd_node *parent, cons
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
-    if (schema && (schema->nodetype != LYS_LIST)) {
-        schema = NULL;
+    r = lys_find_child_node(ctx, parent ? parent->schema : NULL, module, module->name, strlen(module->name),
+            LY_VALUE_JSON, NULL, name, 0, getnext_opts, &schema, &ext);
+    if (!r && (schema->nodetype != LYS_LIST)) {
+        r = LY_ENOT;
     }
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), LY_ENOTFOUND);
+    LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), LY_ENOTFOUND);
 
     /* create list inner node */
     LY_CHECK_RET(lyd_create_inner(schema, &ret));
@@ -699,8 +703,9 @@ static LY_ERR
 _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         uint32_t value_size_bits, uint32_t options, struct lyd_node **node)
 {
+    LY_ERR r;
     struct lyd_node *ret = NULL;
-    const struct lysc_node *schema;
+    const struct lysc_node *schema = NULL;
     struct lysc_ext_instance *ext = NULL;
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
@@ -716,11 +721,12 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
-    if (schema && !(schema->nodetype & LYD_NODE_TERM)) {
-        schema = NULL;
+    r = lys_find_child_node(ctx, parent ? parent->schema : NULL, module, module->name, strlen(module->name),
+            LY_VALUE_JSON, NULL, name, 0, getnext_opts, &schema, &ext);
+    if (!r && !(schema->nodetype & LYD_NODE_TERM)) {
+        r = LY_ENOT;
     }
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), LY_ENOTFOUND);
+    LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), LY_ENOTFOUND);
 
     LY_CHECK_RET(lyd_create_term(schema, value, value_size_bits, 0, store_only, NULL, format, NULL, LYD_HINT_DATA,
             NULL, &ret));
@@ -761,8 +767,9 @@ LIBYANG_API_DEF LY_ERR
 lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
         LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node)
 {
+    LY_ERR r;
     struct lyd_node *ret = NULL;
-    const struct lysc_node *schema;
+    const struct lysc_node *schema = NULL;
     struct lysc_ext_instance *ext = NULL;
     const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
@@ -776,11 +783,12 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
-    if (schema && !(schema->nodetype & LYD_NODE_ANY)) {
-        schema = NULL;
+    r = lys_find_child_node(ctx, parent ? parent->schema : NULL, module, module->name, strlen(module->name),
+            LY_VALUE_JSON, NULL, name, 0, getnext_opts, &schema, &ext);
+    if (!r && !(schema->nodetype & LYD_NODE_ANY)) {
+        r = LY_ENOT;
     }
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
+    LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
 
     LY_CHECK_RET(lyd_create_any(schema, value, value_type, use_value, &ret));
     if (ext) {
