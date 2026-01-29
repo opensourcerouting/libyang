@@ -230,11 +230,13 @@ ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj))
 LIBYANG_API_DEF LY_ERR
 ly_set_rm_index_ordered(struct ly_set *set, uint32_t index, void (*destructor)(void *obj))
 {
-    LY_CHECK_ARG_RET(NULL, set, set->count, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
+    LY_CHECK_ERR_RET(index >= set->count, LOGARG(NULL, index), LY_EINVAL);
 
     if (destructor) {
         destructor(set->objs[index]);
     }
+
     set->count--;
     if (index == set->count) {
         /* removing last item in set */
