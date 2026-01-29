@@ -1020,19 +1020,12 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node *parent, struct lyd
     struct lyd_attr *attr = NULL;
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
-    uint32_t orig_parse_opts;
     struct lyd_node *node = NULL;
-    ly_bool parse_subtree;
 
     assert(parent || first_p);
 
     xmlctx = lydctx->xmlctx;
     ctx = xmlctx->ctx;
-
-    parse_subtree = lydctx->parse_opts & LYD_PARSE_SUBTREE ? 1 : 0;
-    /* all descendants should be parsed */
-    lydctx->parse_opts &= ~LYD_PARSE_SUBTREE;
-    orig_parse_opts = lydctx->parse_opts;
 
     assert(xmlctx->status == LYXML_ELEMENT);
 
@@ -1131,10 +1124,8 @@ node_parsed:
 
     /* parser next */
     assert(xmlctx->status == LYXML_ELEM_CLOSE);
-    if (!parse_subtree) {
-        r = lyxml_ctx_next(xmlctx);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
-    }
+    r = lyxml_ctx_next(xmlctx);
+    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
     LY_CHECK_GOTO(!node, cleanup);
 
@@ -1153,7 +1144,6 @@ node_parsed:
     }
 
 cleanup:
-    lydctx->parse_opts = orig_parse_opts;
     lyd_free_meta_siblings(meta);
     lyd_free_attr_siblings(ctx, attr);
     return rc;
@@ -1239,14 +1229,12 @@ cleanup:
 
 LY_ERR
 lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
-        struct lyd_ctx **lydctx_p)
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR r, rc = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
     ly_bool parsed_data_nodes = 0, close_elem = 0;
     struct lyd_node *act = NULL;
-    enum LYXML_PARSER_STATUS status;
 
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
@@ -1312,16 +1300,6 @@ lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     if (!parsed_data_nodes) {
         /* no data nodes were parsed */
         lydctx->op_node = NULL;
-    }
-
-    if (parse_opts & LYD_PARSE_SUBTREE) {
-        /* check for a sibling element */
-        assert(subtree_sibling);
-        if (!lyxml_ctx_peek(lydctx->xmlctx, &status) && (status == LYXML_ELEMENT)) {
-            *subtree_sibling = 1;
-        } else {
-            *subtree_sibling = 0;
-        }
     }
 
 cleanup:
@@ -1494,7 +1472,6 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
     assert(ctx && in && lydctx_p);
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
-    assert(!(parse_opts & LYD_PARSE_SUBTREE));
 
     /* init context */
     lydctx = calloc(1, sizeof *lydctx);

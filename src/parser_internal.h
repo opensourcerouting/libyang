@@ -245,13 +245,11 @@ LY_ERR yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, st
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] int_opts Internal data parser options.
  * @param[out] parsed Set to add all the parsed siblings into.
- * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
-        struct lyd_ctx **lydctx_p);
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse XML string as a NETCONF message.
@@ -265,7 +263,6 @@ LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct l
  * @param[in] data_type Expected NETCONF data type of the data.
  * @param[out] envp Individual parsed envelopes tree, may be returned possibly even on an error.
  * @param[out] parsed Set to add all the parsed siblings into.
- * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
@@ -285,13 +282,12 @@ LY_ERR lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, 
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] int_opts Internal data parser options.
  * @param[out] parsed Set to add all the parsed siblings into.
- * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Optional data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct lysc_node *schema,
         struct lyd_node **first_p, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts,
-        struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
+        struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse JSON string as a RESTCONF message.
@@ -305,7 +301,6 @@ LY_ERR lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const s
  * @param[in] data_type Expected RESTCONF data type of the data.
  * @param[out] envp Individual parsed envelopes tree, may be returned possibly even on an error.
  * @param[out] parsed Set to add all the parsed siblings into.
- * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
@@ -324,13 +319,11 @@ LY_ERR lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
  * @param[in] int_opts Internal data parser options.
  * @param[out] parsed Set to add all the parsed siblings into.
- * @param[out] subtree_sibling Set if ::LYD_PARSE_SUBTREE is used and another subtree is following in @p in.
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
-        struct lyd_ctx **lydctx_p);
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Validate eventTime date-and-time value.

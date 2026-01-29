@@ -155,32 +155,24 @@ struct ly_in;
                                                  modified manually. If this flag is used incorrectly (for unordered data),
                                                  the behavior is undefined and most functions executed with these
                                                  data will not work correctly. */
-#define LYD_PARSE_SUBTREE 0x400000          /**< Parse only the first child item along with any descendants, but no
-                                                 siblings. This flag is not required when parsing data which do not
-                                                 start at the schema root; for that purpose, use lyd_parse_data's parent
-                                                 argument.
-                                                 Also, a new return value ::LY_ENOT is returned if there is a sibling
-                                                 subtree following in the input data. Note that if validation is requested,
-                                                 only the newly parsed subtree is validated. This might result in
-                                                 an invalid datastore content. */
-#define LYD_PARSE_WHEN_TRUE 0x800000        /**< Mark all the parsed nodes dependend on a when condition with the flag
+#define LYD_PARSE_WHEN_TRUE 0x400000        /**< Mark all the parsed nodes dependend on a when condition with the flag
                                                  that means the condition was satisifed before. This allows for
                                                  auto-deletion of these nodes during validation. */
-#define LYD_PARSE_NO_NEW 0x1000000          /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
+#define LYD_PARSE_NO_NEW 0x800000           /**< Do not set ::LYD_NEW (non-validated node flag) for any nodes. Use
                                                  when parsing validated data to skip some validation tasks and modify
                                                  some validation behavior (auto-deletion of cases). */
-#define LYD_PARSE_STORE_ONLY 0x2010000      /**< Similar to ::LYD_PARSE_ONLY but even type value restrictions will not
+#define LYD_PARSE_STORE_ONLY 0x01010000     /**< Similar to ::LYD_PARSE_ONLY but even type value restrictions will not
                                                  be checked (length, range, pattern, ...) and if a value can be stored,
                                                  it is. Calling separate validation on these data always checks all the
                                                  restrictions as well. */
-#define LYD_PARSE_JSON_NULL 0x4000000       /**< Allow using JSON empty value 'null' within JSON input, such nodes are
+#define LYD_PARSE_JSON_NULL 0x02000000      /**< Allow using JSON empty value 'null' within JSON input, such nodes are
                                                  silently skipped and treated as non-existent. By default, such values
                                                  are invalid. */
-#define LYD_PARSE_JSON_STRING_DATATYPES 0x8000000 /**< By default, JSON data values are expected to be in the correct
+#define LYD_PARSE_JSON_STRING_DATATYPES 0x04000000/**< By default, JSON data values are expected to be in the correct
                                                        format according to RFC 7951 based on their type. Using this
                                                        option the validation can be softened to accept boolean and
                                                        number type values enclosed in quotes. */
-#define LYD_PARSE_ANYDATA_STRICT 0x10000000 /**< Apply strict parsing (::LYD_PARSE_STRICT) also to anydata
+#define LYD_PARSE_ANYDATA_STRICT 0x08000000 /**< Apply strict parsing (::LYD_PARSE_STRICT) also to anydata
                                                 content. By default, unknown elements in anydata are parsed
                                                 as opaque nodes. With this flag, an error is raised for any unknown
                                                 elements within anydata/anyxml subtrees. */

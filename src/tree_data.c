@@ -106,7 +106,6 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     struct ly_set parsed = {0};
     uint32_t i, int_opts = 0;
     const struct ly_err_item *eitem;
-    ly_bool subtree_sibling = 0;
 
     assert(ctx && (parent || first_p));
 
@@ -119,23 +118,18 @@ lyd_parse(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **f
     in->func_start = in->current;
 
     /* set internal options */
-    if (!(parse_opts & LYD_PARSE_SUBTREE)) {
-        int_opts = LYD_INTOPT_WITH_SIBLINGS;
-    }
+    int_opts = LYD_INTOPT_WITH_SIBLINGS;
 
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        r = lyd_parse_xml(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
-                &subtree_sibling, &lydctx);
+        r = lyd_parse_xml(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_JSON:
-        r = lyd_parse_json(ctx, parent, NULL, first_p, in, parse_opts, val_opts, int_opts, &parsed,
-                &subtree_sibling, &lydctx);
+        r = lyd_parse_json(ctx, parent, NULL, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_LYB:
-        r = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed,
-                &subtree_sibling, &lydctx);
+        r = lyd_parse_lyb(ctx, parent, first_p, in, parse_opts, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);
@@ -192,8 +186,6 @@ cleanup:
             lyd_free_all(*first_p);
             *first_p = NULL;
         }
-    } else if (subtree_sibling) {
-        rc = LY_ENOT;
     }
     ly_set_erase(&parsed, NULL);
     return rc;
@@ -304,7 +296,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 
     /* parse the json value */
     LY_CHECK_GOTO(ret = lyd_parse_json(ctx, new_last_parent, new_node_schema, new_last_parent ? NULL : &new_top_parent,
-            in, parse_options, validate_options, 0, NULL, NULL, NULL), cleanup);
+            in, parse_options, validate_options, 0, NULL, NULL), cleanup);
 
     /* when setting keys they have to have a correct value (same as in the path) */
     if (lysc_is_key(new_node_schema)) {
@@ -457,13 +449,13 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     /* parse the data */
     switch (format) {
     case LYD_XML:
-        rc = lyd_parse_xml(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+        rc = lyd_parse_xml(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_JSON:
-        rc = lyd_parse_json(ctx, parent, NULL, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+        rc = lyd_parse_json(ctx, parent, NULL, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_LYB:
-        rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, NULL, &lydctx);
+        rc = lyd_parse_lyb(ctx, parent, &first, in, parse_options, val_opts, int_opts, &parsed, &lydctx);
         break;
     case LYD_UNKNOWN:
         LOGARG(ctx, format);

@@ -1750,8 +1750,7 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 
 LY_ERR
 lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node **first_p, struct ly_in *in,
-        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, ly_bool *subtree_sibling,
-        struct lyd_ctx **lydctx_p)
+        uint32_t parse_opts, uint32_t val_opts, uint32_t int_opts, struct ly_set *parsed, struct lyd_ctx **lydctx_p)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_lyb_ctx *lybctx = NULL;
@@ -1759,15 +1758,9 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     assert(!(parse_opts & ~LYD_PARSE_OPTS_MASK));
     assert(!(val_opts & ~LYD_VALIDATE_OPTS_MASK));
 
-    LY_CHECK_ARG_RET(ctx, !(parse_opts & LYD_PARSE_SUBTREE), LY_EINVAL);
-
     if (!(ctx->opts & LY_CTX_LYB_HASHES)) {
         /* generate LYB hashes */
         LY_CHECK_GOTO(rc = ly_ctx_set_options((struct ly_ctx *)ctx, LY_CTX_LYB_HASHES), cleanup);
-    }
-
-    if (subtree_sibling) {
-        *subtree_sibling = 0;
     }
 
     lybctx = calloc(1, sizeof *lybctx);

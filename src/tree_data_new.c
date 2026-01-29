@@ -242,10 +242,10 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
         /* unreachable */
         LOGINT_RET(ctx);
     case LYD_ANYDATA_XML:
-        rc = lyd_parse_xml(ctx, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
+        rc = lyd_parse_xml(ctx, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, &lydctx);
         break;
     case LYD_ANYDATA_JSON:
-        rc = lyd_parse_json(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, NULL, &lydctx);
+        rc = lyd_parse_json(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, &lydctx);
         break;
     }
     if (lydctx) {
