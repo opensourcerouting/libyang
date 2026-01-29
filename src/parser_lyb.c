@@ -1496,7 +1496,7 @@ static LY_ERR
 lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const struct lysc_node *snode,
         const struct lysc_ext_instance *ext, struct lyd_node **first_p, struct ly_set *parsed)
 {
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
     struct lyd_node *node = NULL;
     struct lyd_meta *meta = NULL;
     uint32_t flags = 0, metadata_count;
