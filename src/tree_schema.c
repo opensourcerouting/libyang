@@ -482,6 +482,11 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ext_instance *exts;
 
+    *snode = NULL;
+    if (ext) {
+        *ext = NULL;
+    }
+
     /* check if there are any nested parent extension instances */
     if (parent && parent->schema) {
         exts = parent->schema->exts;
@@ -544,6 +549,13 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
         *ext = NULL;
     }
 
+    if (prefix && !prefix_len) {
+        prefix_len = strlen(prefix);
+    }
+    if (name && !name_len) {
+        name_len = strlen(name);
+    }
+
     /* find the module */
     if (!mod) {
         mod = lys_find_module(ctx, parent, prefix, prefix_len, format, prefix_data);
@@ -558,16 +570,9 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
             }
 
             /* check name */
-            if (name_len) {
-                if (!ly_strncmp(node->name, name, name_len)) {
-                    *snode = node;
-                    return LY_SUCCESS;
-                }
-            } else {
-                if (!strcmp(node->name, name)) {
-                    *snode = node;
-                    return LY_SUCCESS;
-                }
+            if (!ly_strncmp(node->name, name, name_len)) {
+                *snode = node;
+                return LY_SUCCESS;
             }
         }
     }

@@ -486,15 +486,18 @@ LY_ERR lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module
 /**
  * @brief Find a schema node of a parent, top-level in a module, or an extension.
  *
+ * It may make sense to set both @p mod and @p prefix, module can be reused if already found but to make sure
+ * extension instance schema nodes match (different context), prefix is used for module checking.
+ *
  * @param[in] ctx Context to use to search for node module.
  * @param[in] parent Parent of the node, if any.
  * @param[in] mod Module of the node. If not set, @p prefix is used.
  * @param[in] prefix Module prefix, if any.
- * @param[in] prefix_len Length of @p prefix.
+ * @param[in] prefix_len Optional length of @p prefix, if not 0-terminated.
  * @param[in] format Format of @p prefix.
  * @param[in] prefix_data Format-specific data.
  * @param[in] name Node name.
- * @param[in] name_len Length of @p name.
+ * @param[in] name_len Optional length of @p name, if not 0-terminated.
  * @param[in] options ORed [lys_getnext options](@ref sgetnextflags).
  * @param[out] snode Found schema node.
  * @param[out] ext Optional ext instance of @p snode.
