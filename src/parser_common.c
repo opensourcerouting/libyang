@@ -182,7 +182,7 @@ lyd_parser_node_schema(const struct lyd_node *node)
         }
 
         /* get schema node */
-        schema = lys_find_child(NULL, schema, mod, LYD_NAME(iter), 0, 0);
+        schema = lys_find_child(NULL, schema, mod, NULL, 0, LYD_NAME(iter), 0, 0);
 
         /* move to the descendant */
         ++i;

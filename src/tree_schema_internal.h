@@ -471,7 +471,7 @@ LY_ERR lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
  * @param[in] prefix_data Format-specific data.
  * @param[in] name Node name.
  * @param[in] name_len Length of @p name.
- * @param[in] in_xpath Set if searching for nodes in an XPath expression.
+ * @param[in] is_xpath Set if searching for nodes in an XPath expression.
  * @param[out] snode Found schema node, NULL if no suitable was found.
  * @param[out] ext Optional extension instance that provided @p snode.
  * @return LY_SUCCESS on success;
@@ -480,15 +480,15 @@ LY_ERR lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_
  */
 LY_ERR lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, const struct lyd_node *parent,
         const struct lysc_node *sparent, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        void *prefix_data, const char *name, uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode,
+        void *prefix_data, const char *name, uint32_t name_len, ly_bool is_xpath, const struct lysc_node **snode,
         struct lysc_ext_instance **ext);
 
 /**
  * @brief Find a schema node of a parent, top-level in a module, or an extension.
  *
- * @param[in] ctx Context to use to search for @p mod.
- * @param[in] mod Module to use, search in @p ctx if not set.
+ * @param[in] ctx Context to use to search for node module.
  * @param[in] parent Parent of the node, if any.
+ * @param[in] mod Module of the node. If not set, @p prefix is used.
  * @param[in] prefix Module prefix, if any.
  * @param[in] prefix_len Length of @p prefix.
  * @param[in] format Format of @p prefix.
@@ -502,7 +502,7 @@ LY_ERR lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module
  * @return LY_ENOT if not found;
  * @return LY_ERR on error.
  */
-LY_ERR lys_find_child_node(const struct ly_ctx *ctx, const struct lys_module *mod, const struct lysc_node *parent,
+LY_ERR lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, const struct lys_module *mod,
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
         uint32_t name_len, uint32_t options, const struct lysc_node **snode, struct lysc_ext_instance **ext);
 

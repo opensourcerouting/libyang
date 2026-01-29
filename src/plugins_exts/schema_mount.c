@@ -434,7 +434,7 @@ schema_mount_get_content_id(struct lysc_ext_instance *ext, const struct lyd_node
     *content_id = NULL;
 
     /* find the content-id node */
-    snode = lys_find_child(NULL, ext_yl_data->schema, ext_yl_data->schema->module, "content-id", 0, 0);
+    snode = lys_find_child(NULL, ext_yl_data->schema, ext_yl_data->schema->module, NULL, 0, "content-id", 0, 0);
     assert(snode);
 
     /* get yang-library content-id */
@@ -946,7 +946,7 @@ schema_mount_snode_xpath(struct lysc_ext_instance *ext, const char *prefix, uint
     }
 
     /* get the top-level schema node */
-    *snode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
+    *snode = lys_find_child(NULL, NULL, mod, NULL, 0, name, name_len, 0);
     return *snode ? LY_SUCCESS : LY_ENOT;
 }
 
@@ -984,7 +984,7 @@ schema_mount_snode(struct lysc_ext_instance *ext, const struct lyd_node *parent,
     }
 
     /* get the top-level schema node */
-    *snode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
+    *snode = lys_find_child(NULL, NULL, mod, NULL, 0, name, name_len, 0);
     return *snode ? LY_SUCCESS : LY_ENOT;
 }
 

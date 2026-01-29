@@ -3049,7 +3049,7 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
                 ctx_node = NULL;
             }
         } else {
-            ctx_node = lys_find_child(ctx->ctx, ctx_node, mod, name, name_len,
+            ctx_node = lys_find_child(ctx->ctx, ctx_node, mod, NULL, 0, name, name_len,
                     getnext_extra_flag | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
             getnext_extra_flag = 0;
         }
@@ -3257,7 +3257,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *pnode, struct lysc
         }
 
         /* key node must be present */
-        key = (struct lysc_node_leaf *)lys_find_child(NULL, node, node->module, keystr, len, LYS_GETNEXT_NOCHOICE);
+        key = (struct lysc_node_leaf *)lys_find_child(NULL, node, node->module, NULL, 0, keystr, len, LYS_GETNEXT_NOCHOICE);
         if (key && (key->nodetype != LYS_LEAF)) {
             key = NULL;
         }
@@ -3414,7 +3414,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, struct lysp_qname *dflt, stru
         mod = ch->module;
     }
 
-    ch->dflt = (struct lysc_node_case *)lys_find_child(NULL, &ch->node, mod, name, 0, LYS_GETNEXT_WITHCASE);
+    ch->dflt = (struct lysc_node_case *)lys_find_child(NULL, &ch->node, mod, NULL, 0, name, 0, LYS_GETNEXT_WITHCASE);
     if (ch->dflt && (ch->dflt->nodetype != LYS_CASE)) {
         ch->dflt = NULL;
     }

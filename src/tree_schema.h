@@ -2058,6 +2058,22 @@ LIBYANG_API_DECL const struct lys_module *lys_find_module(const struct ly_ctx *c
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, const void *prefix_data);
 
 /**
+ * @defgroup sgetnextflags Options for ::lys_getnext().
+ *
+ * Various options setting behavior of ::lys_getnext().
+ *
+ * @{
+ */
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< ::lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
+#define LYS_GETNEXT_NOCHOICE     0x02 /**< ::lys_getnext() option to ignore (kind of conditional) nodes within choice node */
+#define LYS_GETNEXT_WITHCASE     0x04 /**< ::lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
+#define LYS_GETNEXT_INTONPCONT   0x08 /**< ::lys_getnext() option to look into non-presence container, instead of
+                                           returning container itself */
+#define LYS_GETNEXT_OUTPUT       0x10 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead
+                                           of input schema nodes provided by default */
+/** @} sgetnextflags */
+
+/**
  * @brief Get next schema (sibling) node element in the schema order that can be instantiated in a data tree.
  * Returned node may be from an augment.
  *
@@ -2070,6 +2086,8 @@ LIBYANG_API_DECL const struct lys_module *lys_find_module(const struct ly_ctx *c
  * data nodes in a data tree. By setting some @p options the behavior can be modified to the extent that
  * all the schema nodes are iteratively returned.
  *
+ * This function does not iterate over extension instance schema nodes. Use ::lys_find_child() to get these nodes.
+ *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree to iterate over. If set, @p module is ignored.
  * @param[in] module Module of the top level elements to iterate over. If @p parent is NULL, it must be specified.
@@ -2080,38 +2098,23 @@ LIBYANG_API_DECL const struct lysc_node *lys_getnext(const struct lysc_node *las
         const struct lysc_module *module, uint32_t options);
 
 /**
- * @defgroup sgetnextflags Options for ::lys_getnext().
- *
- * Various options setting behavior of ::lys_getnext().
- *
- * @{
- */
-#define LYS_GETNEXT_WITHCHOICE   0x01 /**< ::lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
-#define LYS_GETNEXT_NOCHOICE     0x02 /**< ::lys_getnext() option to ignore (kind of conditional) nodes within choice node */
-#define LYS_GETNEXT_WITHCASE     0x04 /**< ::lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
-#define LYS_GETNEXT_INTONPCONT   0x08 /**< ::lys_getnext() option to look into non-presence container, instead of returning container itself */
-#define LYS_GETNEXT_OUTPUT       0x10 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
-                                            provided by default */
-#define LYS_GETNEXT_WITHSCHEMAMOUNT 0x20    /**< ::lys_getnext() option to also traverse top-level nodes of all the mounted modules
-                                                 on the parent mount point but note that if any such nodes are returned,
-                                                 the caller **must free** their context */
-#define LYS_GETNEXT_EXT_XPATH    0x40 /**< ::lys_getnext() option to differentiate between standard schema traversal
-+                                           and XPath accessible tree. */
-/** @} sgetnextflags */
-
-/**
  * @brief Get a child node according to the specified criteria.
+ *
+ * First searches standard schema nodes and then also extension instances with compiled schema nodes.
  *
  * @param[in] ctx Context to use.
  * @param[in] parent Optional parent of the node to find. If not specified, top-level nodes are searched.
- * @param[in] mod Optional module of the node to find.
+ * @param[in] mod Module of the node. If not set, @p mod_name is used.
+ * @param[in] mod_name Module name of the node to find. If not set, @p mod is used.
+ * @param[in] mod_len Optional length of @p mod_name if not 0-terminated.
  * @param[in] name Name of the node to find.
  * @param[in] name_len Optional length of @p name if not 0-terminated.
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Found node if any.
  */
 LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent,
-        const struct lys_module *mod, const char *name, uint32_t name_len, uint32_t options);
+        const struct lys_module *mod, const char *mod_name, uint32_t mod_len, const char *name, uint32_t name_len,
+        uint32_t options);
 
 /**
  * @defgroup findxpathoptions Atomize XPath options
@@ -2122,8 +2125,6 @@ LIBYANG_API_DECL const struct lysc_node *lys_find_child(const struct ly_ctx *ctx
 #define LYS_FIND_XP_OUTPUT  0x10    /**< Search RPC/action output nodes instead of input ones. */
 #define LYS_FIND_NO_MATCH_ERROR 0x40    /**< Return error if a path segment matches no nodes, otherwise only warning
                                              is printed. */
-#define LYS_FIND_SCHEMAMOUNT    0x0200  /**< Traverse also nodes from mounted modules. If any such nodes are returned,
-                                             the caller **must free** their context! */
 /** @} findxpathoptions */
 
 /**

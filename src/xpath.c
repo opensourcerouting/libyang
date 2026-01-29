@@ -6843,9 +6843,6 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     if (options & LYXP_SCNODE_OUTPUT) {
         getnext_opts |= LYS_GETNEXT_OUTPUT;
     }
-    if (options & LYXP_SCNODE_SCHEMAMOUNT) {
-        getnext_opts |= LYS_GETNEXT_WITHSCHEMAMOUNT;
-    }
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
@@ -8096,7 +8093,7 @@ continue_search:
                     continue;
                 }
 
-                scnode = lys_find_child(NULL, NULL, mod, name, name_len, 0);
+                scnode = lys_find_child(NULL, NULL, mod, NULL, 0, name, name_len, 0);
                 if (scnode) {
                     /* we have found a match */
                     break;
@@ -8109,7 +8106,7 @@ continue_search:
             }
         } else {
             /* search in top-level */
-            scnode = lys_find_child(NULL, NULL, moveto_mod, name, name_len, 0);
+            scnode = lys_find_child(NULL, NULL, moveto_mod, NULL, 0, name, name_len, 0);
         }
     } else if (node->schema && (!*found || (lysc_data_parent(*found) != node->schema))) {
         if ((format == LY_VALUE_JSON) && !moveto_mod) {
@@ -8120,8 +8117,8 @@ continue_search:
         /* search in children, do not repeat the same search */
         if (node->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             /* make sure the node is unique, whether in input or output */
-            scnode = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, 0);
-            scnode2 = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, LYS_GETNEXT_OUTPUT);
+            scnode = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, 0);
+            scnode2 = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, LYS_GETNEXT_OUTPUT);
             if (scnode && scnode2) {
                 /* conflict, do not use hashes */
                 scnode = NULL;
@@ -8129,7 +8126,7 @@ continue_search:
                 scnode = scnode2;
             }
         } else {
-            scnode = lys_find_child(NULL, node->schema, moveto_mod, name, name_len, 0);
+            scnode = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, 0);
         }
     } /* else skip redundant search */
 

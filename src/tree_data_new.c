@@ -467,7 +467,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, output ? LYS_GETNEXT_OUTPUT : 0);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, output ? LYS_GETNEXT_OUTPUT : 0);
     if (schema && !(schema->nodetype & (LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
         schema = NULL;
     }
@@ -512,7 +512,7 @@ _lyd_new_list_node(const struct ly_ctx *ctx, const struct lyd_node *parent, cons
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
     if (schema && (schema->nodetype != LYS_LIST)) {
         schema = NULL;
     }
@@ -602,7 +602,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     }
 
     /* find schema node */
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
     if (schema && (schema->nodetype != LYS_LIST)) {
         schema = NULL;
     }
@@ -716,7 +716,7 @@ _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
     if (schema && !(schema->nodetype & LYD_NODE_TERM)) {
         schema = NULL;
     }
@@ -776,7 +776,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, name, 0, getnext_opts);
+    schema = lys_find_child(ctx, parent ? parent->schema : NULL, module, NULL, 0, name, 0, getnext_opts);
     if (schema && !(schema->nodetype & LYD_NODE_ANY)) {
         schema = NULL;
     }

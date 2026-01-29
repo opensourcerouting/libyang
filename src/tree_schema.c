@@ -275,11 +275,7 @@ LIBYANG_API_DEF const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     const struct lysc_node *next = NULL;
-    ly_bool action_flag = 0, notif_flag = 0, sm_flag = options & LYS_GETNEXT_WITHSCHEMAMOUNT ? 0 : 1;
-    LY_ARRAY_COUNT_TYPE u;
-    const struct ly_ctx *sm_ctx = NULL;
-    const struct lys_module *mod;
-    uint32_t idx;
+    ly_bool action_flag = 0, notif_flag = 0;
 
     LY_CHECK_ARG_RET(NULL, last || parent || module, NULL);
 
@@ -314,28 +310,7 @@ next:
 
 repeat:
     if (!next) {
-        if (last && !sm_flag && parent && (last->module->ctx != parent->module->ctx)) {
-            sm_flag = 1;
-
-            /* find the module of last */
-            sm_ctx = last->module->ctx;
-            idx = 0;
-            while ((mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
-                if (mod == last->module) {
-                    break;
-                }
-            }
-            assert(mod);
-
-            /* get node from the next mounted module */
-            while (!next && (mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
-                if (!mod->implemented) {
-                    continue;
-                }
-
-                next = lys_getnext(NULL, NULL, mod->compiled, options & ~LYS_GETNEXT_WITHSCHEMAMOUNT);
-            }
-        } else if (last && (last->parent != parent)) {
+        if (last && (last->parent != parent)) {
             /* go back to parent */
             last = last->parent;
             goto next;
@@ -352,31 +327,6 @@ repeat:
                 next = (struct lysc_node *)lysc_node_notifs(parent);
             } else if (module) {
                 next = (struct lysc_node *)module->notifs;
-            }
-        } else if (!sm_flag) {
-            sm_flag = 1;
-            if (parent) {
-                LY_ARRAY_FOR(parent->exts, u) {
-                    if (!strcmp(parent->exts[u].def->name, "mount-point") &&
-                            !strcmp(parent->exts[u].def->module->name, "ietf-yang-schema-mount")) {
-                        lyplg_ext_schema_mount_get_ctx(&parent->exts[u], NULL, &sm_ctx);
-                        if (sm_ctx) {
-                            /* some usable context created */
-                            break;
-                        }
-                    }
-                }
-                if (sm_ctx) {
-                    /* get the first node from the first usable module */
-                    idx = 0;
-                    while (!next && (mod = ly_ctx_get_module_iter(sm_ctx, &idx))) {
-                        if (!mod->implemented) {
-                            continue;
-                        }
-
-                        next = lys_getnext(NULL, NULL, mod->compiled, options & ~LYS_GETNEXT_WITHSCHEMAMOUNT);
-                    }
-                }
             }
         } else {
             return NULL;
@@ -465,14 +415,14 @@ check:
  * @param[in] name Name of the schema node to find, if the string is not NULL-terminated, the @p name_len must be set.
  * @param[in] name_len Length of the @p name string, use in case the @p name is not NULL-terminated string.
  * @param[in] nodetype Allowed [type of the node](@ref schemanodetypes).
- * @param[in] in_xpath Set if searching for nodes in an XPath expression.
+ * @param[in] is_xpath Set if searching for nodes in an XPath expression.
  * @param[out] snode Found schema node, NULL if no suitable was found.
  * @return Found schema node if there is some satisfy the provided requirements.
  */
 static LY_ERR
 lys_ext_find_node(const struct lysc_ext_instance *ext, const struct lyd_node *parent, const struct lysc_node *sparent,
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
-        uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode)
+        uint32_t name_len, ly_bool is_xpath, const struct lysc_node **snode)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyplg_ext *plg_ext;
@@ -483,7 +433,7 @@ lys_ext_find_node(const struct lysc_ext_instance *ext, const struct lyd_node *pa
     }
 
     /* standard nodes */
-    if (in_xpath) {
+    if (is_xpath) {
         if (plg_ext->snode_xpath) {
             rc = plg_ext->snode_xpath((struct lysc_ext_instance *)ext, prefix, prefix_len, format, prefix_data, name,
                     name_len, snode);
@@ -511,7 +461,7 @@ lys_ext_find_node(const struct lysc_ext_instance *ext, const struct lyd_node *pa
 LY_ERR
 lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, const struct lyd_node *parent,
         const struct lysc_node *sparent, const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format,
-        void *prefix_data, const char *name, uint32_t name_len, ly_bool in_xpath, const struct lysc_node **snode,
+        void *prefix_data, const char *name, uint32_t name_len, ly_bool is_xpath, const struct lysc_node **snode,
         struct lysc_ext_instance **ext)
 {
     LY_ERR r;
@@ -528,7 +478,7 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
     }
     LY_ARRAY_FOR(exts, u) {
         r = lys_ext_find_node(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len,
-                in_xpath, snode);
+                is_xpath, snode);
         if (!r) {
             if (ext) {
                 /* schema node found, remember the ext instance */
@@ -553,7 +503,7 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
     }
     LY_ARRAY_FOR(exts, u) {
         r = lys_ext_find_node(&exts[u], parent, sparent, prefix, prefix_len, format, prefix_data, name, name_len,
-                in_xpath, snode);
+                is_xpath, snode);
         if (!r) {
             if (ext) {
                 *ext = &exts[u];
@@ -569,28 +519,31 @@ lys_find_child_node_ext(const struct ly_ctx *ctx, const struct lys_module *mod, 
 }
 
 LY_ERR
-lys_find_child_node(const struct ly_ctx *ctx, const struct lys_module *mod, const struct lysc_node *parent,
+lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, const struct lys_module *mod,
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
         uint32_t name_len, uint32_t options, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
     const struct lysc_node *node = NULL;
-    ly_bool in_xpath;
 
     *snode = NULL;
     if (ext) {
         *ext = NULL;
     }
 
-    /* look for a standard schema node */
+    /* find the module */
     if (!mod) {
         mod = lys_find_module(ctx, parent, prefix, prefix_len, format, prefix_data);
     }
+
+    /* look for a standard schema node */
     if (mod && mod->implemented) {
         while ((node = lys_getnext(node, parent, mod->compiled, options))) {
+            /* check module */
             if (node->module != mod) {
                 continue;
             }
 
+            /* check name */
             if (name_len) {
                 if (!ly_strncmp(node->name, name, name_len)) {
                     *snode = node;
@@ -606,18 +559,17 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lys_module *mod, cons
     }
 
     /* look for an ext instance node */
-    in_xpath = (options & LYS_GETNEXT_EXT_XPATH) ? 1 : 0;
     return lys_find_child_node_ext(ctx, mod, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len,
-            in_xpath, snode, ext);
+            0, snode, ext);
 }
 
 LIBYANG_API_DEF const struct lysc_node *
-lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent, const struct lys_module *mod, const char *name,
-        uint32_t name_len, uint32_t options)
+lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent, const struct lys_module *mod,
+        const char *mod_name, uint32_t mod_len, const char *name, uint32_t name_len, uint32_t options)
 {
     const struct lysc_node *snode = NULL;
 
-    LY_CHECK_ARG_RET(NULL, ctx || parent || mod, name, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx || parent || mod, (mod || mod_name) && (!mod || !mod_name), name, NULL);
 
     if (parent) {
         ctx = parent->module->ctx;
@@ -625,12 +577,18 @@ lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent, const s
         ctx = mod->ctx;
     }
 
+    if (mod) {
+        mod_name = mod->name;
+    }
+
+    if (mod_name && !mod_len) {
+        mod_len = strlen(mod_name);
+    }
     if (name && !name_len) {
         name_len = strlen(name);
     }
 
-    lys_find_child_node(ctx, mod, parent, mod ? mod->name : NULL, mod ? strlen(mod->name) : 0, LY_VALUE_JSON, NULL,
-            name, name_len, options, &snode, NULL);
+    lys_find_child_node(ctx, parent, mod, mod_name, mod_len, LY_VALUE_JSON, NULL, name, name_len, options, &snode, NULL);
     return snode;
 }
 

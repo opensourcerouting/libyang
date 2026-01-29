@@ -945,10 +945,10 @@ lyd_parse_opaq_error(const struct lyd_node *node)
     }
 
     /* schema */
-    snode = lys_find_child(LYD_CTX(node), sparent, mod, opaq->name.name, 0, 0);
+    snode = lys_find_child(LYD_CTX(node), sparent, mod, NULL, 0, opaq->name.name, 0, 0);
     if (!snode && sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
         /* maybe output node */
-        snode = lys_find_child(LYD_CTX(node), sparent, mod, opaq->name.name, 0, LYS_GETNEXT_OUTPUT);
+        snode = lys_find_child(LYD_CTX(node), sparent, mod, NULL, 0, opaq->name.name, 0, LYS_GETNEXT_OUTPUT);
     }
     if (!snode) {
         if (sparent) {
@@ -1134,7 +1134,7 @@ lyd_node_schema(const struct lyd_node *node)
         }
 
         /* get schema node */
-        schema = lys_find_child(LYD_CTX(node), schema, mod, LYD_NAME(iter), 0, 0);
+        schema = lys_find_child(LYD_CTX(node), schema, mod, NULL, 0, LYD_NAME(iter), 0, 0);
 
         /* move to the descendant */
         prev_iter = iter;

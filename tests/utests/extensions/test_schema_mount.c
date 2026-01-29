@@ -1867,32 +1867,23 @@ test_lys_getnext(void **state)
     parent = lys_find_path(UTEST_LYCTX, NULL, "/sm:root", 0);
     assert_non_null(parent);
 
-    node = lys_getnext(NULL, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "yang", 0, "date-and-time", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "date-and-time");
 
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "ietf-yang-schema-mount", 0, "schema-mounts", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "schema-mounts");
 
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "ietf-yang-library", 0, "yang-library", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "yang-library");
 
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "ietf-yang-library", 0, "modules-state", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "modules-state");
 
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "ietf-interfaces", 0, "interfaces", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "interfaces");
 
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
+    node = lys_find_child(NULL, parent, NULL, "ietf-interfaces", 0, "interfaces-state", 0, 0);
     assert_non_null(node);
-    assert_string_equal(node->name, "interfaces-state");
-
-    node = lys_getnext(node, parent, NULL, LYS_GETNEXT_WITHSCHEMAMOUNT);
-    assert_null(node);
 }
 
 static void
