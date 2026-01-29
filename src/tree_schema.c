@@ -544,6 +544,8 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
 {
     const struct lysc_node *node = NULL;
 
+    assert(name);
+
     *snode = NULL;
     if (ext) {
         *ext = NULL;
@@ -552,7 +554,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     if (prefix && !prefix_len) {
         prefix_len = strlen(prefix);
     }
-    if (name && !name_len) {
+    if (!name_len) {
         name_len = strlen(name);
     }
 
@@ -603,7 +605,7 @@ lys_find_child(const struct ly_ctx *ctx, const struct lysc_node *parent, const s
     if (mod_name && !mod_len) {
         mod_len = strlen(mod_name);
     }
-    if (name && !name_len) {
+    if (!name_len) {
         name_len = strlen(name);
     }
 
