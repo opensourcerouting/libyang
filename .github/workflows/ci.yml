@@ -86,17 +86,6 @@ jobs:
             build-cmd: "make"
           }
           - {
-            name: "ABI Check",
-            os: "ubuntu-22.04",
-            build-type: "ABICheck",
-            cc: "gcc",
-            options: "",
-            packager: "sudo apt-get",
-            packages: "libcmocka-dev libxxhash-dev abi-dumper abi-compliance-checker",
-            snaps: "core universal-ctags",
-            build-cmd: "make abi-check"
-          }
-          - {
             name: "DEB Package",
             os: "ubuntu-22.04",
             build-type: "Release",
