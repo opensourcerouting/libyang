@@ -426,6 +426,8 @@ lys_ext_find_node(const struct lysc_ext_instance *ext, const struct lyd_node *pa
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyplg_ext *plg_ext;
+    const struct lys_module *mod;
+    const struct lysc_node *node;
 
     plg_ext = LYSC_GET_EXT_PLG(ext->def->plugin_ref);
     if (!plg_ext) {
@@ -433,25 +435,37 @@ lys_ext_find_node(const struct lysc_ext_instance *ext, const struct lyd_node *pa
     }
 
     /* standard nodes */
-    if (is_xpath) {
-        if (plg_ext->snode_xpath) {
-            rc = plg_ext->snode_xpath((struct lysc_ext_instance *)ext, prefix, prefix_len, format, prefix_data, name,
-                    name_len, snode);
-        } else {
-            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof snode, (const void **)snode);
-            if (!*snode) {
-                rc = LY_ENOT;
+    if (is_xpath && plg_ext->snode_xpath) {
+        rc = plg_ext->snode_xpath((struct lysc_ext_instance *)ext, prefix, prefix_len, format, prefix_data, name,
+                name_len, snode);
+    } else if (!is_xpath && plg_ext->snode) {
+        rc = plg_ext->snode((struct lysc_ext_instance *)ext, parent, sparent, prefix, prefix_len, format,
+                prefix_data, name, name_len, snode);
+    } else {
+        lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof node, (const void **)&node);
+        if (node) {
+            /* find the module */
+            mod = lys_find_module((*snode)->module->ctx, parent ? parent->schema : sparent, prefix, prefix_len, format,
+                    prefix_data);
+        }
+        if (node && mod && mod->implemented) {
+            while ((node = lys_getnext(node, node->parent, NULL, 0))) {
+                if (node->module != mod) {
+                    continue;
+                }
+                if (ly_strncmp(node->name, name, name_len)) {
+                    continue;
+                }
+
+                break;
+            }
+            if (node) {
+                /* matching node */
+                *snode = node;
             }
         }
-    } else {
-        if (plg_ext->snode) {
-            rc = plg_ext->snode((struct lysc_ext_instance *)ext, parent, sparent, prefix, prefix_len, format,
-                    prefix_data, name, name_len, snode);
-        } else {
-            lyplg_ext_get_storage(ext, LY_STMT_DATA_NODE_MASK, sizeof snode, (const void **)snode);
-            if (!*snode) {
-                rc = LY_ENOT;
-            }
+        if (!*snode) {
+            rc = LY_ENOT;
         }
     }
 
