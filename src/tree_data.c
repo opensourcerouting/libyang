@@ -410,7 +410,7 @@ lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in
     case LYD_TYPE_REPLY_YANG:
         int_opts = LYD_INTOPT_REPLY | (parent ? LYD_INTOPT_WITH_SIBLINGS : LYD_INTOPT_NO_SIBLINGS);
         break;
-    case LYD_TYPE_DATA_YANG:
+    default:
         LOGINT(ctx);
         rc = LY_EINT;
         goto cleanup;
