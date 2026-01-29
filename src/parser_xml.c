@@ -570,6 +570,9 @@ lydxml_subtree_get_snode(struct lyd_xml_ctx *lydctx, const struct lyd_node *pare
     *ext = NULL;
 
     /* try to find parent schema node */
+    if (!prefix_len) {
+        prefix = NULL;
+    }
     r = lys_find_child_node(parent ? LYD_CTX(parent) : ctx, lyd_parser_node_schema(parent), NULL, prefix, prefix_len,
             LY_VALUE_XML, &lydctx->xmlctx->ns, name, name_len, getnext_opts, snode, ext);
     LY_CHECK_RET(r && (r != LY_ENOT), r);
