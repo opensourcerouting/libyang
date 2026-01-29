@@ -8058,6 +8058,42 @@ cleanup:
 }
 
 /**
+ * @brief Find a specific child schema node. ::lys_find_child() is not used to avoid searching in extension instances.
+ *
+ * No need to find ext instance data nodes using hashes and may cause some recursive callback calls (schema-mount).
+ *
+ * @param[in] parent Parent node, if any.
+ * @param[in] mod Node module.
+ * @param[in] name Name of the node.
+ * @param[in] name_len Length of @p name.
+ * @param[in] options Getnext options.
+ * @return Found schema node;
+ * @return NULL if no node found.
+ */
+static const struct lysc_node *
+eval_name_test_with_predicate_find_scnode(const struct lysc_node *parent, const struct lys_module *mod,
+        const char *name, uint32_t name_len, uint32_t options)
+{
+    const struct lysc_node *node = NULL;
+
+    assert(mod && mod->implemented);
+
+    while ((node = lys_getnext(node, parent, mod->compiled, options))) {
+        /* check module */
+        if (node->module != mod) {
+            continue;
+        }
+
+        /* check name */
+        if (!ly_strncmp(node->name, name, name_len)) {
+            return node;
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Search for/check the next schema node that could be the only matching schema node meaning the
  * data node(s) could be found using a single hash-based search.
  *
@@ -8093,7 +8129,7 @@ continue_search:
                     continue;
                 }
 
-                scnode = lys_find_child(NULL, NULL, mod, NULL, 0, name, name_len, 0);
+                scnode = eval_name_test_with_predicate_find_scnode(NULL, mod, name, name_len, 0);
                 if (scnode) {
                     /* we have found a match */
                     break;
@@ -8106,7 +8142,7 @@ continue_search:
             }
         } else {
             /* search in top-level */
-            scnode = lys_find_child(NULL, NULL, moveto_mod, NULL, 0, name, name_len, 0);
+            scnode = eval_name_test_with_predicate_find_scnode(NULL, moveto_mod, name, name_len, 0);
         }
     } else if (node->schema && (!*found || (lysc_data_parent(*found) != node->schema))) {
         if ((format == LY_VALUE_JSON) && !moveto_mod) {
@@ -8117,8 +8153,9 @@ continue_search:
         /* search in children, do not repeat the same search */
         if (node->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             /* make sure the node is unique, whether in input or output */
-            scnode = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, 0);
-            scnode2 = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, LYS_GETNEXT_OUTPUT);
+            scnode = eval_name_test_with_predicate_find_scnode(node->schema, moveto_mod, name, name_len, 0);
+            scnode2 = eval_name_test_with_predicate_find_scnode(node->schema, moveto_mod, name, name_len,
+                    LYS_GETNEXT_OUTPUT);
             if (scnode && scnode2) {
                 /* conflict, do not use hashes */
                 scnode = NULL;
@@ -8126,7 +8163,7 @@ continue_search:
                 scnode = scnode2;
             }
         } else {
-            scnode = lys_find_child(NULL, node->schema, moveto_mod, NULL, 0, name, name_len, 0);
+            scnode = eval_name_test_with_predicate_find_scnode(node->schema, moveto_mod, name, name_len, 0);
         }
     } /* else skip redundant search */
 
