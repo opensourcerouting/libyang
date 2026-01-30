@@ -539,7 +539,7 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
         case LYS_ANYXML:
         case LYS_ANYDATA:
             any = (struct lyd_node_any *)node;
-            if (!(void *)any->value.tree) {
+            if (!any->child && !any->value) {
                 /* no content */
                 buf = strdup("");
                 LY_CHECK_ERR_RET(!buf, LOGMEM(set->ctx), LY_EMEM);
@@ -550,12 +550,12 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
                 case LYD_ANYDATA_STRING:
                 case LYD_ANYDATA_XML:
                 case LYD_ANYDATA_JSON:
-                    buf = strdup(any->value.json);
+                    buf = strdup(any->value ? any->value : "");
                     LY_CHECK_ERR_RET(!buf, LOGMEM(set->ctx), LY_EMEM);
                     break;
                 case LYD_ANYDATA_DATATREE:
                     LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
-                    rc = lyd_print_all(out, any->value.tree, LYD_XML, 0);
+                    rc = lyd_print_all(out, any->child, LYD_XML, 0);
                     ly_out_free(out, NULL, 0);
                     LY_CHECK_RET(rc);
                     break;
@@ -5896,7 +5896,7 @@ moveto_axis_node_next_dfs_forward(const struct lyd_node *iter, const struct lyd_
     const struct lyd_node *next = NULL;
 
     /* 1) child */
-    next = lyd_child(iter);
+    next = lyd_child_any(iter);
     if (!next) {
         if (iter == stop) {
             /* reached stop, no more descendants */
@@ -6001,7 +6001,7 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
             next_type = next ? LYXP_NODE_ELEM : 0;
         } else {
             /* search in children */
-            next = lyd_child(node);
+            next = lyd_child_any(node);
             next_type = next ? LYXP_NODE_ELEM : 0;
         }
         break;
@@ -6962,7 +6962,7 @@ moveto_node_alldesc_child(struct lyxp_set *set, const struct lys_module *moveto_
 
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
-            next = lyd_child(elem);
+            next = lyd_child_any(elem);
             if (!next) {
 skip_children:
                 /* no children, so try siblings, but only if it's not the start,
@@ -7868,7 +7868,7 @@ eval_name_test_try_compile_predicate_append(const struct lyxp_expr *exp, uint32_
     }
 
     /* get any data instance of the context node, we checked it makes no difference */
-    siblings = set->val.nodes[0].node ? lyd_child(set->val.nodes[0].node) : set->tree;
+    siblings = set->val.nodes[0].node ? lyd_child_any(set->val.nodes[0].node) : set->tree;
     LY_CHECK_GOTO(rc = lyd_find_sibling_schema(siblings, ctx_scnode, &ctx_node), cleanup);
 
     /* evaluate the value subexpression with the root context node */

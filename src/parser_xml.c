@@ -977,8 +977,10 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         }
 
         /* assign the data tree */
-        ((struct lyd_node_any *)*node)->value.tree = child;
-        child = NULL;
+        ((struct lyd_node_any *)*node)->child = child;
+        LY_LIST_FOR(child, child) {
+            child->parent = *node;
+        }
     }
 
     /* insert, needs LYD_EXT flag */

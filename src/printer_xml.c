@@ -446,7 +446,7 @@ xml_print_anydata(struct xmlpr_ctx *pctx, const struct lyd_node_any *node)
 
     xml_print_node_open(pctx, &node->node);
 
-    if (!any->value.tree) {
+    if (!any->child && !any->value) {
         /* no content */
 no_content:
         ly_print_(pctx->out, "/>%s", DO_FORMAT ? "\n" : "");
@@ -460,7 +460,7 @@ no_content:
             LEVEL_INC;
 
             ly_print_(pctx->out, ">%s", DO_FORMAT ? "\n" : "");
-            LY_LIST_FOR(any->value.tree, iter) {
+            LY_LIST_FOR(any->child, iter) {
                 ret = xml_print_node(pctx, iter);
                 LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
             }
@@ -471,19 +471,19 @@ no_content:
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_JSON:
             /* escape XML-sensitive characters */
-            if (!any->value.str[0]) {
+            if (!any->value[0]) {
                 goto no_content;
             }
             /* close opening tag and print data */
             ly_print_(pctx->out, ">");
-            lyxml_dump_text(pctx->out, any->value.str, 0);
+            lyxml_dump_text(pctx->out, any->value, 0);
             break;
         case LYD_ANYDATA_XML:
             /* print without escaping special characters */
-            if (!any->value.str[0]) {
+            if (!any->value[0]) {
                 goto no_content;
             }
-            ly_print_(pctx->out, ">%s", any->value.str);
+            ly_print_(pctx->out, ">%s", any->value);
             break;
         }
 

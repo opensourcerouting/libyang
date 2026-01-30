@@ -469,7 +469,7 @@ test_rpc(void **state)
     dsc = "Inline Config content.";
     CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
-    node = ((struct lyd_node_any *)node)->value.tree;
+    node = ((struct lyd_node_any *)node)->child;
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
 
@@ -670,7 +670,7 @@ test_netconf_rpc(void **state)
     dsc = "Inline Config content.";
     CHECK_LYSC_NODE(node->schema, dsc, 0, LYS_STATUS_CURR | LYS_IS_INPUT, 1, "config", 0, LYS_ANYXML, 1, 0, NULL, 0);
 
-    node = ((struct lyd_node_any *)node)->value.tree;
+    node = ((struct lyd_node_any *)node)->child;
     CHECK_LYSC_NODE(node->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR | LYS_PRESENCE, 1, "cp",
             1, LYS_CONTAINER, 0, 0, NULL, 0);
 

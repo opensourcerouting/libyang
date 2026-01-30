@@ -72,6 +72,7 @@ const char *schema_a =
         "        }\n"
         "        must \"(. - 0.5) mod 0.5 = 0\";\n"
         "    }\n"
+        "    anydata any;\n"
         "    container c {\n"
         "        leaf x {\n"
         "            type string;\n"
@@ -527,7 +528,7 @@ test_atomize(void **state)
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*", 0, &set));
-    assert_int_equal(8, set->count);
+    assert_int_equal(9, set->count);
     ly_set_free(set, NULL);
 
     /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
@@ -544,7 +545,7 @@ test_atomize(void **state)
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/*", 0, &set));
-    assert_int_equal(16, set->count);
+    assert_int_equal(17, set->count);
     ly_set_free(set, NULL);
 
     /*
@@ -578,7 +579,7 @@ test_atomize(void **state)
 
     /* descendant-or-self */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/a:*/descendant-or-self::c", 0, &set));
-    assert_int_equal(9, set->count);
+    assert_int_equal(10, set->count);
     ly_set_free(set, NULL);
 
     /* following */
@@ -593,7 +594,7 @@ test_atomize(void **state)
 
     /* parent */
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:*/c/parent::l1", 0, &set));
-    assert_int_equal(9, set->count);
+    assert_int_equal(10, set->count);
     ly_set_free(set, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/child::a:c//..", 0, &set));
@@ -1262,6 +1263,32 @@ test_mod(void **state)
     lyd_free_siblings(tree);
 }
 
+static void
+test_anydata(void **state)
+{
+    const char *data;
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    data = "<any xmlns=\"urn:tests:a\">"
+            "<c>"
+            "<ll><a>val</a></ll>"
+            "</c>"
+            "</any>";
+
+    /* parse */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_XML,
+            LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    /* find */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:any/c/ll[a='val']", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    lyd_free_siblings(tree);
+}
+
 int
 main(void)
 {
@@ -1280,6 +1307,7 @@ main(void)
         UTEST(test_axes, setup),
         UTEST(test_trim, setup),
         UTEST(test_mod, setup),
+        UTEST(test_anydata, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

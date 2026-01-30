@@ -1022,20 +1022,20 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
     a = (struct lyd_node_any *)any;
     *value_str = NULL;
 
-    if (!a->value.str) {
+    if (!a->child && !a->value) {
         /* there is no value in the union */
         return LY_SUCCESS;
     }
 
     switch (a->value_type) {
     case LYD_ANYDATA_DATATREE:
-        tree = a->value.tree;
+        tree = a->child;
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
         /* simply use the string */
-        str = a->value.str;
+        str = a->value;
         break;
     }
 
@@ -1054,9 +1054,10 @@ cleanup:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
+lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     struct lyd_node_any *t;
+    struct lyd_node *node;
 
     LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
     LY_CHECK_ARG_RET(NULL, trg->schema, trg->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
@@ -1066,15 +1067,16 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     /* free trg */
     switch (t->value_type) {
     case LYD_ANYDATA_DATATREE:
-        lyd_free_all(t->value.tree);
+        lyd_free_siblings(t->child);
+        t->child = NULL;
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
-        lydict_remove(LYD_CTX(trg), t->value.str);
+        lydict_remove(LYD_CTX(trg), t->value);
+        t->value = NULL;
         break;
     }
-    t->value.str = NULL;
 
     if (!value) {
         /* only free value in this case */
@@ -1085,16 +1087,15 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     t->value_type = value_type;
     switch (value_type) {
     case LYD_ANYDATA_DATATREE:
-        if (value->tree) {
-            LY_CHECK_RET(lyd_dup_siblings(value->tree, NULL, LYD_DUP_RECURSIVE, &t->value.tree));
+        LY_CHECK_RET(lyd_dup_siblings(value, NULL, LYD_DUP_RECURSIVE, &t->child));
+        LY_LIST_FOR(t->child, node) {
+            node->parent = &t->node;
         }
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
-        if (value->str) {
-            LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value->str, 0, &t->value.str));
-        }
+        LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value, 0, &t->value));
         break;
     }
 

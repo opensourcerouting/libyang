@@ -1339,7 +1339,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
 
     if (!path[0].doc_root) {
         /* relative path, start from the parent children */
-        ctx_node = lyd_child(ctx_node);
+        ctx_node = lyd_child_any(ctx_node);
     } else {
         /* absolute path, start from the first document root child */
         ctx_node = lyxp_node_first_doc_root_child(ctx_node, NULL);
@@ -1396,7 +1396,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node
         prev_node = node;
 
         /* next path segment, if any */
-        ctx_node = lyd_child(node);
+        ctx_node = lyd_child_any(node);
     }
 
     if (node) {

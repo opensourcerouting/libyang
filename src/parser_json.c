@@ -1277,8 +1277,10 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, co
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
         /* assign the data tree */
-        ((struct lyd_node_any *)*node)->value.tree = child;
-        child = NULL;
+        ((struct lyd_node_any *)*node)->child = child;
+        LY_LIST_FOR(child, child) {
+            child->parent = *node;
+        }
         break;
     case LYJSON_ARRAY:
         /* skip until the array end */

@@ -270,7 +270,6 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     LY_ERR rc = LY_SUCCESS, r;
     struct lyd_node *tree;
     struct lyd_node_any *any = NULL;
-    union lyd_any_value any_val;
     struct ly_in *in = NULL;
 
     assert(schema->nodetype & LYD_NODE_ANY);
@@ -350,18 +349,20 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     if (use_value) {
         switch (value_type) {
         case LYD_ANYDATA_DATATREE:
-            any->value.tree = (void *)value;
+            any->child = (void *)value;
+            LY_LIST_FOR(any->child, tree) {
+                tree->parent = &any->node;
+            }
             break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_XML:
         case LYD_ANYDATA_JSON:
-            LY_CHECK_GOTO(rc = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value.str), cleanup);
+            LY_CHECK_GOTO(rc = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value), cleanup);
             break;
         }
         any->value_type = value_type;
     } else {
-        any_val.str = value;
-        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, &any_val, value_type), cleanup);
+        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, value, value_type), cleanup);
     }
     lyd_hash(&any->node);
 
@@ -1295,6 +1296,47 @@ cleanup:
 }
 
 /**
+ * @brief Switch anyxml/anydata values of 2 nodes.
+ *
+ * @param[in] node1 First node.
+ * @param[in] node2 Second node.
+ */
+static void
+lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
+{
+    struct lyd_node_any *any1, *any2;
+    LYD_ANYDATA_VALUETYPE value_type;
+    const char *value;
+    struct lyd_node *child, *iter;
+
+    assert((node1->schema->nodetype & LYD_NODE_ANY) && (node2->schema->nodetype & LYD_NODE_ANY));
+
+    any1 = (struct lyd_node_any *)node1;
+    any2 = (struct lyd_node_any *)node2;
+
+    /* backup any1 */
+    child = any1->child;
+    value = any1->value;
+    value_type = any1->value_type;
+
+    /* set any1 */
+    any1->child = any2->child;
+    LY_LIST_FOR(any1->child, iter) {
+        iter->parent = &any1->node;
+    }
+    any1->value = any2->value;
+    any1->value_type = any2->value_type;
+
+    /* set any2 */
+    any2->child = child;
+    LY_LIST_FOR(any2->child, iter) {
+        iter->parent = &any2->node;
+    }
+    any2->value = value;
+    any2->value_type = value_type;
+}
+
+/**
  * @brief Update node value.
  *
  * @param[in] node Node to update.
@@ -1354,13 +1396,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
         /* compare with the existing one */
         if (lyd_compare_single(node, new_any, 0)) {
             /* not equal, switch values (so that we can use generic node free) */
-            value = ((struct lyd_node_any *)new_any)->value.str;
-            value_type = ((struct lyd_node_any *)new_any)->value_type;
-            ((struct lyd_node_any *)new_any)->value.str = ((struct lyd_node_any *)node)->value.str;
-            ((struct lyd_node_any *)new_any)->value_type = ((struct lyd_node_any *)node)->value_type;
-            ((struct lyd_node_any *)node)->value.str = value;
-            ((struct lyd_node_any *)node)->value_type = value_type;
-
+            lyd_anydata_switch_value(new_any, node);
             *new_parent = node;
             *new_node = node;
         } else {

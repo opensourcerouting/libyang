@@ -1199,13 +1199,13 @@ lyb_print_node_any(struct lyd_node_any *anydata, struct lyd_lyb_ctx *lybctx)
     switch (anydata->value_type) {
     case LYD_ANYDATA_DATATREE:
         /* print LYB siblings */
-        LY_CHECK_GOTO(rc = lyb_print_siblings(anydata->value.tree, 0, lybctx), cleanup);
+        LY_CHECK_GOTO(rc = lyb_print_siblings(anydata->child, 0, lybctx), cleanup);
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
         /* string value */
-        LY_CHECK_GOTO(rc = lyb_write_string(anydata->value.str, 0, lybctx->print_ctx), cleanup);
+        LY_CHECK_GOTO(rc = lyb_write_string(anydata->value, 0, lybctx->print_ctx), cleanup);
         break;
     default:
         LOGINT(lybctx->print_ctx->ctx);

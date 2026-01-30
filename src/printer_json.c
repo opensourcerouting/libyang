@@ -633,7 +633,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         prev_opts = pctx->options;
         pctx->parent = &any->node;
         pctx->options &= ~LYD_PRINT_SIBLINGS;
-        LY_LIST_FOR(any->value.tree, iter) {
+        LY_LIST_FOR(any->child, iter) {
             ret = json_print_node(pctx, iter);
             LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
         }
@@ -649,7 +649,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         }
         break;
     case LYD_ANYDATA_JSON:
-        if (!any->value.json) {
+        if (!any->value) {
             /* no content */
             if (any->schema->nodetype == LYS_ANYXML) {
                 ly_print_(pctx->out, "null");
@@ -658,12 +658,12 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
             }
         } else {
             /* print without escaping special characters */
-            ly_print_(pctx->out, "%s", any->value.json);
+            ly_print_(pctx->out, "%s", any->value);
         }
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
-        if (!any->value.str) {
+        if (!any->value) {
             /* no content */
             if (any->schema->nodetype == LYS_ANYXML) {
                 ly_print_(pctx->out, "null");
@@ -672,7 +672,7 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
             }
         } else {
             /* print as a string */
-            json_print_string(pctx->out, any->value.str);
+            json_print_string(pctx->out, any->value);
         }
         break;
     }

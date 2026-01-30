@@ -422,6 +422,8 @@ struct rb_node;
  * @brief Macro to iterate via all elements in a tree. This is the closing part
  * to the #LYD_TREE_DFS_BEGIN - they always have to be used together.
  *
+ * Returns children using ::lyd_child().
+ *
  * Use the same parameters for #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END. While
  * START can be any of the lyd_node* types, ELEM variable must be a pointer
  * to the generic struct lyd_node.
@@ -431,7 +433,6 @@ struct rb_node;
  * @param START Pointer to the starting element processed first.
  * @param ELEM Iterator intended for use in the block.
  */
-
 #define LYD_TREE_DFS_END(START, ELEM) \
     /* select element for the next run - children first */ \
     if (LYD_TREE_DFS_continue) { \
@@ -872,18 +873,7 @@ struct lyd_node_term {
 };
 
 /**
- * @brief union for anydata/anyxml value representation.
- */
-union lyd_any_value {
-    struct lyd_node *tree; /**< data tree */
-    const char *str;       /**< Generic string data */
-    const char *xml;       /**< Serialized XML data */
-    const char *json;      /**< I-JSON encoded string */
-};
-
-/**
- * @brief Data node structure for the anydata data tree nodes - anydata or
- * anyxml.
+ * @brief Data node structure for the anydata data tree nodes - anydata or anyxml.
  */
 struct lyd_node_any {
     union {
@@ -908,8 +898,10 @@ struct lyd_node_any {
         };
     };                                      /**< common part corresponding to ::lyd_node */
 
-    union lyd_any_value value;          /**< pointer to the stored value representation of the anydata/anyxml node */
-    LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored as ::lyd_node_any.value */
+    struct lyd_node *child;             /**< pointer to the first child node, if any (based on value_type) */
+    struct ly_ht *children_ht;          /**< unused, always NULL */
+    const char *value;                  /**< pointer to the stored value representation of the anydata/anyxml node */
+    LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored in ::value or ::child */
 };
 
 /**
@@ -1080,7 +1072,7 @@ lyd_child(const struct lyd_node *node)
  * @return Pointer to the first child node (if any) of the @p node.
  */
 static inline struct lyd_node *
-lyd_child(const struct lyd_node *node)
+lyd_child_any(const struct lyd_node *node)
 {
     if (!node) {
         return NULL;
@@ -1091,7 +1083,7 @@ lyd_child(const struct lyd_node *node)
         return ((const struct lyd_node_opaq *)node)->child;
     }
 
-    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF | LYS_ANYDATA)) {
         return ((const struct lyd_node_inner *)node)->child;
     }
 
@@ -1101,9 +1093,7 @@ lyd_child(const struct lyd_node *node)
 /**
  * @brief Get the child pointer of a generic data node but skip its keys in case it is ::LYS_LIST.
  *
- * Decides the node's type and in case it has a children list, returns it. Supports even the opaq nodes (::lyd_node_opaq).
- *
- * If you need to take key children into account, use ::lyd_child().
+ * Returns the same nodes as ::lyd_child() but skips any keys of a list.
  *
  * @param[in] node Node to use.
  * @return Pointer to the first child node (if any) of the @p node.
@@ -1213,12 +1203,11 @@ LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, char **val
  * @brief Copy anydata value from one node to another. Target value is freed first.
  *
  * @param[in,out] trg Target node.
- * @param[in] value Source value, may be NULL when the target value is only freed.
+ * @param[in] value Source value. If not set, @p trg value is only freed.
  * @param[in] value_type Source value type.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value,
-        LYD_ANYDATA_VALUETYPE value_type);
+LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
@@ -2412,6 +2401,8 @@ LIBYANG_API_DECL void lyxp_vars_free(struct lyxp_var *vars);
  * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
  *
  * Opaque nodes are part of the evaluation but only those with a matching schema node.
+ *
+ * Extension instance data and anyxml/anydata contents are normally traversed and part of the evaluation.
  *
  * @param[in] ctx_node XPath context node.
  * @param[in] xpath [XPath](@ref howtoXPath) to select in JSON format. It must evaluate into a node set.
