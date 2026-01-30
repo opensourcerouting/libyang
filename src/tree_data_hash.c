@@ -166,6 +166,7 @@ LY_ERR
 lyd_insert_hash(struct lyd_node *node)
 {
     struct lyd_node *iter;
+    struct lyd_node_inner *parent;
     uint32_t u;
 
     if (!node->parent || !node->schema || !node->parent->schema) {
@@ -173,27 +174,29 @@ lyd_insert_hash(struct lyd_node *node)
         return LY_SUCCESS;
     }
 
+    parent = (struct lyd_node_inner *)node->parent;
+
     /* create parent hash table if required, otherwise just add the new child */
-    if (!node->parent->children_ht) {
+    if (!parent->children_ht) {
         /* the hash table is created only when the number of children in a node exceeds the
          * defined minimal limit LYD_HT_MIN_ITEMS
          */
         u = 0;
-        LY_LIST_FOR(node->parent->child, iter) {
+        LY_LIST_FOR(parent->child, iter) {
             if (iter->schema) {
                 ++u;
             }
         }
         if (u >= LYD_HT_MIN_ITEMS) {
-            node->parent->children_ht = lyht_new(lyht_get_fixed_size(u), sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
-            LY_LIST_FOR(node->parent->child, iter) {
+            parent->children_ht = lyht_new(lyht_get_fixed_size(u), sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+            LY_LIST_FOR(parent->child, iter) {
                 if (iter->schema) {
-                    LY_CHECK_RET(lyd_insert_hash_add(node->parent->children_ht, iter, 1));
+                    LY_CHECK_RET(lyd_insert_hash_add(parent->children_ht, iter, 1));
                 }
             }
         }
     } else {
-        LY_CHECK_RET(lyd_insert_hash_add(node->parent->children_ht, node, 0));
+        LY_CHECK_RET(lyd_insert_hash_add(parent->children_ht, node, 0));
     }
 
     return LY_SUCCESS;
@@ -202,15 +205,18 @@ lyd_insert_hash(struct lyd_node *node)
 void
 lyd_unlink_hash(struct lyd_node *node)
 {
+    struct lyd_node_inner *parent;
     uint32_t hash;
 
-    if (!node->parent || !node->schema || !node->parent->schema || !node->parent->children_ht) {
+    if (!node->parent || !node->schema || !node->parent->schema || !((struct lyd_node_inner *)node->parent)->children_ht) {
         /* not in any HT */
         return;
     }
 
+    parent = (struct lyd_node_inner *)node->parent;
+
     /* remove from the parent HT */
-    if (lyht_remove(node->parent->children_ht, &node, node->hash)) {
+    if (lyht_remove(parent->children_ht, &node, node->hash)) {
         LOGINT(LYD_CTX(node));
         return;
     }
@@ -223,14 +229,14 @@ lyd_unlink_hash(struct lyd_node *node)
         hash = lyht_hash_multi(hash, NULL, 0);
 
         /* remove the instance */
-        if (lyht_remove(node->parent->children_ht, &node, hash)) {
+        if (lyht_remove(parent->children_ht, &node, hash)) {
             LOGINT(LYD_CTX(node));
             return;
         }
 
         /* add the next instance */
         if (node->next && (node->next->schema == node->schema)) {
-            if (lyht_insert(node->parent->children_ht, &node->next, hash, NULL)) {
+            if (lyht_insert(parent->children_ht, &node->next, hash, NULL)) {
                 LOGINT(LYD_CTX(node));
                 return;
             }

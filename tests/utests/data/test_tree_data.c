@@ -341,8 +341,7 @@ test_dup(void **state)
     int unsigned flag = LYS_CONFIG_R | LYS_SET_ENUM;
 
     CHECK_LYSC_NODE(tree2->schema, NULL, 0, flag, 1, "x", 1, LYS_LEAF, 1, 0, NULL, 0);
-    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1->next, (struct lyd_node *)tree2->parent->parent,
-            LYD_COMPARE_FULL_RECURSION));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1->next, tree2->parent->parent, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 
@@ -352,15 +351,14 @@ test_dup(void **state)
             LYD_DUP_WITH_PARENTS, &tree2));
     flag = LYS_CONFIG_W | LYS_SET_ENUM;
     CHECK_LYSC_NODE(tree2->schema, NULL, 0, flag, 1, "c", 0, LYS_LEAF, 1, 0, NULL, 0);
-    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, (struct lyd_node *)tree2->parent, LYD_COMPARE_FULL_RECURSION));
+    assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1, tree2->parent, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
 
     data = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_SUCCESS, lyd_dup_single(tree1->next, NULL, 0, &tree2));
-    assert_int_equal(LY_SUCCESS, lyd_dup_single(lyd_child(lyd_child(tree1->next)), (struct lyd_node_inner *)tree2,
-            LYD_DUP_WITH_PARENTS, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_dup_single(lyd_child(lyd_child(tree1->next)), tree2, LYD_DUP_WITH_PARENTS, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare_single(tree1->next, tree2, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
@@ -369,7 +367,7 @@ test_dup(void **state)
     data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b><c>c</c></l1><l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree1);
     assert_int_equal(LY_EINVAL, lyd_dup_single(((struct lyd_node_inner *)tree1)->child->prev,
-            (struct lyd_node_inner *)tree1->next, LYD_DUP_WITH_PARENTS, NULL));
+            tree1->next, LYD_DUP_WITH_PARENTS, NULL));
     CHECK_LOG_CTX("None of the duplicated node \"c\" schema parents match the provided parent \"c\".", NULL, 0);
     lyd_free_all(tree1);
 }

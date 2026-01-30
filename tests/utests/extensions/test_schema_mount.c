@@ -1405,14 +1405,14 @@ test_dup_shared(void **state)
     assert_int_equal(LY_SUCCESS, lyd_dup_single(node, NULL, diff_opts, &dup));
 
     while (dup->parent) {
-        dup = lyd_parent(dup);
+        dup = dup->parent;
     }
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
             "/sm:root3/ls[name='ls2']/ietf-interfaces:interfaces-state/interface[name='if2']", &set));
     assert_int_equal(1, set->count);
     node = set->dnodes[0];
     ly_set_free(set, NULL);
-    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, LYD_CTX(data), (struct lyd_node_inner *)dup, diff_opts, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, LYD_CTX(data), dup, diff_opts, NULL));
 
     lyd_free_siblings(dup);
 
@@ -1431,14 +1431,14 @@ test_dup_shared(void **state)
     assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, ctx2, NULL, diff_opts, &dup));
 
     while (dup->parent) {
-        dup = lyd_parent(dup);
+        dup = dup->parent;
     }
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(data,
             "/sm:root3/ls[name='ls2']/ietf-interfaces:interfaces-state/interface[name='if2']", &set));
     assert_int_equal(1, set->count);
     node = set->dnodes[0];
     ly_set_free(set, NULL);
-    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, ctx2, (struct lyd_node_inner *)dup, diff_opts, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_dup_single_to_ctx(node, ctx2, dup, diff_opts, NULL));
 
     lyd_free_siblings(dup);
 

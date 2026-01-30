@@ -99,7 +99,7 @@ lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, stru
     }
 
     /* we need to find the operation node if it already exists */
-    for (iter = parent; iter; iter = lyd_parent(iter)) {
+    for (iter = parent; iter; iter = iter->parent) {
         if (iter->schema && (iter->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             break;
         }
@@ -373,7 +373,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
             }
 
             /* update dflt flag for all parent NP containers */
-            lyd_np_cont_dflt_set(lyd_parent(node));
+            lyd_np_cont_dflt_set(node->parent);
             break;
         }
 

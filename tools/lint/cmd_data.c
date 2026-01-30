@@ -441,7 +441,7 @@ check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct c
     struct ly_set *set = NULL;
     char *path = NULL;
 
-    if (!op || !lyd_parent(op)) {
+    if (!op || !op->parent) {
         /* The function is defined only for nested-notification and action. */
         return LY_SUCCESS;
     }
@@ -452,7 +452,7 @@ check_operation_parent(struct lyd_node *op, struct lyd_node *oper_tree, struct c
         goto cleanup;
     }
 
-    path = lyd_path(lyd_parent(op), LYD_PATH_STD, NULL, 0);
+    path = lyd_path(op->parent, LYD_PATH_STD, NULL, 0);
     if (!path) {
         ret = LY_EMEM;
         goto cleanup;
@@ -514,7 +514,7 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
         ret = lyd_parse_op(ctx, NULL, input_f->in, input_f->format, type, LYD_PARSE_STRICT, &envp, op);
 
         /* adjust pointers */
-        for (*tree = *op; lyd_parent(*tree); *tree = lyd_parent(*tree)) {}
+        for (*tree = *op; lyd_parent(*tree); *tree = (*tree)->parent) {}
         break;
     case LYD_TYPE_REPLY_NETCONF:
         /* parse source RPC operation */
@@ -527,7 +527,7 @@ parse_input_by_type(struct ly_ctx *ctx, enum lyd_type type, struct cmdline_file 
         }
 
         /* adjust pointers */
-        for (*tree = *op; lyd_parent(*tree); *tree = lyd_parent(*tree)) {}
+        for (*tree = *op; (*tree)->parent; *tree = (*tree)->parent) {}
 
         /* free input */
         lyd_free_siblings(lyd_child(*op));

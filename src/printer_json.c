@@ -553,7 +553,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
 
     if (node->schema && (df_mod || node_has_printable_meta(node))) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1));
+            LY_CHECK_RET(json_print_member2(pctx, node->parent, LY_VALUE_JSON, NULL, 1));
         } else {
             LY_CHECK_RET(json_print_member(pctx, node, NULL, 1));
         }
@@ -565,9 +565,9 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         LEVEL_PRINTED;
     } else if (!node->schema && ((struct lyd_node_opaq *)node)->attr) {
         if (inner) {
-            LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), LY_VALUE_JSON, NULL, 1));
+            LY_CHECK_RET(json_print_member2(pctx, node->parent, LY_VALUE_JSON, NULL, 1));
         } else {
-            LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), ((struct lyd_node_opaq *)node)->format,
+            LY_CHECK_RET(json_print_member2(pctx, node->parent, ((struct lyd_node_opaq *)node)->format,
                     &((struct lyd_node_opaq *)node)->name, 1));
         }
         ly_print_(pctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
@@ -934,7 +934,7 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
         LY_CHECK_RET(json_print_member(pctx, node, NULL, 1));
     } else {
         opaq = (struct lyd_node_opaq *)node;
-        LY_CHECK_RET(json_print_member2(pctx, lyd_parent(node), opaq->format, &opaq->name, 1));
+        LY_CHECK_RET(json_print_member2(pctx, node->parent, opaq->format, &opaq->name, 1));
     }
 
     ly_print_(pctx->out, "[%s", (DO_FORMAT ? "\n" : ""));

@@ -1071,7 +1071,7 @@ schema_mount_dup_parent_ref(const struct lysc_ext_instance *ext, const struct ly
 
             /* go top-level */
             while (dup->parent) {
-                dup = lyd_parent(dup);
+                dup = dup->parent;
             }
 
             /* check whether the top-level node exists */
@@ -1190,7 +1190,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
-    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = lyd_parent(node), *op_tree;
+    struct lyd_node *iter, *ext_data = NULL, *ref_first = NULL, *orig_parent = node->parent, *op_tree;
     struct lyd_node *ext_diff = NULL, *diff_parent = NULL, *sm_root = NULL;
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
@@ -1206,7 +1206,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
     }
 
     /* get operational data with ietf-yang-library and ietf-yang-schema-mount data */
-    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, lyd_parent(node), (void **)&ext_data, &ext_data_free))) {
+    if ((ret = lyplg_ext_get_data(ext->module->ctx, ext, node->parent, (void **)&ext_data, &ext_data_free))) {
         goto cleanup;
     }
     if (!ext_data) {
@@ -1286,7 +1286,7 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
         }
 
         /* create the parent and insert the diff */
-        if ((ret = lyd_dup_single(lyd_parent(node), NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
+        if ((ret = lyd_dup_single(node->parent, NULL, LYD_DUP_WITH_PARENTS | LYD_DUP_NO_META, &diff_parent))) {
             goto cleanup;
         }
         if ((ret = lyd_insert_child(diff_parent, ext_diff))) {
@@ -1295,8 +1295,8 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
         ext_diff = NULL;
 
         /* go top-level and set the operation */
-        while (lyd_parent(diff_parent)) {
-            diff_parent = lyd_parent(diff_parent);
+        while (diff_parent->parent) {
+            diff_parent = diff_parent->parent;
         }
         if ((ret = lyd_new_meta(LYD_CTX(diff_parent), diff_parent, NULL, "yang:operation", "none", 0, NULL))) {
             goto cleanup;

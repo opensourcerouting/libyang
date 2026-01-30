@@ -313,7 +313,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 
                     /* when unlinking duplicate key we need to recalculate the list hash,
                        so store the list (parent) and recalculate the hash after unlinking the duplicate key */
-                    parent = lyd_parent(iter);
+                    parent = iter->parent;
                     assert(parent);
 
                     lyd_unlink(iter);
@@ -516,7 +516,8 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
         getnext_opts = LYS_GETNEXT_OUTPUT;
     }
 
-    if (first_sibling->parent && first_sibling->parent->schema && first_sibling->parent->children_ht) {
+    if (first_sibling->parent && first_sibling->parent->schema &&
+            ((struct lyd_node_inner *)first_sibling->parent)->children_ht) {
         /* find the anchor using hashes */
         sparent = first_sibling->parent->schema;
         schema = lys_getnext(new_node->schema, sparent, NULL, getnext_opts);
@@ -618,7 +619,7 @@ lyd_insert_after_node(struct lyd_node **first_sibling_p, struct lyd_node *siblin
 
     if (!(node->flags & LYD_DEFAULT)) {
         /* remove default flags from NP containers */
-        lyd_np_cont_dflt_del(lyd_parent(node));
+        lyd_np_cont_dflt_del(node->parent);
     }
 }
 
@@ -636,13 +637,13 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
         node->prev->next = node;
     } else if (sibling->parent) {
         /* sibling was first and we must also change parent child pointer */
-        sibling->parent->child = node;
+        ((struct lyd_node_inner *)sibling->parent)->child = node;
     }
     node->parent = sibling->parent;
 
     if (!(node->flags & LYD_DEFAULT)) {
         /* remove default flags from NP containers */
-        lyd_np_cont_dflt_del(lyd_parent(node));
+        lyd_np_cont_dflt_del(node->parent);
     }
 }
 
@@ -657,15 +658,11 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 static void
 lyd_insert_only_child(struct lyd_node *parent, struct lyd_node *node)
 {
-    struct lyd_node_inner *par;
-
     assert(parent && !lyd_child(parent) && !node->next && (node->prev == node));
     assert(!parent->schema || (parent->schema->nodetype & LYD_NODE_INNER));
 
-    par = (struct lyd_node_inner *)parent;
-
-    par->child = node;
-    node->parent = par;
+    ((struct lyd_node_inner *)parent)->child = node;
+    node->parent = parent;
 
     if (!(node->flags & LYD_DEFAULT)) {
         /* remove default flags from NP containers */
@@ -809,7 +806,7 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
             (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)));
 
     if (!parent && first_sibling_p && (*first_sibling_p)) {
-        parent = lyd_parent(*first_sibling_p);
+        parent = (*first_sibling_p)->parent;
     }
     first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
 
@@ -1223,13 +1220,13 @@ lyd_unlink_ignore_lyds(struct lyd_node **first_sibling_p, struct lyd_node *node)
 
     /* unlink from parent */
     if (node->parent) {
-        if (node->parent->child == node) {
+        if (((struct lyd_node_inner *)node->parent)->child == node) {
             /* the node is the first child */
-            node->parent->child = node->next;
+            ((struct lyd_node_inner *)node->parent)->child = node->next;
         }
 
         /* check for NP container whether its last non-default node is not being unlinked */
-        lyd_np_cont_dflt_set(lyd_parent(node));
+        lyd_np_cont_dflt_set(node->parent);
 
         node->parent = NULL;
     }
@@ -2039,12 +2036,12 @@ lyd_dup_get_top_ctx(const struct lyd_node *node)
 
     par = node;
     while (par && !(par->flags & LYD_EXT)) {
-        par = lyd_parent(par);
+        par = par->parent;
     }
 
-    if (par && lyd_parent(par)) {
+    if (par && par->parent) {
         /* context of the first non-extension parent */
-        return LYD_CTX(lyd_parent(par));
+        return LYD_CTX(par->parent);
     }
 
     /* context of the node, all the parents have it */
@@ -2070,13 +2067,13 @@ lyd_find_ext_ctx(const struct lyd_node *orig_node, const struct lyd_node *dup_pa
 
     assert(orig_node && (orig_node->flags & LYD_EXT) && *trg_ctx);
 
-    if (!lyd_parent(orig_node)) {
+    if (!orig_node->parent) {
         /* treat as a non-extension node */
         return LY_SUCCESS;
     }
     assert(dup_parent || dup_sparent);
 
-    if (LYD_CTX(lyd_parent(orig_node)) == *trg_ctx) {
+    if (LYD_CTX(orig_node->parent) == *trg_ctx) {
         /* same contexts, just extension data */
         *trg_ctx = LYD_CTX(orig_node);
         return LY_SUCCESS;
@@ -2121,12 +2118,12 @@ lyd_find_ext_ctx_nested(const struct lyd_node *orig_node, const struct ly_ctx **
         /* not the same context, need to find the right one */
         parent = orig_node;
         while (parent && !(parent->flags & LYD_EXT)) {
-            parent = lyd_parent(parent);
+            parent = parent->parent;
         }
 
-        if (parent && lyd_parent(parent)) {
+        if (parent && parent->parent) {
             /* find the parent schema node in the target context */
-            path = lysc_path(lyd_parent(parent)->schema, LYSC_PATH_DATA, NULL, 0);
+            path = lysc_path(parent->parent->schema, LYSC_PATH_DATA, NULL, 0);
             sparent = lys_find_path(*trg_ctx, NULL, path, 0);
             if (!sparent) {
                 LOGERR(*trg_ctx, LY_ENOTFOUND, "Node \"%s\" was not found in the target context.", path);
@@ -2349,17 +2346,17 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx **trg_
     *dup_parent = NULL;
     *local_parent = NULL;
 
-    if (!lyd_parent(node)) {
+    if (!node->parent) {
         /* no parents */
         return LY_SUCCESS;
     }
 
     /* adjust the context for node parent correctly */
     top_ctx = *trg_ctx;
-    LY_CHECK_RET(lyd_find_ext_ctx_nested(lyd_parent(node), trg_ctx));
+    LY_CHECK_RET(lyd_find_ext_ctx_nested(node->parent, trg_ctx));
     ctx = *trg_ctx;
 
-    for (orig_parent = lyd_parent(node); repeat && orig_parent; orig_parent = lyd_parent(orig_parent)) {
+    for (orig_parent = node->parent; repeat && orig_parent; orig_parent = orig_parent->parent) {
         if (parent && (LYD_CTX(parent) == LYD_CTX(orig_parent)) && (parent->schema == orig_parent->schema)) {
             /* stop creating parents, connect what we have into the provided parent */
             iter = parent;
@@ -2494,53 +2491,53 @@ error:
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
+lyd_dup_single(const struct lyd_node *node, struct lyd_node *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(&parent->node))) {
+    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(parent))) {
         LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"node\" and \"parent\" contexts used in node duplication.");
         return LY_EINVAL;
     }
 
-    return lyd_dup(node, lyd_dup_get_top_ctx(node), (struct lyd_node *)parent, options, 1, dup);
+    return lyd_dup(node, lyd_dup_get_top_ctx(node), parent, options, 1, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node_inner *parent,
+lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
         uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
-    if (parent && (trg_ctx != lyd_dup_get_top_ctx(&parent->node))) {
+    if (parent && (trg_ctx != lyd_dup_get_top_ctx(parent))) {
         LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"trg_ctx\" and \"parent\" contexts used in node duplication.");
         return LY_EINVAL;
     }
 
-    return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 1, dup);
+    return lyd_dup(node, trg_ctx, parent, options, 1, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup)
+lyd_dup_siblings(const struct lyd_node *node, struct lyd_node *parent, uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(&parent->node))) {
+    if (parent && (lyd_dup_get_top_ctx(node) != lyd_dup_get_top_ctx(parent))) {
         LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"node\" and \"parent\" contexts used in node duplication.");
         return LY_EINVAL;
     }
 
-    return lyd_dup(node, lyd_dup_get_top_ctx(node), (struct lyd_node *)parent, options, 0, dup);
+    return lyd_dup(node, lyd_dup_get_top_ctx(node), parent, options, 0, dup);
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node_inner *parent,
+lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_node *parent,
         uint32_t options, struct lyd_node **dup)
 {
     LY_CHECK_ARG_RET(trg_ctx, node, trg_ctx, LY_EINVAL);
-    if (parent && (trg_ctx != lyd_dup_get_top_ctx(&parent->node))) {
+    if (parent && (trg_ctx != lyd_dup_get_top_ctx(parent))) {
         LOGERR(LYD_CTX(node), LY_EINVAL, "Different \"trg_ctx\" and \"parent\" contexts used in node duplication.");
         return LY_EINVAL;
     }
 
-    return lyd_dup(node, trg_ctx, (struct lyd_node *)parent, options, 0, dup);
+    return lyd_dup(node, trg_ctx, parent, options, 0, dup);
 }
 
 LY_ERR
@@ -2978,18 +2975,18 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
     case LYD_PATH_STD:
     case LYD_PATH_STD_NO_LAST_PRED:
         depth = 1;
-        for (iter = node; iter->parent; iter = lyd_parent(iter)) {
+        for (iter = node; iter->parent; iter = iter->parent) {
             ++depth;
         }
 
         goto iter_print;
         while (depth) {
             /* find the right node */
-            for (iter = node, i = 1; i < depth; iter = lyd_parent(iter), ++i) {}
+            for (iter = node, i = 1; i < depth; iter = iter->parent, ++i) {}
 iter_print:
             /* get the module */
             mod = lyd_node_module(iter);
-            parent = lyd_parent(iter);
+            parent = iter->parent;
             prev_mod = lyd_node_module(parent);
             if (prev_mod == mod) {
                 mod = NULL;
@@ -3167,8 +3164,7 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
 LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
 {
-    struct lyd_node **match_p, *iter, *dup = NULL;
-    struct lyd_node_inner *parent;
+    struct lyd_node **match_p, *iter, *dup = NULL, *parent;
     ly_bool found;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
@@ -3199,7 +3195,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     siblings = lyd_first_sibling(siblings);
 
     parent = siblings->parent;
-    if (target->schema && parent && parent->schema && parent->children_ht) {
+    if (target->schema && parent && parent->schema && ((struct lyd_node_inner *)parent)->children_ht) {
         assert(target->hash);
 
         if (lysc_is_dup_inst_list(target->schema)) {
@@ -3218,7 +3214,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
             }
         } else {
             /* find by hash */
-            if (!lyht_find(parent->children_ht, &target, target->hash, (void **)&match_p)) {
+            if (!lyht_find(((struct lyd_node_inner *)parent)->children_ht, &target, target->hash, (void **)&match_p)) {
                 siblings = *match_p;
             } else {
                 /* not found */
@@ -3302,8 +3298,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
 LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set)
 {
-    struct lyd_node **match_p, *first, *iter;
-    struct lyd_node_inner *parent;
+    struct lyd_node **match_p, *first, *iter, *parent;
     uint32_t comp_opts;
 
     LY_CHECK_ARG_RET(NULL, target, set, LY_EINVAL);
@@ -3324,7 +3319,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
     siblings = lyd_first_sibling(siblings);
 
     parent = siblings->parent;
-    if (parent && parent->schema && parent->children_ht) {
+    if (parent && parent->schema && ((struct lyd_node_inner *)parent)->children_ht) {
         assert(target->hash);
 
         /* find the first instance */
@@ -3336,7 +3331,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
             }
 
             /* find by hash */
-            if (!lyht_find(parent->children_ht, &target, target->hash, (void **)&match_p)) {
+            if (!lyht_find(((struct lyd_node_inner *)parent)->children_ht, &target, target->hash, (void **)&match_p)) {
                 iter = *match_p;
             } else {
                 /* not found */
@@ -3349,7 +3344,7 @@ lyd_find_sibling_dup_inst_set(const struct lyd_node *siblings, const struct lyd_
                 }
 
                 /* find next instance */
-                if (lyht_find_next(parent->children_ht, &iter, iter->hash, (void **)&match_p)) {
+                if (lyht_find_next(((struct lyd_node_inner *)parent)->children_ht, &iter, iter->hash, (void **)&match_p)) {
                     iter = NULL;
                 } else {
                     iter = *match_p;
@@ -3611,7 +3606,7 @@ lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var 
             continue;
         }
 
-        for (parent = lyd_parent(xp_set.val.nodes[i].node); parent; parent = lyd_parent(parent)) {
+        for (parent = xp_set.val.nodes[i].node->parent; parent; parent = parent->parent) {
             /* add the parent into parent_ht */
             ret = lyht_insert(parent_ht, &parent, parent->hash, NULL);
             if (ret == LY_EEXIST) {

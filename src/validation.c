@@ -291,7 +291,7 @@ lyd_validate_node_when(const struct lyd_node *tree, const struct lyd_node *node,
                 ctx_node = node;
             } else {
                 assert((!when->context && !node->parent) || (when->context == node->parent->schema));
-                ctx_node = lyd_parent(node);
+                ctx_node = node->parent;
             }
 
             /* evaluate when */
@@ -589,10 +589,11 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     }
 
     /* find exactly the same next instance using hashes if possible */
-    if (node->parent && node->parent->children_ht) {
+    if (node->parent && ((struct lyd_node_inner *)node->parent)->children_ht) {
         /* because of the callback used, an instance must always be found (pointer may or may not be equal to node),
          * so if we find another instance, there is a duplicate */
-        if (!lyht_find_next_with_collision_cb(node->parent->children_ht, &node, node->hash, lyd_val_dup_val_equal, NULL)) {
+        if (!lyht_find_next_with_collision_cb(((struct lyd_node_inner *)node->parent)->children_ht, &node, node->hash,
+                lyd_val_dup_val_equal, NULL)) {
             fail = 1;
         }
     } else {
@@ -1035,7 +1036,7 @@ lyd_validate_dummy_when(const struct lyd_node *first, const struct lyd_node *par
     if (parent) {
         tree = (struct lyd_node *)parent;
         while (tree->parent) {
-            tree = lyd_parent(tree);
+            tree = tree->parent;
         }
         tree = lyd_first_sibling(tree);
     } else {
@@ -1637,8 +1638,7 @@ lyd_validate_obsolete(const struct lyd_node *node)
 
     snode = node->schema;
     do {
-        if (snode->flags & LYS_STATUS_OBSLT &&
-                (!(snode->nodetype & LYD_NODE_INNER) || lyd_child(node))) {
+        if (snode->flags & LYS_STATUS_OBSLT && (!(snode->nodetype & LYD_NODE_INNER) || lyd_child(node))) {
             LOG_LOCSET(NULL, node);
             LOGWRN(snode->module->ctx, "Obsolete schema node \"%s\" instantiated in data.", snode->name);
             LOG_LOCBACK(0, 1);
@@ -1690,7 +1690,7 @@ lyd_validate_must(const struct lyd_node *node, uint32_t val_opts, uint32_t int_o
     }
 
     /* find first top-level node */
-    for (tree = node; tree->parent; tree = lyd_parent(tree)) {}
+    for (tree = node; tree->parent; tree = tree->parent) {}
     tree = lyd_first_sibling(tree);
 
     LY_ARRAY_FOR(musts, u) {
@@ -2313,7 +2313,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
 
     /* learn op depth (top-level being depth 0) */
     op_depth = 0;
-    for (op_iter = op_node; op_iter != op_tree; op_iter = lyd_parent(op_iter)) {
+    for (op_iter = op_node; op_iter != op_tree; op_iter = op_iter->parent) {
         ++op_depth;
     }
 
@@ -2336,7 +2336,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_
         /* find next op parent */
         op_iter = op_node;
         for (i = 0; i < cur_depth; ++i) {
-            op_iter = lyd_parent(op_iter);
+            op_iter = op_iter->parent;
         }
     }
 
@@ -2394,7 +2394,7 @@ _lyd_validate_op(struct lyd_node *op_tree, struct lyd_node *op_node, const struc
     lyd_val_op_merge_find(op_tree, op_node, dep_tree, &op_subtree, &tree_sibling, &tree_parent);
     op_sibling_before = op_subtree->prev->next ? op_subtree->prev : NULL;
     op_sibling_after = op_subtree->next;
-    op_parent = lyd_parent(op_subtree);
+    op_parent = op_subtree->parent;
 
     lyd_unlink(op_subtree);
     lyd_insert_node(tree_parent, &tree_sibling, op_subtree, LYD_INSERT_NODE_DEFAULT);
@@ -2498,12 +2498,12 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *dep_tree, enum 
         /* we have the operation/notification, adjust the pointers */
         op_node = op_tree;
         while (op_tree->parent) {
-            op_tree = lyd_parent(op_tree);
+            op_tree = op_tree->parent;
         }
     } else {
         /* find the operation/notification */
         while (op_tree->parent) {
-            op_tree = lyd_parent(op_tree);
+            op_tree = op_tree->parent;
         }
         LYD_TREE_DFS_BEGIN(op_tree, op_node) {
             if (!op_node->schema) {

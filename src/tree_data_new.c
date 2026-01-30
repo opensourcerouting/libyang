@@ -1172,7 +1172,7 @@ lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_va
         term->flags &= ~LYD_DEFAULT;
 
         /* remove parent dflt flag */
-        lyd_np_cont_dflt_del(lyd_parent(term));
+        lyd_np_cont_dflt_del(term->parent);
 
         dflt_change = 1;
     } else if (!(term->flags & LYD_DEFAULT) && is_dflt) {
@@ -1180,7 +1180,7 @@ lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_va
         term->flags |= LYD_DEFAULT;
 
         /* add parent dflt flag */
-        lyd_np_cont_dflt_set(lyd_parent(term));
+        lyd_np_cont_dflt_set(term->parent);
 
         dflt_change = 1;
     } else {

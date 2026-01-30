@@ -246,7 +246,7 @@ lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op, ly_bool 
     const char *str;
     char *path;
 
-    for (diff_parent = diff_node; diff_parent; diff_parent = lyd_parent(diff_parent)) {
+    for (diff_parent = diff_node; diff_parent; diff_parent = diff_parent->parent) {
         lyd_diff_find_meta(diff_parent, "operation", &meta, &attr);
         if (!meta && !attr) {
             continue;
@@ -358,7 +358,7 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
         /* find next node parent */
         parent = node;
         while (parent->parent && (!diff_parent || (parent->parent->schema != diff_parent->schema))) {
-            parent = lyd_parent(parent);
+            parent = parent->parent;
         }
 
         if (lysc_is_dup_inst_list(parent->schema)) {
@@ -414,22 +414,21 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         /* duplicate the subtree (and connect to the diff if possible) */
         if (diff_parent && (LYD_CTX(diff_parent) != LYD_CTX(node))) {
-            LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), (struct lyd_node_inner *)diff_parent,
-                    diff_opts, &dup));
+            LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), diff_parent, diff_opts, &dup));
         } else {
-            LY_CHECK_RET(lyd_dup_single(node, (struct lyd_node_inner *)diff_parent, diff_opts, &dup));
+            LY_CHECK_RET(lyd_dup_single(node, diff_parent, diff_opts, &dup));
         }
 
         /* find the first duplicated parent */
         if (!diff_parent) {
-            diff_parent = lyd_parent(dup);
+            diff_parent = dup->parent;
             while (diff_parent && diff_parent->parent) {
-                diff_parent = lyd_parent(diff_parent);
+                diff_parent = diff_parent->parent;
             }
         } else {
             diff_parent = dup;
             while (diff_parent->parent && (diff_parent->parent->schema == parent->schema)) {
-                diff_parent = lyd_parent(diff_parent);
+                diff_parent = diff_parent->parent;
             }
         }
 
@@ -1451,7 +1450,7 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
         return lyd_insert_child(parent_node, new_node);
     }
 
-    assert(!(*first_node)->parent || (lyd_parent(*first_node) == parent_node));
+    assert(!(*first_node)->parent || ((*first_node)->parent == parent_node));
 
     if (!lysc_is_userordered(new_node->schema)) {
         /* simple insert */
@@ -2933,8 +2932,8 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     } else {
 add_diff:
         /* add new diff node with all descendants */
-        LY_CHECK_RET(lyd_dup_single(src_diff, (struct lyd_node_inner *)diff_parent,
-                LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS, &diff_node));
+        LY_CHECK_RET(lyd_dup_single(src_diff, diff_parent, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS,
+                &diff_node));
 
         /* insert node into diff if not already */
         if (!diff_parent) {

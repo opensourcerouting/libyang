@@ -1456,7 +1456,7 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
     if (*prev) {
         /* start from the previous element instead from the root */
         pos = *prev_pos;
-        for (top_sibling = *prev; top_sibling->parent; top_sibling = lyd_parent(top_sibling)) {}
+        for (top_sibling = *prev; top_sibling->parent; top_sibling = top_sibling->parent) {}
         goto dfs_search;
     }
 
@@ -1747,7 +1747,7 @@ set_sort(struct lyxp_set *set)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = set->tree; root->parent; root = lyd_parent(root)) {}
+    for (root = set->tree; root->parent; root = root->parent) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
@@ -1842,7 +1842,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = trg->tree; root->parent; root = lyd_parent(root)) {}
+    for (root = trg->tree; root->parent; root = root->parent) {}
     for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
@@ -4468,7 +4468,7 @@ xpath_lang(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *
     }
 
     /* find lang metadata */
-    for ( ; node; node = lyd_parent(node)) {
+    for ( ; node; node = node->parent) {
         for (meta = node->meta; meta; meta = meta->next) {
             /* annotations */
             if (meta->name && !strcmp(meta->name, "lang") && !strcmp(meta->annotation->module->name, "xml")) {
@@ -5852,7 +5852,7 @@ lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd
         /* try to find an ext instance data node */
         top_node = cur_node;
         while (top_node->parent && !(top_node->flags & LYD_EXT)) {
-            top_node = lyd_parent(top_node);
+            top_node = top_node->parent;
         }
     } else {
         /* just use the first top-level node */
@@ -5906,8 +5906,8 @@ moveto_axis_node_next_dfs_forward(const struct lyd_node *iter, const struct lyd_
         next = iter->next;
     }
     while (!next) {
-        iter = lyd_parent(iter);
-        if ((!stop && !iter) || (stop && (lyd_parent(iter) == lyd_parent(stop)))) {
+        iter = iter->parent;
+        if ((!stop && !iter) || (stop && (iter->parent == stop->parent))) {
             return NULL;
         }
         next = iter->next;
@@ -5930,15 +5930,15 @@ moveto_axis_node_next_dfs_backward(const struct lyd_node *iter, const struct lyd
 
     /* 1) previous sibling innermost last child */
     next = iter->prev->next ? iter->prev : NULL;
-    while (next && lyd_child(next)) {
-        next = lyd_child(next);
+    while (next && lyd_child_any(next)) {
+        next = lyd_child_any(next);
         next = next->prev;
     }
 
     if (!next) {
         /* 2) parent */
-        iter = lyd_parent(iter);
-        if ((!stop && !iter) || (stop && (lyd_parent(iter) == lyd_parent(stop)))) {
+        iter = iter->parent;
+        if ((!stop && !iter) || (stop && (iter->parent == stop->parent))) {
             return NULL;
         }
         next = iter;
@@ -5981,7 +5981,7 @@ moveto_axis_node_next_first(const struct lyd_node **iter, enum lyxp_node_type *i
     case LYXP_AXIS_ANCESTOR:
     case LYXP_AXIS_PARENT:
         if (node_type == LYXP_NODE_ELEM) {
-            next = lyd_parent(node);
+            next = node->parent;
             next_type = next ? LYXP_NODE_ELEM : set->root_type;
         } else if (node_type == LYXP_NODE_TEXT) {
             next = node;
@@ -6093,7 +6093,7 @@ moveto_axis_node_next(const struct lyd_node **iter, enum lyxp_node_type *iter_ty
     case LYXP_AXIS_ANCESTOR:
         if (*iter_type == LYXP_NODE_ELEM) {
             /* iter parent */
-            next = lyd_parent(*iter);
+            next = (*iter)->parent;
             next_type = next ? LYXP_NODE_ELEM : set->root_type;
         } /* else root, no ancestors */
         break;
@@ -6975,12 +6975,12 @@ skip_children:
             }
             while (!next) {
                 /* no siblings, go back through the parents */
-                if (lyd_parent(elem) == start) {
+                if (elem->parent == start) {
                     /* we are done, no next element to process */
                     break;
                 }
                 /* parent is already processed, go to its sibling */
-                elem = lyd_parent(elem);
+                elem = elem->parent;
                 next = elem->next;
             }
         }
@@ -9855,7 +9855,7 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
     if (tree) {
         /* adjust the pointer to be the first top-level sibling */
         while (tree->parent) {
-            tree = lyd_parent(tree);
+            tree = tree->parent;
         }
         tree = lyd_first_sibling(tree);
 

@@ -973,7 +973,7 @@ test_restconf_notification(void **state)
 
     /* notification with the parent node */
     data = "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}";
-    CHECK_LYD_STRING(lyd_parent(ntf), LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    CHECK_LYD_STRING(ntf->parent, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
 
     lyd_free_all(tree);
     lyd_free_all(ntf);

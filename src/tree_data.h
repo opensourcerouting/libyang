@@ -800,7 +800,7 @@ struct lyd_node {
                                           nodes are equal due to possible collisions. */
     uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
-    struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -825,7 +825,7 @@ struct lyd_node_inner {
                                                  to possible collisions. */
             uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
             const struct lysc_node *schema; /**< pointer to the schema definition of this node */
-            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *parent;        /**< pointer to the parent node, NULL in case of root node */
             struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
             struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                                  never NULL. If there is no sibling node, pointer points to the node
@@ -857,7 +857,7 @@ struct lyd_node_term {
                                                  to possible collisions. */
             uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
             const struct lysc_node *schema; /**< pointer to the schema definition of this node */
-            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *parent;        /**< pointer to the parent node, NULL in case of root node */
             struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
             struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                                  never NULL. If there is no sibling node, pointer points to the node
@@ -897,7 +897,7 @@ struct lyd_node_any {
                                                  to possible collisions. */
             uint32_t flags;                 /**< [data node flags](@ref dnodeflags) */
             const struct lysc_node *schema; /**< pointer to the schema definition of this node */
-            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *parent;        /**< pointer to the parent node, NULL in case of root node */
             struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
             struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                                  never NULL. If there is no sibling node, pointer points to the node
@@ -990,7 +990,7 @@ struct lyd_node_opaq {
             uint32_t hash;                  /**< always 0 */
             uint32_t flags;                 /**< always 0 */
             const struct lysc_node *schema; /**< always NULL */
-            struct lyd_node_inner *parent;  /**< pointer to the parent node, NULL in case of root node */
+            struct lyd_node *parent;        /**< pointer to the parent node, NULL in case of root node */
             struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
             struct lyd_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
                                                  never NULL. If there is no sibling node, pointer points to the node
@@ -1030,22 +1030,49 @@ struct lyd_leafref_links_rec {
 };
 
 /**
- * @brief Get the generic parent pointer of a data node.
+ * @brief Get the parent pointer of a node.
  *
- * @param[in] node Node whose parent pointer to get.
- * @return Pointer to the parent node of the @p node.
- * @return NULL in case of the top-level node or if the @p node is NULL itself.
+ * @param[in] node Node to use.
+ * @return Node parent;
+ * @return NULL of no parent or no node.
+ */
+#define lyd_parent(node) ((node) ? (node)->parent : NULL)
+
+/**
+ * @brief Get the child pointer of a generic data node.
+ *
+ * Returns the first child for inner and opaque nodes (::lyd_node_opaq).
+ *
+ * If you need to skip key children, use ::lyd_child_no_keys().
+ * If you want to also return anyxml/anydata subtrees, use ::lyd_child_any().
+ *
+ * @param[in] node Node to use.
+ * @return Pointer to the first child node (if any) of the @p node.
  */
 static inline struct lyd_node *
-lyd_parent(const struct lyd_node *node)
+lyd_child(const struct lyd_node *node)
 {
-    return (node && node->parent) ? &node->parent->node : NULL;
+    if (!node) {
+        return NULL;
+    }
+
+    if (!node->schema) {
+        /* opaq node */
+        return ((const struct lyd_node_opaq *)node)->child;
+    }
+
+    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+        return ((const struct lyd_node_inner *)node)->child;
+    }
+
+    return NULL;
 }
 
 /**
  * @brief Get the child pointer of a generic data node.
  *
- * Decides the node's type and in case it has a children list, returns it. Supports even the opaq nodes (::lyd_node_opaq).
+ * Returns the first child for inner and opaque nodes (::lyd_node_opaq). For anyxml/anydata nodes returns the first
+ * child of their subtree.
  *
  * If you need to skip key children, use ::lyd_child_no_keys().
  *
@@ -1904,7 +1931,7 @@ LIBYANG_API_DECL LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const str
  * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options,
+LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node *parent, uint32_t options,
         struct lyd_node **dup);
 
 /**
@@ -1921,7 +1948,7 @@ LIBYANG_API_DECL LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_n
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_dup_single_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
-        struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+        struct lyd_node *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the specified data tree @p node with any following siblings. Schema references are kept the same.
@@ -1934,7 +1961,7 @@ LIBYANG_API_DECL LY_ERR lyd_dup_single_to_ctx(const struct lyd_node *node, const
  * node(s) (when ::LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options,
+LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node *parent, uint32_t options,
         struct lyd_node **dup);
 
 /**
@@ -1952,7 +1979,7 @@ LIBYANG_API_DECL LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_dup_siblings_to_ctx(const struct lyd_node *node, const struct ly_ctx *trg_ctx,
-        struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
+        struct lyd_node *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the metadata.

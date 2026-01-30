@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Parsing and validation common functions for data trees
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -305,7 +305,7 @@ lyd_owner_module(const struct lyd_node *node)
     }
 
     while (!node->schema && node->parent) {
-        node = lyd_parent(node);
+        node = node->parent;
     }
 
     if (!node->schema) {
@@ -360,7 +360,7 @@ lyd_node_module(const struct lyd_node *node)
             break;
         }
 
-        node = lyd_parent(node);
+        node = node->parent;
     }
 
     return NULL;
@@ -803,7 +803,7 @@ lyd_first_sibling(const struct lyd_node *node)
 
     /* get the first sibling */
     if (node->parent) {
-        return node->parent->child;
+        return ((struct lyd_node_inner *)node->parent)->child;
     } else if (!node->prev->next) {
         return (struct lyd_node *)node;
     }
@@ -895,7 +895,7 @@ lyd_parse_opaq_error(const struct lyd_node *node)
 
     ctx = LYD_CTX(node);
     opaq = (struct lyd_node_opaq *)node;
-    parent = lyd_parent(node);
+    parent = node->parent;
     sparent = lyd_node_schema(parent);
 
     /* if parent is NULL, it is still added as root */
@@ -1115,7 +1115,7 @@ lyd_node_schema(const struct lyd_node *node)
     }
 
     /* find the first schema node in the parents */
-    for (iter = lyd_parent(node); iter && !iter->schema; iter = lyd_parent(iter)) {}
+    for (iter = node->parent; iter && !iter->schema; iter = iter->parent) {}
     if (iter) {
         prev_iter = iter;
         schema = prev_iter->schema;
@@ -1124,7 +1124,7 @@ lyd_node_schema(const struct lyd_node *node)
     /* get schema node of an opaque node */
     do {
         /* get next data node */
-        for (iter = node; lyd_parent(iter) != prev_iter; iter = lyd_parent(iter)) {}
+        for (iter = node; iter->parent != prev_iter; iter = iter->parent) {}
 
         /* get module */
         mod = lyd_node_module(iter);
@@ -1186,8 +1186,7 @@ lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod),
 LY_ERR
 lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node *schema, struct lyd_node **match)
 {
-    struct lyd_node **match_p;
-    struct lyd_node_inner *parent;
+    struct lyd_node **match_p, *parent;
     uint32_t hash;
 
     assert(schema);
@@ -1200,14 +1199,15 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     }
 
     parent = siblings->parent;
-    if (parent && parent->schema && parent->children_ht) {
+    if (parent && parent->schema && ((struct lyd_node_inner *)parent)->children_ht) {
         /* calculate our hash */
         hash = lyht_hash_multi(0, schema->module->name, strlen(schema->module->name));
         hash = lyht_hash_multi(hash, schema->name, strlen(schema->name));
         hash = lyht_hash_multi(hash, NULL, 0);
 
         /* find by hash but use special hash table function (and stay thread-safe) */
-        if (!lyht_find_with_val_cb(parent->children_ht, &schema, hash, lyd_hash_table_schema_val_equal, (void **)&match_p)) {
+        if (!lyht_find_with_val_cb(((struct lyd_node_inner *)parent)->children_ht, &schema, hash,
+                lyd_hash_table_schema_val_equal, (void **)&match_p)) {
             siblings = *match_p;
         } else {
             /* not found */
@@ -1216,7 +1216,7 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     } else {
         /* find first sibling */
         if (siblings->parent) {
-            siblings = siblings->parent->child;
+            siblings = ((struct lyd_node_inner *)siblings->parent)->child;
         } else {
             while (siblings->prev->next) {
                 siblings = siblings->prev;
@@ -1299,7 +1299,7 @@ lyd_np_cont_dflt_set(struct lyd_node *parent)
         parent->flags |= LYD_DEFAULT;
 
         /* check all parent containers */
-        parent = lyd_parent(parent);
+        parent = parent->parent;
     }
 }
 
@@ -1308,7 +1308,7 @@ lyd_np_cont_dflt_del(struct lyd_node *parent)
 {
     while (parent && (parent->flags & LYD_DEFAULT)) {
         parent->flags &= ~LYD_DEFAULT;
-        parent = lyd_parent(parent);
+        parent = parent->parent;
     }
 }
 

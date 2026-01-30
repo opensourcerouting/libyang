@@ -152,7 +152,7 @@ test_dup_sort(void **state)
     assert_int_equal(lyd_new_list(cont2, NULL, "lst", 0, NULL, "3"), LY_SUCCESS);
     assert_int_equal(lyd_new_list(cont2, NULL, "lst", 0, NULL, "8"), LY_SUCCESS);
 
-    assert_int_equal(lyd_dup_siblings(lyd_child(cont2), (struct lyd_node_inner *)cont, 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_dup_siblings(lyd_child(cont2), cont, 0, NULL), LY_SUCCESS);
     lyd_print_mem(&str, cont, LYD_XML, 0);
     assert_string_equal(str,
             "<cn xmlns=\"urn:tests:a\">\n"

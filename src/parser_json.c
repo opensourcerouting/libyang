@@ -177,7 +177,7 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
             module_name = onode->name.prefix;
             break;
         }
-        node = lyd_parent(node);
+        node = node->parent;
     }
 
     *prefix_p = module_name;
@@ -621,7 +621,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                 lydjson_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
                         &prefix, &prefix_len, &is_attr);
                 assert(is_attr);
-                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, lyd_parent(*first_p), &snode, NULL);
+                lydjson_get_snode(lydctx, is_attr, prefix, prefix_len, name, name_len, (*first_p)->parent, &snode, NULL);
 
                 if (snode != node->schema) {
                     continue;

@@ -643,7 +643,7 @@ test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, 
     *size = 0;
     TEST_START(ts_start);
 
-    if ((r = lyd_dup_siblings(lyd_child(state->data2), (struct lyd_node_inner *)state->data1, 0, NULL))) {
+    if ((r = lyd_dup_siblings(lyd_child(state->data2), state->data1, 0, NULL))) {
         return r;
     }
 
