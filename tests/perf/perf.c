@@ -41,7 +41,7 @@ struct test_state {
 
 typedef LY_ERR (*setup_cb)(const struct lys_module *mod, uint32_t count, struct test_state *state);
 
-typedef LY_ERR (*test_cb)(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end);
+typedef LY_ERR (*test_cb)(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size);
 
 /**
  * @brief Single test structure.
@@ -153,28 +153,30 @@ create_list_inst(const struct lys_module *mod, uint32_t offset, uint32_t count, 
  * @param[in] setup Setup callback to call once.
  * @param[in] test Test callback.
  * @param[in] name Name of the test.
+ * @param[in] name_len Length of each test name to pad to.
  * @param[in] mod Module of testing data.
  * @param[in] count Count of list instances, size of the testing data set.
  * @param[in] tries Number of (re)tries of the test to get more accurate measurements.
  * @return LY_ERR value.
  */
 static LY_ERR
-exec_test(setup_cb setup, test_cb test, const char *name, const struct lys_module *mod, uint32_t count, uint32_t tries)
+exec_test(setup_cb setup, test_cb test, const char *name, uint32_t name_len, const struct lys_module *mod,
+        uint32_t count, uint32_t tries)
 {
     LY_ERR ret;
     struct timespec ts_start, ts_end;
     struct test_state state = {0};
-    const uint32_t name_fixed_len = 38;
-    char str[name_fixed_len + 1];
-    uint32_t i, printed;
+    char str[name_len + 1];
+    uint32_t i, j, printed, size, num;
     uint64_t time_usec = 0;
+    ly_bool start;
 
     /* print test start */
     printed = sprintf(str, "| %s ", name);
-    while (printed + 2 < name_fixed_len) {
+    while (printed - 2 < name_len) {
         printed += sprintf(str + printed, ".");
     }
-    if (printed + 1 < name_fixed_len) {
+    if (printed - 3 < name_len) {
         printed += sprintf(str + printed, " ");
     }
     sprintf(str + printed, "|");
@@ -188,7 +190,7 @@ exec_test(setup_cb setup, test_cb test, const char *name, const struct lys_modul
 
     /* test */
     for (i = 0; i < tries; ++i) {
-        if ((ret = test(&state, &ts_start, &ts_end))) {
+        if ((ret = test(&state, &ts_start, &ts_end, &size))) {
             return ret;
         }
         time_usec += time_diff(&ts_start, &ts_end);
@@ -200,7 +202,33 @@ exec_test(setup_cb setup, test_cb test, const char *name, const struct lys_modul
     lyd_free_siblings(state.data2);
 
     /* print time */
-    printf(" %" PRIu64 ".%06" PRIu64 " s |\n", time_usec / 1000000, time_usec % 1000000);
+    printf(" %" PRIu64 ".%06" PRIu64 " s |", time_usec / 1000000, time_usec % 1000000);
+
+    /* print size */
+    if (size) {
+        for (i = 1, num = 1000; size / num; ++i, num *= 1000) {}
+
+        printf(" ");
+        start = 1;
+        while (i) {
+            num = 1;
+            for (j = 1; j < i; ++j) {
+                num *= 1000;
+            }
+
+            if (start) {
+                printf("%" PRIu32, (size / num) % 1000);
+            } else {
+                printf(",%03" PRIu32, (size / num) % 1000);
+            }
+
+            start = 0;
+            --i;
+        }
+        printf(" B |");
+    }
+
+    printf("\n");
 
     return LY_SUCCESS;
 }
@@ -315,11 +343,12 @@ setup_data_offset_tree(const struct lys_module *mod, uint32_t count, struct test
 
 /* TEST CB */
 static LY_ERR
-test_create_new_text(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_create_new_text(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data = NULL;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = create_list_inst(state->mod, 0, state->count, &data))) {
@@ -334,7 +363,7 @@ test_create_new_text(struct test_state *state, struct timespec *ts_start, struct
 }
 
 static LY_ERR
-test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data = NULL;
@@ -342,6 +371,7 @@ test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct 
     char k2_val[32], l_val[32];
     struct lyd_node *list;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_new_inner(NULL, state->mod, "cont", 0, &data))) {
@@ -368,13 +398,14 @@ test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct 
 }
 
 static LY_ERR
-test_create_path(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_create_path(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data = NULL;
     uint32_t i;
     char path[64], l_val[32];
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_new_inner(NULL, state->mod, "cont", 0, &data))) {
@@ -398,10 +429,11 @@ test_create_path(struct test_state *state, struct timespec *ts_start, struct tim
 }
 
 static LY_ERR
-test_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_validate_all(&state->data1, NULL, LYD_VALIDATE_PRESENT, NULL))) {
@@ -415,24 +447,33 @@ test_validate(struct test_state *state, struct timespec *ts_start, struct timesp
 
 static LY_ERR
 _test_parse(struct test_state *state, LYD_FORMAT format, ly_bool use_file, uint32_t print_options, uint32_t parse_options,
-        uint32_t validate_options, struct timespec *ts_start, struct timespec *ts_end)
+        uint32_t validate_options, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *data = NULL;
     char *buf = NULL;
+    struct ly_out *out = NULL;
     struct ly_in *in = NULL;
 
     if (use_file) {
-        if ((ret = lyd_print_path(TEMP_FILE, state->data1, format, print_options))) {
+        if ((ret = ly_out_new_filepath(TEMP_FILE, &out))) {
             goto cleanup;
         }
+        if ((ret = lyd_print_all(out, state->data1, format, print_options))) {
+            goto cleanup;
+        }
+        *size = ly_out_printed(out);
         if ((ret = ly_in_new_filepath(TEMP_FILE, 0, &in))) {
             goto cleanup;
         }
     } else {
-        if ((ret = lyd_print_mem(&buf, state->data1, format, print_options))) {
+        if ((ret = ly_out_new_memory(&buf, 0, &out))) {
             goto cleanup;
         }
+        if ((ret = lyd_print_all(out, state->data1, format, print_options))) {
+            goto cleanup;
+        }
+        *size = ly_out_printed(out);
         if ((ret = ly_in_new_memory(buf, &in))) {
             goto cleanup;
         }
@@ -448,112 +489,139 @@ _test_parse(struct test_state *state, LYD_FORMAT format, ly_bool use_file, uint3
 
 cleanup:
     free(buf);
+    ly_out_free(out, NULL, 0);
     ly_in_free(in, 0);
     lyd_free_siblings(data);
     return ret;
 }
 
 static LY_ERR
-test_parse_xml_mem_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_xml_mem_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
-    return _test_parse(state, LYD_XML, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end);
+    return _test_parse(state, LYD_XML, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_parse_xml_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_xml_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
     return _test_parse(state, LYD_XML, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
-            ts_start, ts_end);
+            ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_parse_xml_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_xml_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_XML, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_XML, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end,
+            size);
 }
 
 static LY_ERR
-test_parse_json_mem_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_json_mem_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_JSON, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end);
+    return _test_parse(state, LYD_JSON, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end,
+            size);
 }
 
 static LY_ERR
-test_parse_json_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_json_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
     return _test_parse(state, LYD_JSON, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
-            ts_start, ts_end);
+            ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_parse_json_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_json_file_no_validate_format(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_JSON, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_JSON, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start,
+            ts_end, size);
 }
 
 static LY_ERR
-test_parse_lyb_mem_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_lyb_mem_validate_shrink(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end);
+    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, ts_start, ts_end,
+            size);
 }
 
 static LY_ERR
-test_parse_lyb_mem_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_lyb_mem_no_validate_shrink(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0,
-            ts_start, ts_end);
+    return _test_parse(state, LYD_LYB, 0, LYD_PRINT_SHRINK,
+            LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_STORE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_parse_lyb_file_no_validate(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_parse_lyb_mem_no_validate_no_shrink(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end,
+        uint32_t *size)
 {
-    return _test_parse(state, LYD_LYB, 1, 0, LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end);
+    return _test_parse(state, LYD_LYB, 0, 0,
+            LYD_PARSE_STRICT | LYD_PARSE_ONLY | LYD_PARSE_STORE_ONLY | LYD_PARSE_ORDERED, 0, ts_start, ts_end, size);
 }
 
 static LY_ERR
 _test_print(struct test_state *state, LYD_FORMAT format, uint32_t print_options, struct timespec *ts_start,
-        struct timespec *ts_end)
+        struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL;
+    struct ly_out *out = NULL;
 
     TEST_START(ts_start);
 
-    if ((ret = lyd_print_mem(&buf, state->data1, format, print_options))) {
+    if ((ret = ly_out_new_memory(&buf, 0, &out))) {
         goto cleanup;
     }
+    if ((ret = lyd_print_all(out, state->data1, format, print_options))) {
+        goto cleanup;
+    }
+    *size = ly_out_printed(out);
 
     TEST_END(ts_end);
 
 cleanup:
+    ly_out_free(out, NULL, 0);
     free(buf);
     return ret;
 }
 
 static LY_ERR
-test_print_xml(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_print_xml(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
-    return _test_print(state, LYD_XML, LYD_PRINT_SHRINK, ts_start, ts_end);
+    return _test_print(state, LYD_XML, LYD_PRINT_SHRINK, ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_print_json(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_print_json(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
-    return _test_print(state, LYD_JSON, LYD_PRINT_SHRINK, ts_start, ts_end);
+    return _test_print(state, LYD_JSON, LYD_PRINT_SHRINK, ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_print_lyb(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_print_lyb_shrink(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
-    return _test_print(state, LYD_LYB, LYD_PRINT_SHRINK, ts_start, ts_end);
+    return _test_print(state, LYD_LYB, LYD_PRINT_SHRINK, ts_start, ts_end, size);
 }
 
 static LY_ERR
-test_dup(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_print_lyb_no_shrink(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
+{
+    return _test_print(state, LYD_LYB, 0, ts_start, ts_end, size);
+}
+
+static LY_ERR
+test_dup(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_dup_siblings(state->data1, NULL, LYD_DUP_RECURSIVE, &data))) {
@@ -568,10 +636,11 @@ test_dup(struct test_state *state, struct timespec *ts_start, struct timespec *t
 }
 
 static LY_ERR
-test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_dup_siblings(lyd_child(state->data2), (struct lyd_node_inner *)state->data1, 0, NULL))) {
@@ -587,10 +656,12 @@ test_dup_siblings_to_empty(struct test_state *state, struct timespec *ts_start, 
 }
 
 static LY_ERR
-test_free(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_free(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data;
+
+    *size = 0;
 
     if ((r = create_list_inst(state->mod, 0, state->count, &data))) {
         return r;
@@ -606,11 +677,13 @@ test_free(struct test_state *state, struct timespec *ts_start, struct timespec *
 }
 
 static LY_ERR
-test_xpath_find(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_xpath_find(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct ly_set *set;
     char path[64];
+
+    *size = 0;
 
     sprintf(path, "/perf:cont/lst[k1=%" PRIu32 " and k2='str%" PRIu32 "']", state->count / 2, state->count / 2);
 
@@ -628,11 +701,13 @@ test_xpath_find(struct test_state *state, struct timespec *ts_start, struct time
 }
 
 static LY_ERR
-test_xpath_find_hash(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_xpath_find_hash(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct ly_set *set;
     char path[64];
+
+    *size = 0;
 
     sprintf(path, "/perf:cont/lst[k1=%" PRIu32 "][k2='str%" PRIu32 "']", state->count / 2, state->count / 2);
 
@@ -650,10 +725,11 @@ test_xpath_find_hash(struct test_state *state, struct timespec *ts_start, struct
 }
 
 static LY_ERR
-test_compare_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_compare_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_compare_siblings(state->data1, state->data2, LYD_COMPARE_FULL_RECURSION))) {
@@ -666,11 +742,12 @@ test_compare_same(struct test_state *state, struct timespec *ts_start, struct ti
 }
 
 static LY_ERR
-test_diff_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_diff_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *diff;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_diff_siblings(state->data1, state->data2, 0, &diff))) {
@@ -685,11 +762,12 @@ test_diff_same(struct test_state *state, struct timespec *ts_start, struct times
 }
 
 static LY_ERR
-test_diff_no_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_diff_no_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *diff;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_diff_siblings(state->data1, state->data2, 0, &diff))) {
@@ -704,10 +782,11 @@ test_diff_no_same(struct test_state *state, struct timespec *ts_start, struct ti
 }
 
 static LY_ERR
-test_merge_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_merge_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
 
+    *size = 0;
     TEST_START(ts_start);
 
     if ((r = lyd_merge_siblings(&state->data1, state->data2, 0))) {
@@ -720,10 +799,12 @@ test_merge_same(struct test_state *state, struct timespec *ts_start, struct time
 }
 
 static LY_ERR
-test_merge_no_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_merge_no_same(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data1;
+
+    *size = 0;
 
     if ((r = create_list_inst(state->mod, 0, state->count, &data1))) {
         return r;
@@ -743,10 +824,12 @@ test_merge_no_same(struct test_state *state, struct timespec *ts_start, struct t
 }
 
 static LY_ERR
-test_merge_no_same_destruct(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end)
+test_merge_no_same_destruct(struct test_state *state, struct timespec *ts_start, struct timespec *ts_end, uint32_t *size)
 {
     LY_ERR r;
     struct lyd_node *data1, *data2;
+
+    *size = 0;
 
     if ((r = create_list_inst(state->mod, 0, state->count, &data1))) {
         return r;
@@ -779,12 +862,13 @@ struct test tests[] = {
     {"parse json mem validate", setup_data_single_tree, test_parse_json_mem_validate},
     {"parse json mem no validate", setup_data_single_tree, test_parse_json_mem_no_validate},
     {"parse json file no validate format", setup_data_single_tree, test_parse_json_file_no_validate_format},
-    {"parse lyb mem validate", setup_data_single_tree, test_parse_lyb_mem_validate},
-    {"parse lyb mem no validate", setup_data_single_tree, test_parse_lyb_mem_no_validate},
-    {"parse lyb file no validate", setup_data_single_tree, test_parse_lyb_file_no_validate},
+    {"parse lyb mem validate shrink", setup_data_single_tree, test_parse_lyb_mem_validate_shrink},
+    {"parse lyb mem no validate shrink", setup_data_single_tree, test_parse_lyb_mem_no_validate_shrink},
+    {"parse lyb mem no validate no shrink", setup_data_single_tree, test_parse_lyb_mem_no_validate_no_shrink},
     {"print xml", setup_data_single_tree, test_print_xml},
     {"print json", setup_data_single_tree, test_print_json},
-    {"print lyb", setup_data_single_tree, test_print_lyb},
+    {"print lyb shrink", setup_data_single_tree, test_print_lyb_shrink},
+    {"print lyb no shrink", setup_data_single_tree, test_print_lyb_no_shrink},
     {"dup", setup_data_single_tree, test_dup},
     {"dup_siblings_to_empty", setup_data_empty_and_full_trees, test_dup_siblings_to_empty},
     {"free", setup_basic, test_free},
@@ -804,7 +888,7 @@ main(int argc, char **argv)
     LY_ERR ret = LY_SUCCESS;
     struct ly_ctx *ctx = NULL;
     const struct lys_module *mod;
-    uint32_t i, count, tries;
+    uint32_t i, count, tries, name_len;
 
     if (argc < 3) {
         fprintf(stderr, "Usage:\n%s list-instance-count test-tries\n\n", argv[0]);
@@ -838,8 +922,14 @@ main(int argc, char **argv)
     }
 
     /* tests */
+    name_len = 0;
     for (i = 0; i < (sizeof tests / sizeof(struct test)); ++i) {
-        if ((ret = exec_test(tests[i].setup, tests[i].test, tests[i].name, mod, count, tries))) {
+        if (strlen(tests[i].name) > name_len) {
+            name_len = strlen(tests[i].name);
+        }
+    }
+    for (i = 0; i < (sizeof tests / sizeof(struct test)); ++i) {
+        if ((ret = exec_test(tests[i].setup, tests[i].test, tests[i].name, name_len, mod, count, tries))) {
             goto cleanup;
         }
     }
