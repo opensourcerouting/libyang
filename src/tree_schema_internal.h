@@ -54,7 +54,10 @@ extern const char * const ly_devmod_list[];
  * @param[in] PARENT parent statement where the KW is present - for logging.
  */
 #define PARSER_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
-    if (PARSER_CUR_PMOD(CTX)->version < LYS_VERSION_1_1) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
+    if (PARSER_CUR_PMOD(CTX)->version < LYS_VERSION_1_1) { \
+        LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); \
+        return LY_EVALID; \
+    }
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
@@ -127,7 +130,7 @@ enum yang_arg {
 
 #define PARSER_CUR_PMOD(CTX) ((struct lysp_module *)(CTX)->parsed_mods->objs[(CTX)->parsed_mods->count - 1])
 #define PARSER_CTX(CTX) ((CTX) ? PARSER_CUR_PMOD(CTX)->mod->ctx : NULL)
-#define LOGVAL_PARSER(CTX, ...) LOGVAL(PARSER_CTX(CTX), __VA_ARGS__)
+#define LOGVAL_PARSER(CTX, ...) LOGVAL(PARSER_CTX(CTX), NULL, __VA_ARGS__)
 
 struct lysp_ctx {
     LYS_INFORMAT format;             /**< parser format */

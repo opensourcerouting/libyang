@@ -89,7 +89,7 @@ setup(void **state)
     /* initilize and use the global easily available and customizable input handler */
     in.line = 1;
     YCTX->in = &in;
-    ly_log_location(NULL, NULL, NULL, &in);
+    ly_log_location(NULL, NULL, &in);
 
     return 0;
 }
@@ -98,7 +98,7 @@ static int
 teardown(void **state)
 {
     lys_module_free(PARSER_CTX(YCTX), PARSER_CUR_PMOD(YCTX)->mod, 0);
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
 
     ly_set_free(YCTX->parsed_mods, NULL);
     ly_set_erase(&YCTX->ext_inst, NULL);
@@ -867,7 +867,7 @@ test_module(void **state)
     CHECK_LOG_CTX("Prefix \"y\" already used to import \"zzz\" module.", NULL, 1);
 
     mod = mod_renew(YCTX);
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
 
     in.current = "module name10 {yang-version 1.1;namespace urn:name10;prefix \"n10\";import zzz {prefix y;}import zzz {prefix z;}}";
     assert_int_equal(lys_parse_mem(PARSER_CUR_PMOD(YCTX)->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_SUCCESS);

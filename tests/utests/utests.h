@@ -1208,6 +1208,9 @@ struct utest_context {
  * @param[out] MOD     Optional parameter as a pointer to variable to store the resulting module.
  */
 #define UTEST_ADD_MODULE(DATA, FORMAT, FEATURES, MOD) \
+    if (_UC->in) { \
+        ly_in_free(_UC->in, 0); \
+    } \
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(DATA, &_UC->in)); \
     { \
         LY_ERR __r = lys_parse(_UC->ctx, _UC->in, FORMAT, FEATURES, MOD); \

@@ -312,41 +312,38 @@ ly_temp_log_clb(ly_log_clb clb)
 }
 
 void
-ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode, const char *path, const struct ly_in *in)
+ly_log_location(const struct lysc_node *scnode, const char *path, const struct ly_in *in)
 {
     if (scnode) {
         ly_set_add(&log_location.scnodes, (void *)scnode, 1, NULL);
     }
-    if (dnode || (!scnode && !path && !in)) {
-        ly_set_add(&log_location.dnodes, (void *)dnode, 1, NULL);
-    }
+
     if (path) {
         char *s = strdup(path);
 
         LY_CHECK_ERR_RET(!s, LOGMEM(NULL), );
         ly_set_add(&log_location.paths, s, 1, NULL);
     }
+
     if (in) {
-        ly_set_add(&log_location.inputs, (void *)in, 1, NULL);
+        ly_set_add(&log_location.inputs, in, 1, NULL);
     }
 }
 
 void
-ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps)
+ly_log_location_revert(uint32_t scnode_steps, uint32_t path_steps, uint32_t in_steps)
 {
-    for (uint32_t i = scnode_steps; i && log_location.scnodes.count; i--) {
+    uint32_t i;
+
+    for (i = scnode_steps; i && log_location.scnodes.count; i--) {
         log_location.scnodes.count--;
     }
 
-    for (uint32_t i = dnode_steps; i && log_location.dnodes.count; i--) {
-        log_location.dnodes.count--;
-    }
-
-    for (uint32_t i = path_steps; i && log_location.paths.count; i--) {
+    for (i = path_steps; i && log_location.paths.count; i--) {
         ly_set_rm_index(&log_location.paths, log_location.paths.count - 1, free);
     }
 
-    for (uint32_t i = in_steps; i && log_location.inputs.count; i--) {
+    for (i = in_steps; i && log_location.inputs.count; i--) {
         log_location.inputs.count--;
     }
 
@@ -354,31 +351,12 @@ ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t pat
     if (scnode_steps && !log_location.scnodes.count) {
         ly_set_erase(&log_location.scnodes, NULL);
     }
-    if (dnode_steps && !log_location.dnodes.count) {
-        ly_set_erase(&log_location.dnodes, NULL);
-    }
     if (path_steps && !log_location.paths.count) {
         ly_set_erase(&log_location.paths, free);
     }
     if (in_steps && !log_location.inputs.count) {
         ly_set_erase(&log_location.inputs, NULL);
     }
-}
-
-const struct lyd_node *
-ly_log_location_dnode(uint32_t idx)
-{
-    if (idx < log_location.dnodes.count) {
-        return log_location.dnodes.dnodes[idx];
-    }
-
-    return NULL;
-}
-
-uint32_t
-ly_log_location_dnode_count(void)
-{
-    return log_location.dnodes.count;
 }
 
 /**
@@ -665,101 +643,19 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, const char *for
 }
 
 /**
- * @brief Append a schema node name to a generated data path, only if it fits.
- *
- * @param[in,out] str Generated path to update.
- * @param[in] snode Schema node to append.
- * @param[in] parent Last printed data node.
- * @return LY_ERR value.
- */
-static LY_ERR
-ly_vlog_build_path_append(char **str, const struct lysc_node *snode, const struct lyd_node *parent)
-{
-    const struct lys_module *mod, *prev_mod;
-    uint32_t len, new_len;
-    void *mem;
-
-    if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
-        /* schema-only node */
-        return LY_SUCCESS;
-    } else if (lysc_data_parent(snode) != lyd_node_schema(parent)) {
-        /* not a direct descendant node */
-        return LY_SUCCESS;
-    }
-
-    /* get module to print, if any */
-    mod = snode->module;
-    prev_mod = lyd_node_module(parent);
-    if (prev_mod == mod) {
-        mod = NULL;
-    }
-
-    /* realloc string */
-    len = *str ? strlen(*str) : 0;
-    new_len = len + 1 + (mod ? strlen(mod->name) + 1 : 0) + strlen(snode->name);
-    mem = realloc(*str, new_len + 1);
-    LY_CHECK_ERR_RET(!mem, LOGMEM(LYD_CTX(parent)), LY_EMEM);
-    *str = mem;
-
-    /* print the last schema node */
-    sprintf(*str + len, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", snode->name);
-    return LY_SUCCESS;
-}
-
-LY_ERR
-ly_vlog_build_data_path(const struct ly_ctx *ctx, char **path)
-{
-    LY_ERR rc = LY_SUCCESS;
-    const struct lyd_node *dnode = NULL;
-
-    *path = NULL;
-
-    if (log_location.dnodes.count) {
-        dnode = log_location.dnodes.objs[log_location.dnodes.count - 1];
-        if (!dnode) {
-            /* special root node */
-            assert(log_location.dnodes.count == 1);
-            *path = strdup("/");
-            LY_CHECK_ERR_GOTO(!*path, LOGMEM(ctx); rc = LY_EMEM, cleanup);
-            goto cleanup;
-        }
-
-        if (dnode->parent || !lysc_data_parent(dnode->schema)) {
-            /* data node with all of its parents */
-            *path = lyd_path(log_location.dnodes.objs[log_location.dnodes.count - 1], LYD_PATH_STD, NULL, 0);
-            LY_CHECK_ERR_GOTO(!*path, LOGMEM(ctx); rc = LY_EMEM, cleanup);
-        } else {
-            /* data parsers put all the parent nodes in the set, but they are not connected */
-            *path = lyd_path_set(&log_location.dnodes, LYD_PATH_STD);
-            LY_CHECK_ERR_GOTO(!*path, LOGMEM(ctx); rc = LY_EMEM, cleanup);
-        }
-    }
-
-    /* sometimes the last node is not created yet and we only have the schema node */
-    if (log_location.scnodes.count) {
-        rc = ly_vlog_build_path_append(path, log_location.scnodes.objs[log_location.scnodes.count - 1], dnode);
-        LY_CHECK_GOTO(rc, cleanup);
-    }
-
-cleanup:
-    if (rc) {
-        free(*path);
-        *path = NULL;
-    }
-    return rc;
-}
-
-/**
  * @brief Build log path/input line from the stored log location information.
  *
  * @param[in] ctx Context to use.
+ * @param[in] lnode Data node to use for logging.
+ * @param[in] snode Explciti schema node to use for logging/append to @p lnode.
  * @param[out] data_path Generated data path.
  * @param[out] schema_path Generated data path.
  * @param[out] line Input line.
  * @return LY_ERR value.
  */
 static LY_ERR
-ly_vlog_build_path_line(const struct ly_ctx *ctx, char **data_path, char **schema_path, uint64_t *line)
+ly_vlog_build_path_line(const struct ly_ctx *ctx, const struct lyd_node *lnode, const struct lysc_node *snode,
+        char **data_path, char **schema_path, uint64_t *line)
 {
     int r;
     char *path;
@@ -769,8 +665,27 @@ ly_vlog_build_path_line(const struct ly_ctx *ctx, char **data_path, char **schem
     *line = 0;
 
     /* data/schema node */
-    if (log_location.dnodes.count) {
-        LY_CHECK_RET(ly_vlog_build_data_path(ctx, data_path));
+    if (lnode) {
+        *data_path = lyd_path(lnode, LYD_PATH_STD, NULL, 0);
+        LY_CHECK_ERR_RET(!*data_path, LOGMEM(ctx), LY_EMEM);
+
+        if (!snode && log_location.scnodes.count) {
+            snode = log_location.scnodes.objs[log_location.scnodes.count - 1];
+        }
+        if (snode && (!lnode || (lysc_data_parent(snode) == lnode->schema))) {
+            if (lyd_node_module(lnode) != snode->module) {
+                r = asprintf(&path, "%s/%s:%s", *data_path, snode->module->name, snode->name);
+            } else {
+                r = asprintf(&path, "%s/%s", *data_path, snode->name);
+            }
+            free(*data_path);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(ctx), LY_EMEM);
+            *data_path = path;
+            path = NULL;
+        }
+    } else if (snode) {
+        *schema_path = lysc_path(snode, LYSC_PATH_LOG, NULL, 0);
+        LY_CHECK_ERR_RET(!*schema_path, LOGMEM(ctx), LY_EMEM);
     } else if (log_location.scnodes.count) {
         *schema_path = lysc_path(log_location.scnodes.objs[log_location.scnodes.count - 1], LYSC_PATH_LOG, NULL, 0);
         LY_CHECK_ERR_RET(!*schema_path, LOGMEM(ctx), LY_EMEM);
@@ -805,19 +720,21 @@ ly_vlog_build_path_line(const struct ly_ctx *ctx, char **data_path, char **schem
 }
 
 void
-ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...)
+ly_vlog(const struct ly_ctx *ctx, const char *apptag, const struct lyd_node *lnode, LY_VECODE code, const char *format, ...)
 {
     va_list ap;
     char *data_path = NULL, *schema_path = NULL;
     uint64_t line = 0;
 
     if (ctx) {
-        ly_vlog_build_path_line(ctx, &data_path, &schema_path, &line);
+        ly_vlog_build_path_line(ctx, lnode, NULL, &data_path, &schema_path, &line);
     }
 
     va_start(ap, format);
+
+    /* spends paths */
     log_vprintf(ctx, LY_LLERR, LY_EVALID, code, data_path, schema_path, line, apptag, format, ap);
-    /* path is spent and should not be freed! */
+
     va_end(ap);
 }
 
@@ -862,7 +779,7 @@ lyplg_ext_parse_log(const struct lysp_ctx *pctx, const struct lysp_ext_instance 
     char *data_path, *schema_path;
     uint64_t line;
 
-    ly_vlog_build_path_line(PARSER_CTX(pctx), &data_path, &schema_path, &line);
+    ly_vlog_build_path_line(PARSER_CTX(pctx), NULL, NULL, &data_path, &schema_path, &line);
 
     va_start(ap, format);
     ly_ext_log(PARSER_CTX(pctx), LYSC_GET_EXT_PLG(ext->plugin_ref)->id, level, err, data_path, schema_path, line, format, ap);
@@ -935,10 +852,22 @@ lyplg_ext_compile_log_err(const struct ly_err_item *eitem, const struct lysc_ext
  * @brief Exact same functionality as ::ly_err_print() but has variable arguments so log_vprintf() can be called.
  */
 static void
-_ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const char *format, ...)
+_ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, char *data_path, char *schema_path,
+        uint64_t line, const char *format, ...)
 {
     va_list ap;
+
+    va_start(ap, format);
+    log_vprintf(ctx, eitem->level, eitem->err, eitem->vecode, data_path, schema_path, line, eitem->apptag, format, ap);
+    va_end(ap);
+}
+
+LIBYANG_API_DEF void
+ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const struct lyd_node *lnode,
+        const struct lysc_node *snode)
+{
     char *data_path = NULL, *schema_path = NULL;
+    uint64_t line = 0;
 
     LY_CHECK_ARG_RET(ctx, eitem, );
 
@@ -946,21 +875,9 @@ _ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem, const c
         return;
     }
 
-    if (eitem->data_path) {
-        data_path = strdup(eitem->data_path);
-    }
-    if (eitem->schema_path) {
-        schema_path = strdup(eitem->schema_path);
-    }
+    ly_vlog_build_path_line(ctx, lnode, snode, &data_path, &schema_path, &line);
 
-    va_start(ap, format);
-    log_vprintf(ctx, eitem->level, eitem->err, eitem->vecode, data_path, schema_path, eitem->line, eitem->apptag, format, ap);
-    va_end(ap);
-}
-
-LIBYANG_API_DEF void
-ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem)
-{
-    /* string ::ly_err_item.msg cannot be used directly because it may contain the % character */
-    _ly_err_print(ctx, eitem, "%s", eitem->msg);
+    /* string ::ly_err_item.msg cannot be used directly because it may contain the % character;
+     * the paths are spent */
+    _ly_err_print(ctx, eitem, data_path, schema_path, line, "%s", eitem->msg);
 }

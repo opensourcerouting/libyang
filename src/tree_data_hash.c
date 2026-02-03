@@ -169,7 +169,7 @@ lyd_insert_hash(struct lyd_node *node)
     struct lyd_node_inner *parent;
     uint32_t u;
 
-    if (!node->parent || !node->schema || !node->parent->schema) {
+    if (!node->parent || !node->schema || !node->parent->schema || (node->parent->schema->nodetype & LYD_NODE_ANY)) {
         /* nothing to do */
         return LY_SUCCESS;
     }

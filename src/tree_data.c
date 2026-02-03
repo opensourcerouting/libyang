@@ -307,9 +307,12 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
                 if (!path_key_value) {
                     path_key_value = key_value;
                 } else {
-                    LY_CHECK_ERR_GOTO(strcmp(key_value, path_key_value), LOGVAL(ctx, LYVE_DATA,
-                            "Path [%s] contains a different key [%s] than data [%s]", path, path_key_value, key_value);
-                            ret = LY_EINVAL, cleanup);
+                    if (strcmp(key_value, path_key_value)) {
+                        LOGVAL(ctx, NULL, LYVE_DATA, "Path [%s] contains a different key [%s] than data [%s]", path,
+                                path_key_value, key_value);
+                        ret = LY_EINVAL;
+                        goto cleanup;
+                    }
 
                     /* when unlinking duplicate key we need to recalculate the list hash,
                        so store the list (parent) and recalculate the hash after unlinking the duplicate key */
@@ -658,8 +661,8 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 static void
 lyd_insert_only_child(struct lyd_node *parent, struct lyd_node *node)
 {
-    assert(parent && !lyd_child(parent) && !node->next && (node->prev == node));
-    assert(!parent->schema || (parent->schema->nodetype & LYD_NODE_INNER));
+    assert(parent && !lyd_child_any(parent) && !node->next && (node->prev == node));
+    assert(!parent->schema || (parent->schema->nodetype & (LYD_NODE_INNER | LYD_NODE_ANY)));
 
     ((struct lyd_node_inner *)parent)->child = node;
     node->parent = parent;
@@ -803,12 +806,12 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling_p, stru
     /* inserting list without its keys is not supported */
     assert((parent || first_sibling_p) && node && (node->hash || !node->schema));
     assert(!parent || !parent->schema ||
-            (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)));
+            (parent->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF | LYS_ANYDATA)));
 
     if (!parent && first_sibling_p && (*first_sibling_p)) {
         parent = (*first_sibling_p)->parent;
     }
-    first_sibling = parent ? lyd_child(parent) : *first_sibling_p;
+    first_sibling = parent ? lyd_child_any(parent) : *first_sibling_p;
 
     if ((order == LYD_INSERT_NODE_LAST) || !node->schema || (node->flags & LYD_EXT)) {
         lyd_insert_node_last(parent, &first_sibling, node);
@@ -1369,9 +1372,9 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
 
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        ly_bool clear_dflt, ly_bool *incomplete)
+        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        const struct lyd_node *lnode, ly_bool clear_dflt, ly_bool *incomplete)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_ext_instance *ant = NULL;
@@ -1383,8 +1386,14 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     ant = lyd_get_meta_annotation(mod, name, name_len);
     if (!ant) {
         /* attribute is not defined as a metadata annotation (RFC 7952) */
-        LOGVAL(mod->ctx, LYVE_REFERENCE, "Annotation definition for attribute \"%s:%.*s\" not found.",
+        if (!parent && ctx_node) {
+            LOG_LOCSET(ctx_node);
+        }
+        LOGVAL(mod->ctx, parent, LYVE_REFERENCE, "Annotation definition for attribute \"%s:%.*s\" not found.",
                 mod->name, (int)name_len, name);
+        if (!parent && ctx_node) {
+            LOG_LOCBACK(1);
+        }
         ret = LY_EINVAL;
         goto cleanup;
     }
@@ -1394,8 +1403,8 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     mt->parent = parent;
     mt->annotation = ant;
     lyplg_ext_get_storage(ant, LY_STMT_TYPE, sizeof ant_type, (const void **)&ant_type);
-    ret = lyd_value_store(mod->ctx, &mt->value, ant_type, value, value_size_bits, is_utf8, store_only, dynamic, format,
-            prefix_data, hints, ctx_node, incomplete);
+    ret = lyd_value_store(mod->ctx, lnode, &mt->value, ant_type, value, value_size_bits, is_utf8, store_only, dynamic,
+            format, prefix_data, hints, ctx_node, incomplete);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
     ret = lydict_insert(mod->ctx, name, name_len, &mt->name);
     LY_CHECK_ERR_GOTO(ret, free(mt), cleanup);
@@ -2277,8 +2286,8 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             /* store canonical value in the target context */
             val_can = lyd_get_value(node);
             type = ((struct lysc_node_leaf *)term->schema)->type;
-            rc = lyd_value_store(trg_ctx, &term->value, type, val_can, strlen(val_can) * 8, 1, 1, NULL, LY_VALUE_CANON,
-                    NULL, LYD_HINT_DATA, term->schema, NULL);
+            rc = lyd_value_store(trg_ctx, dup, &term->value, type, val_can, strlen(val_can) * 8, 1, 1, NULL,
+                    LY_VALUE_CANON, NULL, LYD_HINT_DATA, term->schema, NULL);
             LY_CHECK_GOTO(rc, cleanup);
         }
     } else if (dup->schema->nodetype & LYD_NODE_INNER) {
@@ -2568,7 +2577,7 @@ lyd_dup_meta_single_to_ctx(const struct ly_ctx *parent_ctx, const struct lyd_met
 
         /* duplicate callback expect only the same contexts, so use the store callback */
         val_can = lyd_value_get_canonical(meta->annotation->module->ctx, &meta->value);
-        ret = lyd_value_store(parent_ctx, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
+        ret = lyd_value_store(parent_ctx, parent, &mt->value, ant_type, val_can, strlen(val_can) * 8, 1, 1, NULL,
                 LY_VALUE_CANON, NULL, LYD_HINT_DATA, parent->schema, NULL);
     } else {
         /* annotation */
@@ -3278,7 +3287,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
         /* create a data node and find the instance */
         if (schema->nodetype == LYS_LEAFLIST) {
             /* target used attributes: schema, hash, value */
-            rc = lyd_create_term(schema, key_or_value, val_len * 8, 0, 1, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
+            rc = lyd_create_term(schema, NULL, key_or_value, val_len * 8, 0, 1, NULL, LY_VALUE_JSON, NULL, LYD_HINT_DATA,
                     NULL, &target);
             LY_CHECK_RET(rc);
         } else {
@@ -3470,7 +3479,7 @@ lyd_eval_xpath4(const struct lyd_node *ctx_node, const struct lyd_node *tree, co
             (!node_set && !string && number && !boolean) || (!node_set && !string && !number && boolean)), LY_EINVAL);
 
     /* parse expression */
-    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse((struct ly_ctx *)LYD_CTX(tree), ctx_node, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */
@@ -3591,7 +3600,7 @@ lyd_trim_xpath(struct lyd_node **tree, const char *xpath, const struct lyxp_var 
     ctx = (struct ly_ctx *)LYD_CTX(*tree);
 
     /* parse expression */
-    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse(ctx, NULL, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate expression */

@@ -4810,7 +4810,7 @@ yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, stru
     (*context)->parsed_mods = main_ctx->parsed_mods;
     ly_set_add((*context)->parsed_mods, mod_p, 1, NULL);
 
-    ly_log_location(NULL, NULL, NULL, in);
+    ly_log_location(NULL, NULL, in);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);
@@ -4847,7 +4847,7 @@ yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, stru
     *submod = mod_p;
 
 cleanup:
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
     if (ret) {
         lysp_module_free(ly_ctx, (struct lysp_module *)mod_p);
         lysp_yang_ctx_free(*context);
@@ -4879,7 +4879,7 @@ yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_m
     mod_p->mod = mod;
     ly_set_add((*context)->parsed_mods, mod_p, 1, NULL);
 
-    ly_log_location(NULL, NULL, NULL, in);
+    ly_log_location(NULL, NULL, in);
 
     /* skip redundant but valid characters at the beginning */
     ret = skip_redundant_chars(*context);
@@ -4915,7 +4915,7 @@ yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_m
     mod->parsed = mod_p;
 
 cleanup:
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
     if (ret) {
         lysp_module_free(mod->ctx, mod_p);
         lysp_yang_ctx_free(*context);

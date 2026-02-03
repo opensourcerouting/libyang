@@ -445,6 +445,7 @@ LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node 
  * https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex
  *
  * @param[in] ctx Context for errors.
+ * @param[in] lnode Data node for logging.
  * @param[in] expr_str XPath expression to parse. It is duplicated.
  * @param[in] expr_len Length of @p expr, can be 0 if @p expr is 0-terminated.
  * @param[in] reparse Whether to re-parse the expression to finalize full XPath parsing and fill
@@ -454,8 +455,8 @@ LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node 
  * @return LY_EMEM in case of memory allocation failure.
  * @return LY_EVALID in case of invalid XPath expression in @p expr_str.
  */
-LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse,
-        struct lyxp_expr **expr_p);
+LY_ERR lyxp_expr_parse(const struct ly_ctx *ctx, const struct lyd_node *lnode, const char *expr_str, size_t expr_len,
+        ly_bool reparse, struct lyxp_expr **expr_p);
 
 /**
  * @brief Duplicate parsed XPath expression.

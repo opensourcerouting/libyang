@@ -279,7 +279,7 @@ test_invalid(void **state)
 
     assert_int_equal(LY_EVALID, lyd_find_xpath(tree, "/a:", &set));
     assert_null(set);
-    CHECK_LOG_CTX("Invalid character 'a'[2] of expression '/a:'.", NULL, 0);
+    CHECK_LOG_CTX("Invalid character 'a'[2] of expression '/a:'.", "/a:foo2", 0);
 
     lyd_free_all(tree);
 }
@@ -965,7 +965,7 @@ test_variables(void **state)
     LOCAL_SETUP(data, tree);
     assert_int_equal(LY_SUCCESS, lyxp_vars_set(&vars, "var", "\""));
     assert_int_equal(LY_EVALID, lyd_find_xpath2(tree, "/foo[$pref:var]", vars, &set));
-    CHECK_LOG_CTX("Variable with prefix is not supported.", NULL, 0);
+    CHECK_LOG_CTX("Variable with prefix is not supported.", "/a:foo", 0);
     LOCAL_TEARDOWN(set, tree, vars);
 
 #undef LOCAL_SETUP

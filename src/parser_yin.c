@@ -3962,7 +3962,7 @@ yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct ly
     *submod = mod_p;
 
 cleanup:
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
     if (ret) {
         lysp_module_free(ctx, (struct lysp_module *)mod_p);
         lysp_yin_ctx_free(*yin_ctx);
@@ -4025,7 +4025,7 @@ yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_mod
     mod->parsed = mod_p;
 
 cleanup:
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
     if (ret) {
         lysp_module_free(mod->ctx, mod_p);
         lysp_yin_ctx_free(*yin_ctx);

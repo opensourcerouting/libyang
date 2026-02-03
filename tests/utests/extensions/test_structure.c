@@ -223,6 +223,7 @@ test_parse(void **state)
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
             "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
+            "anydata any;"
             "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
 
@@ -306,6 +307,47 @@ test_parse(void **state)
     CHECK_LOG_CTX("Invalid instance-identifier \"/a:x/y\" value - required instance not found.",
             "/a:struct/x/struct/x/z", 0);
     lyd_free_all(tree);
+
+    /* anydata strict */
+    yang = "module c {yang-version 1.1; namespace urn:tests:c; prefix c;"
+            "container cont {"
+            "  leaf l {type string;}"
+            "}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<struct>"
+            "<x>"
+            "<any>"
+            "<cont xmlns=\"urn:tests:c\"><l>val</l></cont>"
+            "</any>"
+            "</x>"
+            "</struct>"
+            "</x>"
+            "</struct>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML,
+            LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+    lyd_free_all(tree);
+
+    xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<struct>"
+            "<x>"
+            "<any>"
+            "<cont xmlns=\"urn:tests:c\"><l2>val</l2></cont>"
+            "</any>"
+            "</x>"
+            "</struct>"
+            "</x>"
+            "</struct>";
+    ly_in_memory(UTEST_IN, xml);
+    assert_int_equal(LY_EVALID, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML,
+            LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Node \"l2\" not found as a child of \"cont\" node.",
+            "/a:struct/x/struct/x/any/c:cont", 1);
 }
 
 int

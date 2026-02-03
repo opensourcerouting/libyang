@@ -331,6 +331,7 @@ LY_ERR lys_compile(struct lys_module *mod, struct lys_depset_unres *unres);
  * in the same type.
  *
  * @param[in] ctx Compile context for logging.
+ * @param[in] snode Schema node for logging.
  * @param[in] flags1 Flags of the referencing node.
  * @param[in] mod1 Module of the referencing node,
  * @param[in] name1 Schema node name of the referencing node.
@@ -339,8 +340,8 @@ LY_ERR lys_compile(struct lys_module *mod, struct lys_depset_unres *unres);
  * @param[in] name2 Schema node name of the referenced node.
  * @return LY_ERR value
  */
-LY_ERR lysc_check_status(struct lysc_ctx *ctx, uint16_t flags1, void *mod1, const char *name1, uint16_t flags2,
-        void *mod2, const char *name2);
+LY_ERR lysc_check_status(struct lysc_ctx *ctx, const struct lysc_node *snode, uint16_t flags1, void *mod1,
+        const char *name1, uint16_t flags2, void *mod2, const char *name2);
 
 /**
  * @brief Check parsed expression for any prefixes of unimplemented modules.

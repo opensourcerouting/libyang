@@ -78,11 +78,44 @@ extern ATOMIC_T ly_ll;
 extern ATOMIC_T ly_log_opts;
 
 struct ly_log_location_s {
-    struct ly_set inputs;            /**< Set of const struct ly_in *in pointers providing the input handler with the line information (LIFO) */
-    struct ly_set scnodes;           /**< Set of const struct lysc_node *scnode pointers providing the compiled schema node to generate path (LIFO) */
-    struct ly_set dnodes;            /**< Set of const struct lyd_node *dnode pointers providing the data node to generate path (LIFO) */
-    struct ly_set paths;             /**< Set of path strings (LIFO) */
+    struct ly_set scnodes;  /**< Set of const struct lysc_node *scnode pointers providing the compiled schema node to generate path (LIFO) */
+    struct ly_set paths;    /**< Set of path strings (LIFO) */
+    struct ly_set inputs;   /**< Set of inputs providing line information. */
 };
+
+/**
+ * @brief Logger location data setter.
+ *
+ * @param[in] scnode Compiled schema node.
+ * @param[in] path Direct path string to append and print.
+ * @param[in] in Input handler (providing line number).
+ */
+void ly_log_location(const struct lysc_node *scnode, const char *path, const struct ly_in *in);
+
+/**
+ * @brief Revert the specific logger location data by number of changes made by ::ly_log_location().
+ *
+ * @param[in] scnode_steps Number of items in ::ly_log_location_s.scnodes to forget.
+ * @param[in] path_steps Number of path strings in ::ly_log_location_s.paths to forget.
+ * @param[in] in_steps Number of input handlers ::ly_log_location_s.inputs to forget.
+ */
+void ly_log_location_revert(uint32_t scnode_steps, uint32_t path_steps, uint32_t in_steps);
+
+/**
+ * @brief Update location schema nodes for logger.
+ *
+ * @param[in] SCNODE Compiled schema node.
+ */
+#define LOG_LOCSET(SCNODE) \
+    ly_log_location(SCNODE, NULL, NULL)
+
+/**
+ * @brief Update location schema nodes for logger, not provided arguments (NULLs) are kept (does not override).
+ *
+ * @param[in] SCNODE_STEPS Number of the compiled schema nodes to remove from the stack.
+ */
+#define LOG_LOCBACK(SCNODE_STEPS) \
+    ly_log_location_revert(SCNODE_STEPS, 0, 0)
 
 /**
  * @brief Print a log message and store it into the context (if provided).
@@ -95,79 +128,16 @@ struct ly_log_location_s {
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR err, const char *format, ...) _FORMAT_PRINTF(4, 5);
 
 /**
- * @brief Generate data path based on the data and schema nodes stored in the log location.
- *
- * @param[in] ctx Context for logging.
- * @param[out] path Generated data path.
- * @return LY_ERR value.
- */
-LY_ERR ly_vlog_build_data_path(const struct ly_ctx *ctx, char **path);
-
-/**
  * @brief Print Validation error and store it into the context (if provided).
  *
  * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
  * @param[in] apptag Optional specific error-app-tag.
+ * @param[in] lnode Data node for logging the path.
  * @param[in] code Validation error code.
  * @param[in] format Format string to print.
  */
-void ly_vlog(const struct ly_ctx *ctx, const char *apptag, LY_VECODE code, const char *format, ...) _FORMAT_PRINTF(4, 5);
-
-/**
- * @brief Logger location data setter.
- *
- * If all the parameter are NULL, a root @p dnode is added (NULL).
- *
- * @param[in] scnode Compiled schema node.
- * @param[in] dnode Data node.
- * @param[in] path Direct path string to append and print.
- * @param[in] in Input handler (providing line number).
- */
-void ly_log_location(const struct lysc_node *scnode, const struct lyd_node *dnode,
-        const char *path, const struct ly_in *in);
-
-/**
- * @brief Revert the specific logger location data by number of changes made by ::ly_log_location().
- *
- * @param[in] scnode_steps Number of items in ::ly_log_location_s.scnodes to forget.
- * @param[in] dnode_steps Number of items in ::ly_log_location_s.dnodes to forget.
- * @param[in] path_steps Number of path strings in ::ly_log_location_s.paths to forget.
- * @param[in] in_steps Number of input handlers ::ly_log_location_s.inputs to forget.
- */
-void ly_log_location_revert(uint32_t scnode_steps, uint32_t dnode_steps, uint32_t path_steps, uint32_t in_steps);
-
-/**
- * @brief Get the stored data node for logging at the index.
- *
- * @param[in] idx Index of the data node.
- * @return Logged data node, NULL if out of range.
- */
-const struct lyd_node *ly_log_location_dnode(uint32_t idx);
-
-/**
- * @brief Get the count of stored data nodes for logging.
- *
- * @return Count of the data nodes.
- */
-uint32_t ly_log_location_dnode_count(void);
-
-/**
- * @brief Update location schema/data nodes for logger. If both NULL, root data node is added.
- *
- * @param[in] SCNODE Compiled schema node.
- * @param[in] DNODE Data node.
- */
-#define LOG_LOCSET(SCNODE, DNODE) \
-    ly_log_location(SCNODE, DNODE, NULL, NULL)
-
-/**
- * @brief Update location schema/data nodes for logger, not provided arguments (NULLs) are kept (does not override).
- *
- * @param[in] SCNODE_STEPS Number of the compiled schema nodes to remove from the stack.
- * @param[in] DNODE_STEPS Number of the data nodes to remove from the stack.
- */
-#define LOG_LOCBACK(SCNODE_STEPS, DNODE_STEPS) \
-    ly_log_location_revert(SCNODE_STEPS, DNODE_STEPS, 0, 0)
+void ly_vlog(const struct ly_ctx *ctx, const char *apptag, const struct lyd_node *lnode, LY_VECODE code,
+        const char *format, ...) _FORMAT_PRINTF(5, 6);
 
 #define LOGERR(ctx, errno, ...) ly_log(ctx, LY_LLERR, errno, __VA_ARGS__)
 #define LOGWRN(ctx, ...) ly_log(ctx, LY_LLWRN, 0, __VA_ARGS__)
@@ -193,8 +163,8 @@ void ly_log_dbg(uint32_t group, const char *format, ...);
 
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, ...) ly_vlog(CTX, NULL, __VA_ARGS__)
-#define LOGVAL_APPTAG(CTX, APPTAG, ...) ly_vlog(CTX, APPTAG, __VA_ARGS__)
+#define LOGVAL(CTX, LNODE, ...) ly_vlog(CTX, NULL, LNODE, __VA_ARGS__)
+#define LOGVAL_APPTAG(CTX, APPTAG, LNODE, ...) ly_vlog(CTX, APPTAG, LNODE, __VA_ARGS__)
 
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
 #define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT

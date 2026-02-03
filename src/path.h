@@ -37,11 +37,11 @@ struct lyxp_expr;
  */
 #define LOGVAL_PATH(CTX, CUR_SCNODE, CTX_SCNODE, ...) \
         if ((CUR_SCNODE) || (CTX_SCNODE)) { \
-            LOG_LOCSET((CUR_SCNODE) ? (CUR_SCNODE) : (CTX_SCNODE), NULL); \
+            LOG_LOCSET((CUR_SCNODE) ? (CUR_SCNODE) : (CTX_SCNODE)); \
         } \
-        ly_vlog(CTX, NULL, __VA_ARGS__); \
+        ly_vlog(CTX, NULL, NULL, __VA_ARGS__); \
         if ((CUR_SCNODE) || (CTX_SCNODE)) { \
-            LOG_LOCBACK(1, 0); \
+            LOG_LOCBACK(1); \
         }
 
 /**

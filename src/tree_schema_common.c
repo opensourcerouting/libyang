@@ -53,7 +53,8 @@ lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char 
     }
     LY_ARRAY_FOR(imports, struct lysp_import, i) {
         if (i->prefix && (&i->prefix != value) && !strcmp(i->prefix, *value)) {
-            LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.", *value, i->name);
+            LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.", *value,
+                    i->name);
             return LY_EEXIST;
         }
     }
@@ -560,7 +561,8 @@ lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const stru
         for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_grouping_match(name, parent)) {
                 LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
-                        "Duplicate identifier \"%s\" of grouping statement - name collision with another scoped grouping.", name);
+                        "Duplicate identifier \"%s\" of grouping statement - name collision with another scoped grouping.",
+                        name);
                 return LY_EVALID;
             }
         }
@@ -571,7 +573,8 @@ lysp_check_dup_grouping(struct lysp_ctx *ctx, struct lysp_node *node, const stru
         hash = lyht_hash(name, name_len);
         if (!lyht_find(grps_global, &name, hash, NULL)) {
             LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG,
-                    "Duplicate identifier \"%s\" of grouping statement - scoped grouping collide with a top-level grouping.", name);
+                    "Duplicate identifier \"%s\" of grouping statement - scoped grouping collide with a top-level grouping.",
+                    name);
             return LY_EVALID;
         }
     } else {
@@ -832,7 +835,7 @@ lys_load_mod_from_clb_or_file(struct ly_ctx *ctx, const char *name, const char *
     }
 
     if (!*mod && !mod_latest) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Loading \"%s\" module failed, not found.", name);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Loading \"%s\" module failed, not found.", name);
         return LY_ENOTFOUND;
     }
 
@@ -893,7 +896,7 @@ static LY_ERR
 lys_check_circular_dependency(struct ly_ctx *ctx, struct lys_module **mod)
 {
     if ((*mod) && (*mod)->parsed->parsing) {
-        LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", (*mod)->name);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", (*mod)->name);
         *mod = NULL;
         return LY_EVALID;
     }
@@ -1019,7 +1022,7 @@ lysp_main_pmod_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
         }
 
         if (inc->rev[0] && strncmp(inc->rev, main_pmod->includes[i].rev, LY_REV_SIZE)) {
-            LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+            LOGVAL_PARSER(pctx, LYVE_REFERENCE,
                     "Submodule %s includes different revision (%s) of the submodule %s:%s included by the main module %s.",
                     ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->rev,
                     main_pmod->includes[i].name, main_pmod->includes[i].rev, main_pmod->mod->name);
@@ -1031,7 +1034,7 @@ lysp_main_pmod_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
     }
 
     if (main_pmod->version == LYS_VERSION_1_1) {
-        LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+        LOGVAL_PARSER(pctx, LYVE_REFERENCE,
                 "YANG 1.1 requires all submodules to be included from main module. "
                 "But submodule \"%s\" includes submodule \"%s\" which is not included by main module \"%s\".",
                 ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->name, main_pmod->mod->name);
@@ -1067,7 +1070,7 @@ lysp_parsed_mods_get_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
         }
 
         if (inc->rev[0] && submod->revs && strncmp(inc->rev, submod->revs[0].date, LY_REV_SIZE)) {
-            LOGVAL(PARSER_CTX(pctx), LYVE_REFERENCE,
+            LOGVAL_PARSER(pctx, LYVE_REFERENCE,
                     "Submodule %s includes different revision (%s) of the submodule %s:%s included by the main module %s.",
                     ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name, inc->rev,
                     submod->name, submod->revs[0].date, PARSER_CUR_PMOD(pctx)->mod->name);
@@ -1196,7 +1199,7 @@ lysp_load_submod_from_clb_or_file(struct lysp_ctx *pctx, const char *name, const
     }
 
     if (!*submod && !submod_latest) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed, not found.", name,
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed, not found.", name,
                 PARSER_CUR_PMOD(pctx)->is_submod ? ((struct lysp_submodule *)PARSER_CUR_PMOD(pctx))->name :
                 PARSER_CUR_PMOD(pctx)->mod->name);
         return LY_ENOTFOUND;
@@ -2273,7 +2276,8 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     /* get module where the extension definition should be placed */
     mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.",
+                (int)pref_len, prefix);
         return LY_EVALID;
     }
     if (ext_mod) {
@@ -2305,7 +2309,7 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     }
 
     if (!*ext_def) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
         return LY_EVALID;
     }
 
@@ -2329,7 +2333,8 @@ lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     /* get module where the extension definition should be placed */
     mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.", (int)pref_len, prefix);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.",
+                (int)pref_len, prefix);
         return LY_EVALID;
     }
 
@@ -2342,7 +2347,7 @@ lysc_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     }
 
     if (!*ext_def) {
-        LOGVAL(ctx, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
+        LOGVAL(ctx, NULL, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
         return LY_EVALID;
     }
 
@@ -2373,8 +2378,9 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_e
                 arg = stmt->stmt;
                 ly_parse_nodeid(&arg, &prefix_arg, &prefix_arg_len, &name_arg, &name_arg_len);
                 if (ly_strncmp(ext_def->argname, name_arg, name_arg_len)) {
-                    LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its first XML child, "
-                            "but \"%.*s\" element found.", ext_p->name, ext_def->argname, (int)name_arg_len, name_arg);
+                    LOGVAL(ctx, NULL, LYVE_SEMANTICS, "Extension instance \"%s\" expects argument element \"%s\" as its "
+                            "first XML child, but \"%.*s\" element found.", ext_p->name, ext_def->argname,
+                            (int)name_arg_len, name_arg);
                     return LY_EVALID;
                 }
 
@@ -2385,7 +2391,7 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_e
 
                 if (ly_resolve_prefix(ctx, prefix_ext, prefix_ext_len, ext_p->format, ext_p->prefix_data) !=
                         ly_resolve_prefix(ctx, prefix_arg, prefix_arg_len, stmt->format, stmt->prefix_data)) {
-                    LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
+                    LOGVAL(ctx, NULL, LYVE_SEMANTICS, "Extension instance \"%s\" element and its argument element \"%s\" are "
                             "expected in the same namespace, but they differ.", ext_p->name, ext_def->argname);
                     return LY_EVALID;
                 }
@@ -2408,7 +2414,7 @@ lysp_ext_instance_resolve_argument(const struct ly_ctx *ctx, const struct lysp_e
 
     if (!ext_p->argument) {
         /* missing extension's argument */
-        LOGVAL(ctx, LYVE_SEMANTICS, "Extension instance \"%s\" missing argument %s\"%s\".",
+        LOGVAL(ctx, NULL, LYVE_SEMANTICS, "Extension instance \"%s\" missing argument %s\"%s\".",
                 ext_p->name, (ext_def->flags & LYS_YINELEM_TRUE) ? "element " : "", ext_def->argname);
         return LY_EVALID;
     }

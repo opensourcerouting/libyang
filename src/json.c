@@ -215,7 +215,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 offset++;
                 for (value = i = 0; i < 4; i++) {
                     if (!in[offset + i]) {
-                        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", c);
+                        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", c);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
@@ -229,14 +229,13 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 break;
             default:
                 /* invalid escape sequence */
-                LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character escape sequence \\%c.", in[offset]);
+                LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid character escape sequence \\%c.", in[offset]);
                 goto error;
-
             }
 
             offset += i;   /* add read escaped characters */
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
-                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08" PRIx32 ").",
+                    LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08" PRIx32 ").",
                     (int)(&in[offset] - c), c, value),
                     error);
             len += u;      /* update number of bytes in buffer */
@@ -267,10 +266,10 @@ lyjson_string(struct lyjson_ctx *jsonctx)
             /* get it as UTF-8 character for check */
             c = &in[offset];
             LY_CHECK_ERR_GOTO(ly_getutf8(&c, &value, &u),
-                    LOGVAL(jsonctx->ctx, LY_VCODE_INCHAR, in[offset]), error);
+                    LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INCHAR, in[offset]), error);
 
             LY_CHECK_ERR_GOTO(!is_jsonstrchar(value),
-                    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character in JSON string \"%.*s\" (0x%08" PRIx32 ").",
+                    LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid character in JSON string \"%.*s\" (0x%08" PRIx32 ").",
                     (int)(&in[offset] - start + u), start, value),
                     error);
 
@@ -281,10 +280,10 @@ lyjson_string(struct lyjson_ctx *jsonctx)
     }
 
     /* EOF reached before endchar */
-    LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+    LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
     orig_line = jsonctx->in->line;
     jsonctx->in->line = start_line;
-    LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Missing quotation-mark at the end of a JSON string.");
+    LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Missing quotation-mark at the end of a JSON string.");
     jsonctx->in->line = orig_line;
 
 error:
@@ -373,7 +372,7 @@ lyjson_get_buffer_for_number(const struct ly_ctx *ctx, uint64_t num_len, char **
 {
     *buffer = NULL;
 
-    LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(ctx, LYVE_SEMANTICS,
+    LY_CHECK_ERR_RET((num_len + 1) > LY_NUMBER_MAXLEN, LOGVAL(ctx, NULL, LYVE_SEMANTICS,
             "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit."), LY_EVALID);
 
     /* allocate buffer for the result (add NULL-byte) */
@@ -485,7 +484,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     assert((in < exponent) && ((*exponent == 'e') || (*exponent == 'E')));
 
     if ((exponent - in) > UINT16_MAX) {
-        LOGVAL(ctx, LYVE_SEMANTICS, "JSON number is too long.");
+        LOGVAL(ctx, NULL, LYVE_SEMANTICS, "JSON number is too long.");
         return LY_EVALID;
     }
 
@@ -493,9 +492,7 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
     errno = 0;
     e_val = strtoll(exponent + 1, NULL, LY_BASE_DEC);
     if (errno || (e_val > UINT16_MAX) || (e_val < -UINT16_MAX)) {
-        LOGVAL(ctx, LYVE_SEMANTICS,
-                "Exponent out-of-bounds in a JSON Number value (%.*s).",
-                (int)total_len, in);
+        LOGVAL(ctx, NULL, LYVE_SEMANTICS, "Exponent out-of-bounds in a JSON Number value (%.*s).", (int)total_len, in);
         return LY_EVALID;
     }
 
@@ -653,9 +650,9 @@ lyjson_number(struct lyjson_ctx *jsonctx)
     } else {
 invalid_character:
         if (in[offset]) {
-            LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Invalid character in JSON Number value (\"%c\").", in[offset]);
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid character in JSON Number value (\"%c\").", in[offset]);
         } else {
-            LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+            LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
         }
         return LY_EVALID;
     }
@@ -693,7 +690,7 @@ invalid_character:
         lyjson_ctx_set_value(jsonctx, num, num_len, 1);
     } else {
         if (offset > LY_NUMBER_MAXLEN) {
-            LOGVAL(jsonctx->ctx, LYVE_SEMANTICS,
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SEMANTICS,
                     "Number encoded as a string exceeded the LY_NUMBER_MAXLEN limit.");
             return LY_EVALID;
         }
@@ -718,15 +715,15 @@ lyjson_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyjson_ctx **j
     jsonctx->ctx = ctx;
     jsonctx->in = in;
 
-    /* input line logging */
-    ly_log_location(NULL, NULL, NULL, in);
+    /* input line logging, if not nested */
+    ly_log_location(NULL, NULL, in);
 
     /* WS are always expected to be skipped */
     lyjson_skip_ws(jsonctx);
 
     if (jsonctx->in->current[0] == '\0') {
         /* empty file, invalid */
-        LOGVAL(jsonctx->ctx, LYVE_SYNTAX, "Empty JSON file.");
+        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Empty JSON file.");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -755,7 +752,7 @@ lyjson_next_object_name(struct lyjson_ctx *jsonctx)
     switch (*jsonctx->in->current) {
     case '\0':
         /* EOF */
-        LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
         return LY_EVALID;
 
     case '"':
@@ -765,7 +762,7 @@ lyjson_next_object_name(struct lyjson_ctx *jsonctx)
         lyjson_skip_ws(jsonctx);
 
         if (*jsonctx->in->current != ':') {
-            LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current,
+            LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current), jsonctx->in->current,
                     "a JSON value name-separator ':'");
             return LY_EVALID;
         }
@@ -781,7 +778,7 @@ lyjson_next_object_name(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON object name");
         return LY_EVALID;
     }
@@ -802,7 +799,7 @@ lyjson_next_value(struct lyjson_ctx *jsonctx, ly_bool array_end)
     switch (*jsonctx->in->current) {
     case '\0':
         /* EOF */
-        LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
         return LY_EVALID;
 
     case '"':
@@ -885,7 +882,7 @@ lyjson_next_value(struct lyjson_ctx *jsonctx, ly_bool array_end)
 
     default:
 unexpected_value:
-        LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON value");
         return LY_EVALID;
     }
@@ -910,7 +907,7 @@ lyjson_next_object_item(struct lyjson_ctx *jsonctx)
     switch (*jsonctx->in->current) {
     case '\0':
         /* EOF */
-        LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
         return LY_EVALID;
 
     case '}':
@@ -927,7 +924,7 @@ lyjson_next_object_item(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON object-end or next item");
         return LY_EVALID;
     }
@@ -947,7 +944,7 @@ lyjson_next_array_item(struct lyjson_ctx *jsonctx)
     switch (*jsonctx->in->current) {
     case '\0':
         /* EOF */
-        LOGVAL(jsonctx->ctx, LY_VCODE_EOF);
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_EOF);
         return LY_EVALID;
 
     case ']':
@@ -964,7 +961,7 @@ lyjson_next_array_item(struct lyjson_ctx *jsonctx)
 
     default:
         /* unexpected value */
-        LOGVAL(jsonctx->ctx, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
+        LOGVAL(jsonctx->ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(jsonctx->in->current),
                 jsonctx->in->current, "a JSON array-end or next item");
         return LY_EVALID;
     }
@@ -1080,7 +1077,7 @@ lyjson_ctx_free(struct lyjson_ctx *jsonctx)
         return;
     }
 
-    ly_log_location_revert(0, 0, 0, 1);
+    ly_log_location_revert(0, 0, 1);
 
     if (jsonctx->dynamic) {
         free((char *)jsonctx->value);

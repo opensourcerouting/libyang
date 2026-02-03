@@ -168,7 +168,7 @@ test_anydata_strict_validation(void **state)
     char *str;
     struct lyd_node *tree;
 
-    // no shcema defiend for "urn:tests:no:schema" in the parsing context
+    /* no shcema defiend for "urn:tests:no:schema" in the parsing context */
     data_without_schema = "<any xmlns=\"urn:tests:a\">\n"
             "  <x:element1 xmlns:x=\"urn:tests:no:schema\">\n"
             "    <x:element2>default-val</x:element2>\n"
@@ -178,8 +178,8 @@ test_anydata_strict_validation(void **state)
     PARSER_CHECK_ERROR(data_without_schema, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "No module with namespace \"urn:tests:no:schema\" in the context.", "/a:any", 3);
 
-    // anydata value are based on "module a" defined in the setup function and loaded into the parsing context.
-    // However, the value passed in the anydata subtree is not defined in "module a".
+    /* anydata value are based on "module a" defined in the setup function and loaded into the parsing context.
+     * However, the value passed in the anydata subtree is not defined in "module a". */
     data_invalid = "<any xmlns=\"urn:tests:a\">\n"
             "  <element1>default-val</element1>\n"
             "</any>\n";
@@ -187,7 +187,7 @@ test_anydata_strict_validation(void **state)
     PARSER_CHECK_ERROR(data_invalid, LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Node \"element1\" not found in the \"a\" module.", "/a:any", 2);
 
-    // anydata value are based on "module a" defined in the setup function and loaded into the parsing context
+    /* anydata value are based on "module a" defined in the setup function and loaded into the parsing context */
     data_valid = "<any xmlns=\"urn:tests:a\">\n"
             "  <foo>default-val</foo>\n"
             "</any>\n";
@@ -728,7 +728,7 @@ test_netconf_rpc(void **state)
             &tree, &op));
     ly_in_free(in, 0);
     CHECK_LOG_CTX("Invalid enumeration value \"merge2\".",
-            "/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
+            "/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation", 13);
     lyd_free_all(tree);
     assert_null(op);
 }

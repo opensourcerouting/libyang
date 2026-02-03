@@ -208,6 +208,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * Hash is calculated and new node flag is set.
  *
  * @param[in] schema Schema node of the new data node.
+ * @param[in] lnode Parent node for logging.
  * @param[in] value Value to be parsed.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in] is_utf8 Whether @p value is a valid UTF-8 string, if applicable.
@@ -221,9 +222,9 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_term(const struct lysc_node *schema, const void *value, uint32_t value_size_bits, ly_bool is_utf8,
-        ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        ly_bool *incomplete, struct lyd_node **node);
+LY_ERR lyd_create_term(const struct lysc_node *schema, const struct lyd_node *lnode, const void *value,
+        uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node);
 
 /**
  * @brief Create an inner (container/list/RPC/action/notification) node.
@@ -280,12 +281,13 @@ LY_ERR lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t
  * @param[in] value Value of the any node.
  * @param[in] value_type Value type of the value.
  * @param[in] use_value Whether to use dynamic @p value or duplicate it.
+ * @param[in] try_parse Set if parsing the value into a data tree should be attempted.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type,
-        ly_bool use_value, struct lyd_node **node);
+        ly_bool use_value, ly_bool try_parse, struct lyd_node **node);
 
 /**
  * @brief Create an opaque node.
@@ -523,6 +525,7 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser regarding the value type.
  * @param[in] ctx_node Value context node, may be NULL for metadata.
+ * @param[in] lnode Data node for logging.
  * @param[in] clear_dflt Whether to clear dflt flag starting from @p parent, recursively all NP containers.
  * @param[out] incomplete Whether the value needs to be resolved.
  * @return LY_SUCCESS on success.
@@ -530,9 +533,9 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic,
-        LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
-        ly_bool clear_dflt, ly_bool *incomplete);
+        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        const struct lyd_node *lnode, ly_bool clear_dflt, ly_bool *incomplete);
 
 /**
  * @brief Create a copy of the metadata.
@@ -583,6 +586,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.
  *
  * @param[in] ctx libyang context.
+ * @param[in] lnode Data node for logging.
  * @param[in,out] val Storage for the value.
  * @param[in] type Type of the value.
  * @param[in] value Value to be parsed, must not be NULL.
@@ -593,14 +597,15 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] format Input format of @p value.
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints [Value hints](@ref lydvalhints) from the parser.
- * @param[in] ctx_node Context schema node.
+ * @param[in] ctx_snode Context schema node.
  * @param[out] incomplete Optional, set if the value also needs to be resolved.
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_value_store(const struct ly_ctx *ctx, struct lyd_value *val, const struct lysc_type *type, const void *value,
-        uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, ly_bool *incomplete);
+LY_ERR lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, struct lyd_value *val,
+        const struct lysc_type *type, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_snode,
+        ly_bool *incomplete);
 
 /**
  * @brief Validate previously incompletely stored value.

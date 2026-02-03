@@ -24,8 +24,9 @@
 extern "C" {
 #endif
 
-/* dummy context structure */
 struct ly_ctx;
+struct lyd_node;
+struct lysc_node;
 
 /**
  * @brief Type to indicate boolean value.
@@ -353,8 +354,11 @@ LIBYANG_API_DECL const struct ly_err_item *ly_err_last(const struct ly_ctx *ctx)
  *
  * @param[in] ctx Optional context to store the message in.
  * @param[in] eitem Error item structure to print.
+ * @param[in] lnode Optional data node to log.
+ * @param[in] snode Optional schema node to log/append to @p lnode.
  */
-LIBYANG_API_DECL void ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem);
+LIBYANG_API_DECL void ly_err_print(const struct ly_ctx *ctx, const struct ly_err_item *eitem,
+        const struct lyd_node *lnode, const struct lysc_node *snode);
 
 /**
  * @brief Free error structures from a context.

@@ -579,7 +579,8 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count, struct lyd_meta **meta)
+lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, uint32_t metadata_count,
+        struct lyd_meta **meta)
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
@@ -613,7 +614,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
         /* get metadata type */
         ant = lyd_get_meta_annotation(mod, meta_name, strlen(meta_name));
         if (!ant) {
-            LOGVAL(lybctx->parse_ctx->ctx, LYVE_REFERENCE, "Annotation definition for metadata \"%s:%s\" not found.",
+            LOGVAL(lybctx->parse_ctx->ctx, NULL, LYVE_REFERENCE, "Annotation definition for metadata \"%s:%s\" not found.",
                     mod->name, meta_name);
             rc = LY_EINT;
             goto cleanup;
@@ -627,7 +628,7 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 
         /* create metadata */
         rc = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), value,
-                value_size_bits, &dynamic, LY_VALUE_LYB, NULL, LYD_HINT_DATA, sparent);
+                value_size_bits, &dynamic, LY_VALUE_LYB, NULL, LYD_HINT_DATA, sparent, NULL);
 
         /* free strings */
         free(meta_name);
@@ -1128,11 +1129,13 @@ lyb_parse_node_header(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
  *
  * @param[in] lybctx LYB context.
  * @param[in] snode Schema of the term node.
+ * @param[in] lnode Parent data node for logging.
  * @param[out] node Created term node.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struct lyd_node **node)
+lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, const struct lyd_node *lnode,
+        struct lyd_node **node)
 {
     LY_ERR rc;
     ly_bool dynamic;
@@ -1144,7 +1147,7 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, struc
     dynamic = 1;
 
     /* create node */
-    rc = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, value_size_bits, &dynamic, LY_VALUE_LYB,
+    rc = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, lnode, value, value_size_bits, &dynamic, LY_VALUE_LYB,
             NULL, LYD_HINT_DATA, node);
     if (dynamic) {
         free(value);
@@ -1238,9 +1241,6 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
             value, strlen(value), &dynamic, format, val_prefix_data, LYD_HINT_DATA, &node);
     LY_CHECK_ERR_GOTO(ret, ly_free_prefix_data(format, val_prefix_data), cleanup);
 
-    assert(node);
-    LOG_LOCSET(NULL, node);
-
     /* process children */
     ret = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
     LY_CHECK_GOTO(ret, cleanup);
@@ -1249,13 +1249,9 @@ lyb_parse_node_opaq(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct 
         /* register parsed opaq node */
         lyb_finish_opaq(lybctx, parent, &attr, &node, first_p, parsed);
         assert(!attr && !node);
-        LOG_LOCBACK(0, 1);
     } /* else is freed */
 
 cleanup:
-    if (node) {
-        LOG_LOCBACK(0, 1);
-    }
     free(prefix);
     free(module_key);
     free(name);
@@ -1314,7 +1310,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         LY_CHECK_GOTO(rc, cleanup);
 
         /* use the data tree value */
-        rc = lyd_create_any(snode, tree, value_type, 1, &node);
+        rc = lyd_create_any(snode, tree, value_type, 1, 0, &node);
         LY_CHECK_GOTO(rc, cleanup);
         tree = NULL;
         break;
@@ -1326,7 +1322,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         LY_CHECK_GOTO(rc, cleanup);
 
         /* use the string value */
-        rc = lyd_create_any(snode, value, value_type, 1, &node);
+        rc = lyd_create_any(snode, value, value_type, 1, 0, &node);
         LY_CHECK_GOTO(rc, cleanup);
         value = NULL;
         break;
@@ -1376,9 +1372,6 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     rc = lyd_create_inner(snode, &node);
     LY_CHECK_GOTO(rc, cleanup);
 
-    assert(node);
-    LOG_LOCSET(NULL, node);
-
     /* process children */
     rc = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
     LY_CHECK_GOTO(rc, cleanup);
@@ -1397,9 +1390,6 @@ lyb_parse_node_inner(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const 
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
-    if (!rc || node) {
-        LOG_LOCBACK(0, 1);
-    }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return rc;
@@ -1431,19 +1421,13 @@ lyb_parse_node_leaf(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     LY_CHECK_GOTO(rc, cleanup);
 
     /* read value of term node and create it */
-    rc = lyb_create_term(lybctx, snode, &node);
+    rc = lyb_create_term(lybctx, snode, parent, &node);
     LY_CHECK_GOTO(rc, cleanup);
-
-    assert(node);
-    LOG_LOCSET(NULL, node);
 
     rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
     LY_CHECK_GOTO(rc, cleanup);
 
 cleanup:
-    if (!rc || node) {
-        LOG_LOCBACK(0, 1);
-    }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return rc;
@@ -1500,7 +1484,6 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
     struct lyd_node *node = NULL;
     struct lyd_meta *meta = NULL;
     uint32_t flags = 0, metadata_count;
-    ly_bool log_node = 0;
 
     while (1) {
         /* read metadata count to check for end of instances */
@@ -1519,10 +1502,6 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         rc = lyd_create_inner(snode, &node);
         LY_CHECK_GOTO(rc, cleanup);
 
-        assert(node);
-        LOG_LOCSET(NULL, node);
-        log_node = 1;
-
         /* process children */
         rc = lyb_parse_siblings(lybctx, node, 0, NULL, NULL);
         LY_CHECK_GOTO(rc, cleanup);
@@ -1539,15 +1518,9 @@ lyb_parse_node_list(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const s
         /* register parsed list node */
         rc = lyb_finish_node(lybctx, parent, flags, ext, &meta, &node, first_p, parsed);
         LY_CHECK_GOTO(rc, cleanup);
-
-        LOG_LOCBACK(0, 1);
-        log_node = 0;
     }
 
 cleanup:
-    if (log_node) {
-        LOG_LOCBACK(0, 1);
-    }
     lyd_free_meta_siblings(meta);
     lyd_free_tree(node);
     return rc;
@@ -1597,7 +1570,7 @@ lyb_parse_node(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, struct lyd_n
         break;
     case LYB_NODE_CHILD:
         /* read hash, find the schema node starting from parent schema, if any */
-        LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, lyd_parser_node_schema(parent), NULL, &snode), cleanup);
+        LY_CHECK_GOTO(rc = lyb_parse_schema_hash(lybctx, parent ? parent->schema : NULL, NULL, &snode), cleanup);
         break;
     case LYB_NODE_EXT:
         /* ext, read module name, always unshrinked format */
@@ -1791,7 +1764,7 @@ lyd_parse_lyb(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     LY_CHECK_GOTO(rc, cleanup);
 
     if ((int_opts & (LYD_INTOPT_RPC | LYD_INTOPT_ACTION | LYD_INTOPT_NOTIF | LYD_INTOPT_REPLY)) && !lybctx->op_node) {
-        LOGVAL(ctx, LYVE_DATA, "Missing the operation node.");
+        LOGVAL(ctx, NULL, LYVE_DATA, "Missing the operation node.");
         rc = LY_EVALID;
         goto cleanup;
     }

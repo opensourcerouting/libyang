@@ -831,7 +831,7 @@ lyplg_type_print_val(const struct lysc_node *node, const char *canon, LY_VALUE_F
             NULL, LYD_HINT_DATA, node, &storage, NULL, &err);
     if (r && (r != LY_EINCOMPLETE)) {
         if (err) {
-            ly_err_print(node->module->ctx, err);
+            ly_err_print(node->module->ctx, err, NULL, node);
             ly_err_free(err);
         }
         return r;
@@ -954,7 +954,7 @@ lyplg_type_resolve_leafref_get_target_path(const struct lyxp_expr *path, const s
     }
 
     /* parse into an expression */
-    LY_CHECK_GOTO(lyxp_expr_parse(ctx_node->module->ctx, str_path, 0, 1, target_path), cleanup);
+    LY_CHECK_GOTO(lyxp_expr_parse(ctx_node->module->ctx, NULL, str_path, 0, 1, target_path), cleanup);
 
 cleanup:
     ly_path_free(p);

@@ -181,7 +181,6 @@ test_data_xml(void **state)
     CHECK_LOG_CTX("Failed to resolve prefix \"a\".", "/a:l3", 1);
     TEST_ERROR_XML("a\" xmlns:yl=\"urn:ietf:params:xml:ns:yang:ietf-yang-library", "l3",
             "/yl:yang-library/yl:datastore/yl::name", LY_EVALID);
-    CHECK_LOG_CTX("Storing value failed.", "/a:l3", 1);
     CHECK_LOG_CTX("Invalid character 'y'[31] of expression '/yl:yang-library/yl:datastore/yl::name'.", "/a:l3", 1);
 }
 

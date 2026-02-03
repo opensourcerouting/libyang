@@ -636,7 +636,7 @@ lys_find_xpath_atoms(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile expression */
-    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse(ctx, NULL, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
@@ -731,7 +731,7 @@ lys_find_xpath(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const
     LY_CHECK_GOTO(ret, cleanup);
 
     /* compile expression */
-    ret = lyxp_expr_parse(ctx, xpath, 0, 1, &exp);
+    ret = lyxp_expr_parse(ctx, NULL, xpath, 0, 1, &exp);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* atomize expression */
@@ -1566,12 +1566,12 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
                 return r;
             }
-            ly_log_location(NULL, NULL, path, NULL);
+            ly_log_location(NULL, path, NULL);
 
             /* parse */
             r = ext_plg->parse(pctx, ext);
 
-            ly_log_location_revert(0, 0, 1, 0);
+            ly_log_location_revert(0, 1, 0);
             free(path);
 
             if (r == LY_ENOT) {
@@ -1690,13 +1690,13 @@ lysp_load_module_data_check(const struct ly_ctx *ctx, struct lysp_module *mod, s
 
         /* check that the submodule belongs-to our module */
         if (strcmp(mod_data->submoduleof, submod->mod->name)) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
+            LOGVAL(ctx, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
                     submod->name, mod_data->submoduleof, submod->mod->name);
             return LY_EVALID;
         }
         /* check circular dependency */
         if (submod->parsing) {
-            LOGVAL(ctx, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", submod->name);
+            LOGVAL(ctx, NULL, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", submod->name);
             return LY_EVALID;
         }
     }

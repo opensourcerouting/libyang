@@ -58,6 +58,25 @@ static LY_ERR moveto_scnode(struct lyxp_set *set, const struct lys_module *movet
         uint32_t ncname_len, enum lyxp_axis axis, uint32_t options);
 static LY_ERR moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, ly_bool *result);
 
+#define LOGVAL_DXPATH(SET, ...) \
+        LOGVAL((SET)->ctx, (SET)->cur_node, __VA_ARGS__);
+
+#define LOGVAL_SXPATH(SET, ...) \
+        if ((SET)->cur_scnode) { \
+            LOG_LOCSET((SET)->cur_scnode); \
+        } \
+        LOGVAL((SET)->ctx, NULL, __VA_ARGS__); \
+        if ((SET)->cur_scnode) { \
+            LOG_LOCBACK(1); \
+        }
+
+#define LOGVAL_XPATH(SET, OPTS, ...) \
+        if ((OPTS) & LYXP_SCNODE_ALL) { \
+            LOGVAL_SXPATH(SET, __VA_ARGS__); \
+        } else { \
+            LOGVAL_DXPATH(SET, __VA_ARGS__); \
+        }
+
 /* Functions are divided into the following basic classes:
  *
  * (re)parse functions:
@@ -1946,14 +1965,14 @@ lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t
 {
     if (exp->used == tok_idx) {
         if (ctx) {
-            LOGVAL(ctx, LY_VCODE_XP_EOF);
+            LOGVAL(ctx, NULL, LY_VCODE_XP_EOF);
         }
         return LY_EINCOMPLETE;
     }
 
     if (want_tok && (exp->tokens[tok_idx] != want_tok)) {
         if (ctx) {
-            LOGVAL(ctx, LY_VCODE_XP_INTOK2, lyxp_token2str(exp->tokens[tok_idx]),
+            LOGVAL(ctx, NULL, LY_VCODE_XP_INTOK2, lyxp_token2str(exp->tokens[tok_idx]),
                     &exp->expr[exp->tok_pos[tok_idx]], lyxp_token2str(want_tok));
         }
         return LY_ENOT;
@@ -1980,15 +1999,14 @@ exp_check_token2(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t
 {
     if (exp->used == tok_idx) {
         if (ctx) {
-            LOGVAL(ctx, LY_VCODE_XP_EOF);
+            LOGVAL(ctx, NULL, LY_VCODE_XP_EOF);
         }
         return LY_EINCOMPLETE;
     }
 
     if ((exp->tokens[tok_idx] != want_tok1) && (exp->tokens[tok_idx] != want_tok2)) {
         if (ctx) {
-            LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[tok_idx]),
-                    &exp->expr[exp->tok_pos[tok_idx]]);
+            LOGVAL(ctx, NULL, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[tok_idx]), &exp->expr[exp->tok_pos[tok_idx]]);
         }
         return LY_ENOT;
     }
@@ -2115,7 +2133,7 @@ step:
             rc = lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_NONE);
             LY_CHECK_RET(rc);
             if ((exp->tokens[*tok_idx] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*tok_idx] != LYXP_TOKEN_NODETYPE)) {
-                LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+                LOGVAL(ctx, NULL, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
                 return LY_EVALID;
             }
             if (exp->tokens[*tok_idx] == LYXP_TOKEN_NODETYPE) {
@@ -2148,7 +2166,7 @@ reparse_predicate:
             }
             break;
         default:
-            LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+            LOGVAL(ctx, NULL, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
     } while (!exp_check_token2(NULL, exp, *tok_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
@@ -2372,7 +2390,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t 
         break;
     }
     if (min_arg_count == -1) {
-        LOGVAL(ctx, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+        LOGVAL(ctx, NULL, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EINVAL;
     }
     ++(*tok_idx);
@@ -2405,7 +2423,7 @@ reparse_function_call(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t 
     ++(*tok_idx);
 
     if ((arg_count < (uint32_t)min_arg_count) || (arg_count > max_arg_count)) {
-        LOGVAL(ctx, LY_VCODE_XP_INARGCOUNT, arg_count, (int)exp->tok_len[func_tok_idx],
+        LOGVAL(ctx, NULL, LY_VCODE_XP_INARGCOUNT, arg_count, (int)exp->tok_len[func_tok_idx],
                 &exp->expr[exp->tok_pos[func_tok_idx]]);
         return LY_EVALID;
     }
@@ -2483,7 +2501,7 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok
         ++(*tok_idx);
         goto predicate;
     default:
-        LOGVAL(ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+        LOGVAL(ctx, NULL, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EVALID;
     }
 
@@ -2673,7 +2691,7 @@ reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint32_t *tok_i
     LY_ERR rc;
 
     ++depth;
-    LY_CHECK_ERR_RET(depth > LYXP_MAX_BLOCK_DEPTH, LOGVAL(ctx, LY_VCODE_XP_DEPTH), LY_EINVAL);
+    LY_CHECK_ERR_RET(depth > LYXP_MAX_BLOCK_DEPTH, LOGVAL(ctx, NULL, LY_VCODE_XP_DEPTH), LY_EINVAL);
 
     prev_or_exp = *tok_idx;
     goto reparse_equality_expr;
@@ -2862,7 +2880,8 @@ expr_parse_axis(const char *str, size_t str_len)
 }
 
 LY_ERR
-lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len, ly_bool reparse, struct lyxp_expr **expr_p)
+lyxp_expr_parse(const struct ly_ctx *ctx, const struct lyd_node *lnode, const char *expr_str, size_t expr_len,
+        ly_bool reparse, struct lyxp_expr **expr_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *expr;
@@ -2875,7 +2894,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
     assert(expr_p);
 
     if (!expr_str[0]) {
-        LOGVAL(ctx, LY_VCODE_XP_EOF);
+        LOGVAL(ctx, lnode, LY_VCODE_XP_EOF);
         return LY_EVALID;
     }
 
@@ -2883,7 +2902,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
         expr_len = strlen(expr_str);
     }
     if (expr_len > UINT32_MAX) {
-        LOGVAL(ctx, LYVE_XPATH, "XPath expression cannot be longer than %" PRIu32 " characters.", UINT32_MAX);
+        LOGVAL(ctx, lnode, LYVE_XPATH, "XPath expression cannot be longer than %" PRIu32 " characters.", UINT32_MAX);
         return LY_EVALID;
     }
 
@@ -2982,9 +3001,11 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             /* Literal with ' */
             for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\''); ++tok_len) {}
-            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
-                    LOGVAL(ctx, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
-                    error);
+            if (expr_str[parsed + tok_len] == '\0') {
+                LOGVAL(ctx, lnode, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]);
+                ret = LY_EVALID;
+                goto error;
+            }
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
@@ -2992,9 +3013,11 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
 
             /* Literal with " */
             for (tok_len = 1; (expr_str[parsed + tok_len] != '\0') && (expr_str[parsed + tok_len] != '\"'); ++tok_len) {}
-            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == '\0',
-                    LOGVAL(ctx, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]); ret = LY_EVALID,
-                    error);
+            if (expr_str[parsed + tok_len] == '\0') {
+                LOGVAL(ctx, lnode, LY_VCODE_XP_EOE, expr_str[parsed], &expr_str[parsed]);
+                ret = LY_EVALID;
+                goto error;
+            }
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
@@ -3013,12 +3036,18 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
             /* VariableReference */
             parsed++;
             ncname_len = parse_ncname(&expr_str[parsed]);
-            LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                    (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
+            if (ncname_len < 1) {
+                LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                        (uint32_t)(parsed - ncname_len + 1), expr_str);
+                ret = LY_EVALID;
+                goto error;
+            }
             tok_len = ncname_len;
-            LY_CHECK_ERR_GOTO(expr_str[parsed + tok_len] == ':',
-                    LOGVAL(ctx, LYVE_XPATH, "Variable with prefix is not supported."); ret = LY_EVALID,
-                    error);
+            if (expr_str[parsed + tok_len] == ':') {
+                LOGVAL(ctx, lnode, LYVE_XPATH, "Variable with prefix is not supported.");
+                ret = LY_EVALID;
+                goto error;
+            }
             tok_type = LYXP_TOKEN_VARREF;
 
         } else if (expr_str[parsed] == '/') {
@@ -3099,14 +3128,14 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 tok_type = LYXP_TOKEN_OPER_MATH;
 
             } else if (prev_ntype_check || prev_func_check) {
-                LOGVAL(ctx, LYVE_XPATH,
+                LOGVAL(ctx, lnode, LYVE_XPATH,
                         "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
                         expr_str[parsed], expr_str[parsed], (int)expr->tok_len[expr->used - 1],
                         &expr->expr[expr->tok_pos[expr->used - 1]]);
                 ret = LY_EVALID;
                 goto error;
             } else {
-                LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str);
+                LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str);
                 ret = LY_EVALID;
                 goto error;
             }
@@ -3117,17 +3146,23 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                 ncname_len = 1;
             } else {
                 ncname_len = parse_ncname(&expr_str[parsed]);
-                LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                        (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
+                if (ncname_len < 1) {
+                    LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                            (uint32_t)(parsed - ncname_len + 1), expr_str);
+                    ret = LY_EVALID;
+                    goto error;
+                }
             }
             tok_len = ncname_len;
 
             has_axis = 0;
             if (!strncmp(&expr_str[parsed + tok_len], "::", 2)) {
                 /* axis */
-                LY_CHECK_ERR_GOTO(expr_parse_axis(&expr_str[parsed], ncname_len),
-                        LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str); ret = LY_EVALID,
-                        error);
+                if (expr_parse_axis(&expr_str[parsed], ncname_len)) {
+                    LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed], (uint32_t)(parsed + 1), expr_str);
+                    ret = LY_EVALID;
+                    goto error;
+                }
                 tok_type = LYXP_TOKEN_AXISNAME;
 
                 LY_CHECK_GOTO(ret = exp_add_token(ctx, expr, tok_type, parsed, tok_len), error);
@@ -3144,8 +3179,12 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                     ncname_len = 1;
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed]);
-                    LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                            (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
+                    if (ncname_len < 1) {
+                        LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                                (uint32_t)(parsed - ncname_len + 1), expr_str);
+                        ret = LY_EVALID;
+                        goto error;
+                    }
                 }
                 tok_len = ncname_len;
 
@@ -3158,8 +3197,12 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
                     ++tok_len;
                 } else {
                     ncname_len = parse_ncname(&expr_str[parsed + tok_len]);
-                    LY_CHECK_ERR_GOTO(ncname_len < 1, LOGVAL(ctx, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
-                            (uint32_t)(parsed - ncname_len + 1), expr_str); ret = LY_EVALID, error);
+                    if (ncname_len < 1) {
+                        LOGVAL(ctx, lnode, LY_VCODE_XP_INEXPR, expr_str[parsed - ncname_len],
+                                (uint32_t)(parsed - ncname_len + 1), expr_str);
+                        ret = LY_EVALID;
+                        goto error;
+                    }
                     tok_len += ncname_len;
                 }
                 /* remove old flags to prevent ambiguities */
@@ -3191,7 +3234,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr_str, size_t expr_len,
         /* fill repeat */
         LY_CHECK_ERR_GOTO(reparse_or_expr(ctx, expr, &tok_idx, 0), ret = LY_EVALID, error);
         if (expr->used > tok_idx) {
-            LOGVAL(ctx, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+            LOGVAL(ctx, lnode, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                     &expr->expr[expr->tok_pos[tok_idx]]);
             ret = LY_EVALID;
             goto error;
@@ -3700,7 +3743,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "bit-is-set(node-set, string)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "bit-is-set(node-set, string)");
         return LY_EVALID;
     }
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
@@ -3929,7 +3972,7 @@ xpath_count(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "count(node-set)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "count(node-set)");
         return LY_EVALID;
     }
 
@@ -3951,7 +3994,7 @@ static LY_ERR
 xpath_current(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uint32_t options)
 {
     if (arg_count || args) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGCOUNT, arg_count, LY_PRI_LENSTR("current()"));
+        LOGVAL_XPATH(set, options, LY_VCODE_XP_INARGCOUNT, arg_count, LY_PRI_LENSTR("current()"));
         return LY_EVALID;
     }
 
@@ -4113,7 +4156,7 @@ xpath_deref(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set 
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "deref(node-set)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "deref(node-set)");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -4192,7 +4235,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "derived-from(-or-self)(node-set, string)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "derived-from(-or-self)(node-set, string)");
         return LY_EVALID;
     }
     rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
@@ -4214,7 +4257,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, uint32_t options, l
         }
     }
     if (!found) {
-        LOGVAL(set->ctx, LYVE_XPATH, "Identity \"%.*s\" not found in module \"%s\".", (int)id_len, id_name, mod->name);
+        LOGVAL_DXPATH(set, LYVE_XPATH, "Identity \"%.*s\" not found in module \"%s\".", (int)id_len, id_name, mod->name);
         return LY_EVALID;
     }
     id = &mod->identities[u];
@@ -4332,7 +4375,7 @@ xpath_enum_value(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "enum-value(node-set)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "enum-value(node-set)");
         return LY_EVALID;
     }
 
@@ -4446,7 +4489,7 @@ xpath_lang(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *
     LY_CHECK_RET(rc);
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "lang(string)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "lang(string)");
         return LY_EVALID;
     } else if (!set->used) {
         set_fill_boolean(set, 0);
@@ -4525,7 +4568,7 @@ xpath_last(struct lyxp_set **UNUSED(args), uint32_t UNUSED(arg_count), struct ly
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "last()");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "last()");
         return LY_EVALID;
     } else if (!set->used) {
         set_fill_number(set, 0);
@@ -4561,8 +4604,7 @@ xpath_local_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *se
 
     if (arg_count) {
         if (args[0]->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-                    "local-name(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "local-name(node-set?)");
             return LY_EVALID;
         } else if (!args[0]->used) {
             set_fill_string(set, "", 0);
@@ -4575,7 +4617,7 @@ xpath_local_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *se
         item = &args[0]->val.nodes[0];
     } else {
         if (set->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "local-name(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "local-name(node-set?)");
             return LY_EVALID;
         } else if (!set->used) {
             set_fill_string(set, "", 0);
@@ -4632,7 +4674,7 @@ xpath_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uin
 
     if (arg_count) {
         if (args[0]->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "name(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "name(node-set?)");
             return LY_EVALID;
         } else if (!args[0]->used) {
             set_fill_string(set, "", 0);
@@ -4645,7 +4687,7 @@ xpath_name(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set *set, uin
         item = &args[0]->val.nodes[0];
     } else {
         if (set->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "name(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "name(node-set?)");
             return LY_EVALID;
         } else if (!set->used) {
             set_fill_string(set, "", 0);
@@ -4715,8 +4757,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set 
 
     if (arg_count) {
         if (args[0]->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-                    "namespace-uri(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "namespace-uri(node-set?)");
             return LY_EVALID;
         } else if (!args[0]->used) {
             set_fill_string(set, "", 0);
@@ -4729,7 +4770,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint32_t arg_count, struct lyxp_set 
         item = &args[0]->val.nodes[0];
     } else {
         if (set->type != LYXP_SET_NODE_SET) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "namespace-uri(node-set?)");
+            LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "namespace-uri(node-set?)");
             return LY_EVALID;
         } else if (!set->used) {
             set_fill_string(set, "", 0);
@@ -4938,7 +4979,7 @@ xpath_position(struct lyxp_set **UNUSED(args), uint32_t UNUSED(arg_count), struc
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "position()");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "position()");
         return LY_EVALID;
     } else if (!set->used) {
         set_fill_number(set, 0);
@@ -4994,17 +5035,10 @@ xpath_re_match(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_s
     LY_CHECK_RET(rc);
 
     /* validate the pattern */
-    if (set->cur_node) {
-        LOG_LOCSET(NULL, set->cur_node);
-    }
     rc = ly_pat_match(NULL, args[1]->val.str, 0, args[0]->val.str, strlen(args[0]->val.str), &err);
-    if (set->cur_node) {
-        LOG_LOCBACK(0, 1);
-    }
-
     if (rc && (rc != LY_ENOT)) {
         /* error */
-        ly_err_print(set->ctx, err);
+        ly_err_print(set->ctx, err, set->cur_node, NULL);
         ly_err_free(err);
         return rc;
     }
@@ -5443,7 +5477,7 @@ xpath_sum(struct lyxp_set **args, uint32_t UNUSED(arg_count), struct lyxp_set *s
     set_fill_number(set, 0);
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "sum(node-set)");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]), "sum(node-set)");
         return LY_EVALID;
     } else if (!args[0]->used) {
         return LY_SUCCESS;
@@ -5640,7 +5674,7 @@ xpath_pi_text(struct lyxp_set *set, enum lyxp_axis axis, uint32_t options)
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INCTX, print_set_type(set), "text()");
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INCTX, print_set_type(set), "text()");
         return LY_EVALID;
     }
 
@@ -5702,7 +5736,11 @@ moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp
 
         /* check for errors and non-implemented modules, as they are not valid */
         if (!mod || !mod->implemented) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
+            if (set->type == LYXP_SET_NODE_SET) {
+                LOGVAL_DXPATH(set, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
+            } else {
+                LOGVAL_SXPATH(set, LY_VCODE_XP_INMOD, (int)pref_len, *qname);
+            }
             return LY_EVALID;
         }
 
@@ -5732,7 +5770,8 @@ moveto_resolve_module(const char **qname, uint32_t *qname_len, const struct lyxp
             break;
         case LY_VALUE_XML:
             /* all nodes need to be prefixed */
-            LOGVAL(set->ctx, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", (int)*qname_len, *qname);
+            assert(set->type == LYXP_SET_NODE_SET);
+            LOGVAL_DXPATH(set, LYVE_DATA, "Non-prefixed node \"%.*s\" in XML xpath found.", (int)*qname_len, *qname);
             return LY_EVALID;
         }
     }
@@ -6192,7 +6231,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *moveto_mod, const cha
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -6289,7 +6328,7 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -6308,8 +6347,8 @@ moveto_node_hash_child(struct lyxp_set *set, const struct lysc_node *scnode, con
     if (scnode->nodetype == LYS_LIST) {
         LY_CHECK_GOTO(ret = lyd_create_list(scnode, predicates, NULL, 1, &inst), cleanup);
     } else if (scnode->nodetype == LYS_LEAFLIST) {
-        LY_CHECK_GOTO(ret = lyd_create_term(scnode, predicates[0].value, strlen(predicates[0].value) * 8, 1, 1, NULL,
-                LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, &inst), cleanup);
+        LY_CHECK_GOTO(ret = lyd_create_term(scnode, NULL, predicates[0].value, strlen(predicates[0].value) * 8, 1, 1,
+                NULL, LY_VALUE_CANON, NULL, LYD_HINT_DATA, NULL, &inst), cleanup);
     }
 
     for (i = 0; i < set->used; ++i) {
@@ -6834,7 +6873,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *moveto_mod, const c
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_SXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -6931,7 +6970,7 @@ moveto_node_alldesc_child(struct lyxp_set *set, const struct lys_module *moveto_
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -7096,7 +7135,7 @@ moveto_scnode_alldesc_child(struct lyxp_set *set, const struct lys_module *movet
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_SXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -7159,7 +7198,7 @@ moveto_attr(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_DXPATH(set, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -7214,7 +7253,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2)
     LY_ERR rc;
 
     if ((set1->type != LYXP_SET_NODE_SET) || (set2->type != LYXP_SET_NODE_SET)) {
-        LOGVAL(set1->ctx, LY_VCODE_XP_INOP_2, "union", print_set_type(set1), print_set_type(set2));
+        LOGVAL_DXPATH(set1, LY_VCODE_XP_INOP_2, "union", print_set_type(set1), print_set_type(set2));
         return LY_EVALID;
     }
 
@@ -7258,8 +7297,8 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2)
  * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
  */
 static int
-moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const char *ncname,
-        uint32_t ncname_len, uint32_t options)
+moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const char *ncname, uint32_t ncname_len,
+        uint32_t options)
 {
     struct lyd_meta *sub;
     struct lyxp_set *set_all_desc = NULL;
@@ -7270,7 +7309,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL_XPATH(set, options, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -8558,7 +8597,7 @@ step:
             if (!(options & LYXP_SKIP_EXPR)) {
                 if (((options & LYXP_SCNODE_ALL) && (set->type != LYXP_SET_SCNODE_SET)) ||
                         (!(options & LYXP_SCNODE_ALL) && (set->type != LYXP_SET_NODE_SET))) {
-                    LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+                    LOGVAL_XPATH(set, options, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
                     rc = LY_EVALID;
                     goto cleanup;
                 }
@@ -8580,7 +8619,7 @@ step:
             if (!(options & LYXP_SKIP_EXPR)) {
                 if (((options & LYXP_SCNODE_ALL) && (set->type != LYXP_SET_SCNODE_SET)) ||
                         (!(options & LYXP_SCNODE_ALL) && (set->type != LYXP_SET_NODE_SET))) {
-                    LOGVAL(set->ctx, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+                    LOGVAL_XPATH(set, options, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
                     rc = LY_EVALID;
                     goto cleanup;
                 }
@@ -8824,7 +8863,7 @@ eval_function_call(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_s
         }
 
         if (!xpath_func) {
-            LOGVAL(set->ctx, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
+            LOGVAL_XPATH(set, options, LY_VCODE_XP_INFUNC, (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
     }
@@ -8918,29 +8957,29 @@ cleanup:
 /**
  * @brief Evaluate Number. Logs directly on error.
  *
- * @param[in] ctx Context for errors.
  * @param[in] exp Parsed XPath expression.
  * @param[in] tok_idx Position in the expression @p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in] options XPath options.
  * @return LY_ERR
  */
 static LY_ERR
-eval_number(struct ly_ctx *ctx, const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_set *set)
+eval_number(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     long double num;
     char *endptr;
 
-    if (set) {
+    if (!(options & LYXP_SKIP_EXPR)) {
         errno = 0;
         num = strtold(&exp->expr[exp->tok_pos[*tok_idx]], &endptr);
         if (errno) {
-            LOGVAL(ctx, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
-            LOGVAL(ctx, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double (%s).",
+            LOGVAL_XPATH(set, options, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
+            LOGVAL_XPATH(set, options, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double (%s).",
                     (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]], strerror(errno));
             return LY_EVALID;
         } else if ((uint32_t)(endptr - &exp->expr[exp->tok_pos[*tok_idx]]) != exp->tok_len[*tok_idx]) {
-            LOGVAL(ctx, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
-            LOGVAL(ctx, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double.",
+            LOGVAL_XPATH(set, options, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*tok_idx]]);
+            LOGVAL_XPATH(set, options, LYVE_XPATH, "Failed to convert \"%.*s\" into a long double.",
                     (int)exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]]);
             return LY_EVALID;
         }
@@ -9007,7 +9046,7 @@ eval_variable_reference(const struct lyxp_expr *exp, uint32_t *tok_idx, struct l
     LY_CHECK_RET(ret);
 
     /* parse value */
-    ret = lyxp_expr_parse(set->ctx, var->value, 0, 1, &tokens);
+    ret = lyxp_expr_parse(set->ctx, !(options & LYXP_SCNODE_ALL) ? set->cur_node : NULL, var->value, 0, 1, &tokens);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* evaluate value */
@@ -9115,16 +9154,16 @@ eval_path_expr(const struct lyxp_expr *exp, uint32_t *tok_idx, struct lyxp_set *
             if (!(options & LYXP_SKIP_EXPR)) {
                 set_scnode_clear_ctx(set, LYXP_SET_SCNODE_ATOM_VAL);
             }
-            rc = eval_number(NULL, exp, tok_idx, NULL);
+            rc = eval_number(exp, tok_idx, set, options | LYXP_SKIP_EXPR);
         } else {
-            rc = eval_number(set->ctx, exp, tok_idx, set);
+            rc = eval_number(exp, tok_idx, set, options);
         }
         LY_CHECK_RET(rc);
 
         goto predicate;
 
     default:
-        LOGVAL(set->ctx, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
+        LOGVAL_XPATH(set, options, LY_VCODE_XP_INTOK, lyxp_token2str(exp->tokens[*tok_idx]), &exp->expr[exp->tok_pos[*tok_idx]]);
         return LY_EVALID;
     }
 
@@ -9884,10 +9923,6 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
     set->prefix_data = prefix_data;
     set->vars = vars;
 
-    if (set->cur_node) {
-        LOG_LOCSET(NULL, set->cur_node);
-    }
-
     /* evaluate */
     rc = eval_expr_select(exp, &tok_idx, 0, set, options);
     if (!rc && set->not_found) {
@@ -9897,9 +9932,6 @@ lyxp_eval(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct ly
         lyxp_set_free_content(set);
     }
 
-    if (set->cur_node) {
-        LOG_LOCBACK(0, 1);
-    }
     return rc;
 }
 
@@ -10159,19 +10191,12 @@ lyxp_atomize(const struct ly_ctx *ctx, const struct lyxp_expr *exp, const struct
     set->format = format;
     set->prefix_data = prefix_data;
 
-    if (set->cur_scnode) {
-        LOG_LOCSET(set->cur_scnode, NULL);
-    }
-
     /* evaluate */
     rc = eval_expr_select(exp, &tok_idx, 0, set, options);
     if (!rc && set->not_found) {
         rc = LY_ENOTFOUND;
     }
 
-    if (set->cur_scnode) {
-        LOG_LOCBACK(1, 0);
-    }
     return rc;
 }
 

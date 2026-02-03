@@ -357,7 +357,8 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
 
             for (spaces = 0; c[i + op_len + spaces] && isspace(c[i + op_len + spaces]); spaces++) {}
             if (c[i + op_len + spaces] == '\0') {
-                LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unexpected end of expression.", qname->str);
+                LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unexpected end of expression.",
+                        qname->str);
                 return LY_EVALID;
             } else if (!isspace(c[i + op_len])) {
                 /* feature name starting with the not/and/or */
@@ -373,7 +374,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
                 }
             } else { /* and, or */
                 if (f_exp != f_size) {
-                    LOGVAL(ctx, LYVE_SYNTAX_YANG,
+                    LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG,
                             "Invalid value \"%s\" of if-feature - missing feature/expression before \"%.*s\" operation.",
                             qname->str, op_len, &c[i]);
                     return LY_EVALID;
@@ -400,13 +401,13 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
     }
     if (j) {
         /* not matching count of ( and ) */
-        LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.",
+        LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.",
                 qname->str);
         return LY_EVALID;
     }
     if (f_exp != f_size) {
         /* features do not match the needed arguments for the logical operations */
-        LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - number of features in expression does not match "
+        LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - number of features in expression does not match "
                 "the required number of operands for the operations.", qname->str);
         return LY_EVALID;
     }
@@ -414,7 +415,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
     if (checkversion || (expr_size > 1)) {
         /* check that we have 1.1 module */
         if (qname->mod->version != LYS_VERSION_1_1) {
-            LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.",
+            LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.",
                     qname->str);
             return LY_EVALID;
         }
@@ -483,7 +484,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
             /* now get the link to the feature definition */
             f = lysp_feature_find(qname->mod, &c[i], j - i, 1);
             if (!f) {
-                LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".",
+                LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".",
                         qname->str, (int)(j - i), &c[i]);
                 rc = LY_EVALID;
                 goto cleanup;
@@ -500,7 +501,7 @@ lys_compile_iffeature(const struct ly_ctx *ctx, const struct lysp_qname *qname, 
 
     if (++expr_size || ++f_size) {
         /* not all expected operators and operands found */
-        LOGVAL(ctx, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - processing error.", qname->str);
+        LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid value \"%s\" of if-feature - processing error.", qname->str);
         rc = LY_EINT;
     }
 
@@ -663,7 +664,7 @@ lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature
 
     for (u = 0; u < LY_ARRAY_COUNT(depfeatures); ++u) {
         if (feature == depfeatures[u]) {
-            LOGVAL(ctx, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
+            LOGVAL(ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
             ret = LY_EVALID;
             goto cleanup;
         }
@@ -675,7 +676,7 @@ lys_compile_feature_circular_check(const struct ly_ctx *ctx, struct lysp_feature
         drv = recursion.objs[v];
         for (u = 0; u < LY_ARRAY_COUNT(drv->depfeatures); ++u) {
             if (feature == drv->depfeatures[u]) {
-                LOGVAL(ctx, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
+                LOGVAL(ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is indirectly referenced from itself.", feature->name);
                 ret = LY_EVALID;
                 goto cleanup;
             }
@@ -711,7 +712,7 @@ lys_compile_feature_iffeatures(struct lysp_module *pmod)
             LY_ARRAY_FOR(f->iffeatures_c[u].features, v) {
                 /* check for circular dependency - direct reference first,... */
                 if (f == f->iffeatures_c[u].features[v]) {
-                    LOGVAL(pmod->mod->ctx, LYVE_REFERENCE, "Feature \"%s\" is referenced from itself.", f->name);
+                    LOGVAL(pmod->mod->ctx, NULL, LYVE_REFERENCE, "Feature \"%s\" is referenced from itself.", f->name);
                     return LY_EVALID;
                 }
                 /* ... and indirect circular reference */

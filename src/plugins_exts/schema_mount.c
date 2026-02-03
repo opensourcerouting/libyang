@@ -1152,7 +1152,7 @@ lyplg_ext_schema_mount_get_parent_ref(const struct lysc_ext_instance *ext, const
         LYD_VALUE_GET(&term->value, xp_val);
         rc = lyplg_type_print_xpath10_value(xp_val, LY_VALUE_JSON, NULL, &value, &err);
         if (rc) {
-            ly_err_print(ext->module->ctx, err);
+            ly_err_print(ext->module->ctx, err, NULL, NULL);
             ly_err_free(err);
             goto cleanup;
         }

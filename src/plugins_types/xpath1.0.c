@@ -248,7 +248,8 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
         struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres), struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t value_size;
+    const struct ly_err_item *e;
+    uint32_t value_size, temp_lo = LY_LOSTORE;
     struct lyd_value_xpath10 *val;
     char *canon;
 
@@ -268,8 +269,18 @@ lyplg_type_store_xpath10(const struct ly_ctx *ctx, const struct lysc_type *type,
     LY_CHECK_GOTO(ret, cleanup);
 
     /* parse */
-    ret = lyxp_expr_parse(ctx, value_size ? value : "", value_size, 1, &val->exp);
-    LY_CHECK_GOTO(ret, cleanup);
+    ly_temp_log_options(&temp_lo);
+    ret = lyxp_expr_parse(ctx, NULL, value_size ? value : "", value_size, 1, &val->exp);
+    ly_temp_log_options(NULL);
+    if (ret) {
+        /* get a copy of the error */
+        e = ly_err_last(ctx);
+        if (e) {
+            ly_err_new(err, e->err, e->vecode, e->data_path, e->apptag, "%s", e->msg);
+            ly_err_clean(ctx, (struct ly_err_item *)e);
+        }
+        goto cleanup;
+    }
     val->ctx = ctx;
 
     if (ctx_node && !strcmp(ctx_node->name, "parent-reference") && !strcmp(ctx_node->module->name, "ietf-yang-schema-mount")) {
@@ -456,7 +467,7 @@ lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value
     /* print in the specific format */
     if (lyplg_type_print_xpath10_value(val, format, prefix_data, &ret, &err)) {
         if (err) {
-            ly_err_print(ctx, err);
+            ly_err_print(ctx, err, NULL, NULL);
             ly_err_free(err);
         }
         return NULL;

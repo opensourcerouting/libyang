@@ -220,7 +220,7 @@ test_leaf(void **state)
     /* reverse solidus in JSON object member name */
     data = "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}";
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
-    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/@a:foo/@a:hi\nt", 1);
+    CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/a:foo/@a:hi\nt", 1);
 
     data = "{\"a:foo\": null}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Invalid non-string-encoded string value \"\".", "/a:foo", 1);
@@ -689,7 +689,7 @@ test_opaq(void **state)
 
     /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
-    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Unknown module of node \"@a:foo\".", "/", 0);
+    PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Unknown module of node \"@a:foo\".", NULL, 0);
     CHECK_LOG_CTX("Missing JSON data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
 
     /* empty name */

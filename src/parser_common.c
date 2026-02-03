@@ -134,69 +134,10 @@ lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, stru
     return LY_SUCCESS;
 }
 
-const struct lysc_node *
-lyd_parser_node_schema(const struct lyd_node *node)
-{
-    uint32_t i;
-    const struct lyd_node *iter;
-    const struct lysc_node *schema = NULL;
-    const struct lys_module *mod;
-
-    if (!node) {
-        return NULL;
-    } else if (node->schema) {
-        /* simplest case */
-        return node->schema;
-    }
-
-    /* find the first schema node in the parsed nodes */
-    i = ly_log_location_dnode_count();
-    if (i) {
-        do {
-            --i;
-            if (ly_log_location_dnode(i)->schema) {
-                /* this node is processed */
-                schema = ly_log_location_dnode(i)->schema;
-                ++i;
-                break;
-            }
-        } while (i);
-    }
-
-    /* get schema node of an opaque node */
-    do {
-        /* get next data node */
-        if (i == ly_log_location_dnode_count()) {
-            iter = node;
-        } else {
-            iter = ly_log_location_dnode(i);
-        }
-        assert(!iter->schema);
-
-        /* get module */
-        mod = lyd_node_module(iter);
-        if (!mod) {
-            /* unknown module, no schema node */
-            schema = NULL;
-            break;
-        }
-
-        /* get schema node */
-        schema = lys_find_child(NULL, schema, mod, NULL, 0, LYD_NAME(iter), 0, 0);
-
-        /* move to the descendant */
-        ++i;
-    } while (schema && (iter != node));
-
-    return schema;
-}
-
 LY_ERR
 lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
     LY_ERR rc = LY_SUCCESS;
-
-    LOG_LOCSET(snode, NULL);
 
     if (lydctx->int_opts & LYD_INTOPT_ANY) {
         /* nothing to check, everything is allowed */
@@ -204,7 +145,9 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     }
 
     if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
-        LOGVAL(lydctx->data_ctx->ctx, LY_VCODE_UNEXPNODE, "state", snode->name);
+        LOG_LOCSET(snode);
+        LOGVAL(lydctx->data_ctx->ctx, NULL, LY_VCODE_UNEXPNODE, "state", snode->name);
+        LOG_LOCBACK(1);
         rc = LY_EVALID;
         goto cleanup;
     }
@@ -239,31 +182,35 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     goto cleanup;
 
 error_node_dup:
-    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+    LOG_LOCSET(snode);
+    LOGVAL(lydctx->data_ctx->ctx, NULL, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
             lys_nodetype2str(snode->nodetype), snode->name, lys_nodetype2str(lydctx->op_node->schema->nodetype),
             lydctx->op_node->schema->name);
+    LOG_LOCBACK(1);
     rc = LY_EVALID;
     goto cleanup;
 
 error_node_inval:
-    LOGVAL(lydctx->data_ctx->ctx, LYVE_DATA, "Unexpected %s element \"%s\".", lys_nodetype2str(snode->nodetype),
+    LOG_LOCSET(snode);
+    LOGVAL(lydctx->data_ctx->ctx, NULL, LYVE_DATA, "Unexpected %s element \"%s\".", lys_nodetype2str(snode->nodetype),
             snode->name);
+    LOG_LOCBACK(1);
     rc = LY_EVALID;
 
 cleanup:
-    LOG_LOCBACK(1, 0);
     return rc;
 }
 
 LY_ERR
-lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value, uint32_t value_bits_len,
-        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node)
+lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const struct lyd_node *lnode,
+        const void *value, uint32_t value_bits_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
+        uint32_t hints, struct lyd_node **node)
 {
     ly_bool incomplete;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
-    LY_CHECK_RET(lyd_create_term(schema, value, value_bits_len, 1, store_only, dynamic, format, prefix_data, hints,
-            &incomplete, node));
+    LY_CHECK_RET(lyd_create_term(schema, lnode, value, value_bits_len, 1, store_only, dynamic, format, prefix_data,
+            hints, &incomplete, node));
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
@@ -274,7 +221,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
         const char *name, uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format,
-        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node)
+        void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, const struct lyd_node *lnode)
 {
     LY_ERR rc = LY_SUCCESS;
     char *path = NULL;
@@ -293,10 +240,10 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
         rc = LY_EMEM;
         goto cleanup;
     }
-    ly_log_location(NULL, NULL, path, NULL);
+    ly_log_location(NULL, path, NULL);
 
     LY_CHECK_GOTO(rc = lyd_create_meta(parent, meta, mod, name, name_len, value, value_size_bits, 1, store_only,
-            dynamic, format, prefix_data, hints, ctx_node, 0, &incomplete), cleanup);
+            dynamic, format, prefix_data, hints, ctx_node, lnode, 0, &incomplete), cleanup);
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
         LY_CHECK_GOTO(rc = ly_set_add(&lydctx->meta_types, *meta, 1, NULL), cleanup);
@@ -308,7 +255,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     }
 
 cleanup:
-    ly_log_location_revert(0, 0, 1, 0);
+    ly_log_location_revert(0, 1, 0);
     free(path);
     return rc;
 }
@@ -324,7 +271,7 @@ lyd_parser_check_keys(struct lyd_node *node)
     key = lyd_child(node);
     while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
         if (!key || (key->schema != skey)) {
-            LOGVAL(LYD_CTX(node), LY_VCODE_NOKEY, skey->name);
+            LOGVAL(LYD_CTX(node), node, LY_VCODE_NOKEY, skey->name);
             return LY_EVALID;
         }
 
@@ -3703,7 +3650,7 @@ lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *sub
     case LY_STMT_YIN_ELEMENT:
         /* single item */
         if (*substmt->storage_p) {
-            LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
+            LOGVAL_PARSER(pctx, LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -3715,7 +3662,7 @@ lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *sub
     case LY_STMT_CONFIG:
         /* single item */
         if ((*(uint16_t *)substmt->storage_p) & LYS_CONFIG_MASK) {
-            LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
+            LOGVAL_PARSER(pctx, LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -3727,7 +3674,7 @@ lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *sub
     case LY_STMT_ORDERED_BY:
         /* single item */
         if ((*(uint16_t *)substmt->storage_p) & LYS_ORDBY_MASK) {
-            LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
+            LOGVAL_PARSER(pctx, LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }
@@ -3739,7 +3686,7 @@ lys_parser_ext_instance_stmt(struct lysp_ctx *pctx, struct lysp_ext_substmt *sub
     case LY_STMT_STATUS:
         /* single item */
         if ((*(uint16_t *)substmt->storage_p) & LYS_STATUS_MASK) {
-            LOGVAL(PARSER_CTX(pctx), LY_VCODE_DUPSTMT, stmt->stmt);
+            LOGVAL_PARSER(pctx, LY_VCODE_DUPSTMT, stmt->stmt);
             rc = LY_EVALID;
             goto cleanup;
         }

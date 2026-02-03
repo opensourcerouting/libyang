@@ -614,7 +614,7 @@ cleanup:
     ly_pat_free(pat_comp_tmp, format);
     if (err) {
         /* log with the schema path */
-        ly_vlog(ctx, err->apptag, err->vecode, "%s", err->msg);
+        ly_vlog(ctx, err->apptag, NULL, err->vecode, "%s", err->msg);
         ly_err_free(err);
     }
     return rc;

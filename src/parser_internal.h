@@ -345,14 +345,6 @@ LY_ERR lyd_parser_notif_eventtime_validate(const struct lyd_node *node);
 LY_ERR lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op);
 
 /**
- * @brief Get schema node of a node being parsed, use nodes stored for logging.
- *
- * @param[in] node Node whose schema node to get.
- * @return Schema node even for an opaque node, NULL if none found.
- */
-const struct lysc_node *lyd_parser_node_schema(const struct lyd_node *node);
-
-/**
  * @brief Check that a data node representing the @p snode is suitable based on options.
  *
  * @param[in] lydctx Common data parsers context.
@@ -366,6 +358,7 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  *
  * @param[in] lydctx Data parser context.
  * @param[in] schema Schema node of the new data node.
+ * @param[in] lnode Parent data node for logging.
  * @param[in] value String value to be parsed.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
@@ -377,9 +370,9 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const void *value,
-        uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
-        struct lyd_node **node);
+LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const struct lyd_node *lnode,
+        const void *value, uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
+        uint32_t hints, struct lyd_node **node);
 
 /**
  * @brief Wrapper around ::lyd_create_meta() for data parsers.
@@ -397,11 +390,13 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @param[in] prefix_data Prefix format data (see ::ly_resolve_prefix()).
  * @param[in] hints [Value hint](@ref lydvalhints) from the parser regarding the value type.
  * @param[in] ctx_node Value context node.
+ * @param[in] lnode Data node for logging.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
         const struct lys_module *mod, const char *name, uint32_t name_len, const void *value, uint32_t value_size_bits,
-        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node);
+        ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
+        const struct lyd_node *lnode);
 
 /**
  * @brief Check that a list has all its keys.

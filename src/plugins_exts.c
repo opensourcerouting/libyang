@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief helper functions for extension plugins
  *
- * Copyright (c) 2019 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ lyplg_ext_parse_extension_instance(struct lysp_ctx *pctx, struct lysp_ext_instan
             }
         }
         if (u == LY_ARRAY_COUNT(ext->substmts)) {
-            LOGVAL(PARSER_CTX(pctx), LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
+            LOGVAL_PARSER(pctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s%s%s\" extension instance.",
                     stmt->stmt, ext->name, ext->argument ? " " : "", ext->argument ? ext->argument : "");
             rc = LY_EVALID;
             goto cleanup;
@@ -332,12 +332,13 @@ lys_compile_ext_instance_stmt(struct lysc_ctx *ctx, void **parsed_p, struct lysc
     case LY_STMT_UNIQUE:
     case LY_STMT_YANG_VERSION:
     case LY_STMT_YIN_ELEMENT:
-        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" compilation is not supported.", lyplg_ext_stmt2str(substmt->stmt));
+        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Statement \"%s\" compilation is not supported.",
+                lyplg_ext_stmt2str(substmt->stmt));
         rc = LY_EVALID;
         goto cleanup;
 
     default:
-        LOGVAL(ctx->ctx, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension "
+        LOGVAL(ctx->ctx, NULL, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension "
                 "(found in \"%s%s%s\") substatement.", lyplg_ext_stmt2str(substmt->stmt), ext->def->name,
                 ext->argument ? " " : "", ext->argument ? ext->argument : "");
         rc = LY_EVALID;

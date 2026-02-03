@@ -1574,7 +1574,7 @@ test_case(void **state)
             "    \"g7\": \"value_g7\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch", 6);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 6);
 
     CHECK_PARSE_LYD_PARAM(
             "{\n"
@@ -1583,7 +1583,7 @@ test_case(void **state)
             "    \"g0\": \"value_g0\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch", 6);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 6);
 }
 
 static void
@@ -1627,7 +1627,7 @@ test_store_only(void **state)
 
     /* validate separately */
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
-    CHECK_LOG_CTX("Unsatisfied pattern - \"no-lowercAse-A\" does not match \".*a.*\".", NULL, 0);
+    CHECK_LOG_CTX("Unsatisfied pattern - \"no-lowercAse-A\" does not match \".*a.*\".", "/k:l", 0);
 
     lyd_free_siblings(tree);
 }
