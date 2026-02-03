@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief tests for lyd_diff()
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1696,6 +1696,43 @@ test_userord_conflicting_replace_llist(void **state)
     free(final_xml);
 }
 
+static void
+test_userord_duplicate_llist(void **state)
+{
+    (void) state;
+    struct lyd_node *tree1 = NULL, *tree2 = NULL;
+    struct lyd_node *diff1_2 = NULL;
+
+    char *xml1 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>1</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>4</llist>\n"
+            "</df>\n";
+
+    char *xml2 =
+            "<df xmlns=\"urn:libyang:tests:defaults\">\n"
+            "  <llist>2</llist>\n"
+            "  <llist>2</llist>\n"
+            "  <llist>3</llist>\n"
+            "  <llist>4</llist>\n"
+            "</df>\n";
+
+    CHECK_PARSE_LYD(xml1, tree1);
+    CHECK_PARSE_LYD(xml2, tree2);
+
+    CHECK_PARSE_LYD_DIFF(tree1, tree2, 0, diff1_2);
+
+    lyd_diff_apply_all(&tree1, diff1_2);
+
+    CHECK_LYD(tree1, tree2);
+
+    lyd_free_tree(diff1_2);
+    lyd_free_tree(tree1);
+    lyd_free_tree(tree2);
+}
+
 int
 main(void)
 {
@@ -1724,6 +1761,7 @@ main(void)
         UTEST(test_userord_conflicting_replace_list, setup),
         UTEST(test_userord_conflicting_replace_list2, setup),
         UTEST(test_userord_conflicting_replace_llist, setup),
+        UTEST(test_userord_duplicate_llist, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

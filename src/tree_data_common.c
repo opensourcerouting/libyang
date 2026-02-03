@@ -126,7 +126,8 @@ lyd_dup_inst_next(struct lyd_node **inst, struct ly_ht **dup_inst_ht)
     }
 
     if (dup_inst->used == dup_inst->set->count) {
-        if (lysc_is_dup_inst_list((*inst)->schema)) {
+        /* config user-ordered data with several instances are invalid, but it can be supported */
+        if (lysc_is_dup_inst_list((*inst)->schema) || lysc_is_userordered((*inst)->schema)) {
             /* we have used all the instances */
             *inst = NULL;
         } /* else just keep using the last (ideally only) instance */
