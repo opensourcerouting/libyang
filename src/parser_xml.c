@@ -920,6 +920,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
     uint32_t prev_parse_opts = lydctx->parse_opts, prev_int_opts = lydctx->int_opts;
     char *val = NULL;
+    ly_bool datatree_val = 0;
 
     *node = NULL;
 
@@ -935,6 +936,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         /* create empty node first */
         r = lyd_create_any(snode, NULL, LYD_ANYDATA_DATATREE, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+        datatree_val = 1;
     } else {
         /* use an arbitrary text value for anyxml */
         val = strndup(xmlctx->value, xmlctx->value_len);
@@ -957,7 +959,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
     r = lyxml_ctx_next(xmlctx);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
-    if (xmlctx->ws_only) {
+    if (datatree_val) {
         if (lydctx->parse_opts & LYD_PARSE_ANYDATA_STRICT) {
             /* explicit strict data parsing */
             lydctx->parse_opts |= LYD_PARSE_STRICT;
