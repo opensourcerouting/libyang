@@ -597,8 +597,11 @@ ly_ctx_shared_data_pattern_get(const struct ly_ctx *ctx, const char *pattern, ly
         goto cleanup;
     }
 
-    /* didnt find it, either it's the first time or using printed context (which compiles the patterns on the fly) */
-    assert(!pat_comp || ly_ctx_is_printed(ctx));
+    /* not found and it can be because:
+     * 1) it's the first time the pattern is compiled in the context;
+     * 2) we are using printed context (which compiles the patterns on the fly);
+     * 3) the pattern was compiled for several types but then the types had to be recompiled (lysc_type_free()
+     *    in lys_compile_type()) and we are no longer able to track the pattern code cache. */
     LY_CHECK_GOTO(rc = ly_pat_compile(pattern, format, &pat_comp_tmp, &err), cleanup);
 
     /* store the compiled pattern code in the hash table */
