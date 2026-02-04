@@ -33,7 +33,7 @@
 
 /**
  * @page howtoDataLYB LYB Binary Format
- * @subsection howtoDataLYBTypesDateAndTime date and date-no-zone (ietf-yang-types)
+ * @subsection howtoDataLYBTypesDate date and date-no-zone (ietf-yang-types)
  *
  * | Size (b) | Mandatory | Type | Meaning |
  * | :------  | :-------: | :--: | :-----: |
