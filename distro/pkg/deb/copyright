@@ -3,7 +3,7 @@ Upstream-Name: libyang
 License: BSD-3-clause
 
 Files: *
-Copyright: 2015-2021 by CESNET, z.s.p.o.
+Copyright: 2015-2026 by CESNET, z.s.p.o.
 License: BSD-3-clause
 
 Files: */iana-*.yin */iana-*.yang */ietf-*.yin */ietf-*.yang */ietf-*.h
