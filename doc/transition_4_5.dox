@@ -1,0 +1,42 @@
+/**
+ * @page transition4_5 Transition Manual (4.x -> 5.0)
+ *
+ * There are few non-backwards-compatible changes that should not affect the majority of users. These include a **new
+ * verbosity level** or an **updated canonical value** of *date-and-time* value in an unknown timezone. Also, there were
+ * minor changes in a few public structures. These include changing the type of the `parent` member of ::lyd_node or
+ * removing the `lyd_anydata_value` union. Both these changes made the data node structures more unified and
+ * user-friendly.
+ *
+ * To mention all the significant changes, the binary **LYB format was improved** and now fully supports 2 variants.
+ * The default one is optimized for performance and has fairly lenient restrictions on the context parsing these data.
+ * The shrank format is optimized for the size of generated data and requires the parsing context to be exactly the same
+ * as the printer context. Also, the pattern API now uses an **abstraction on top of PCRE2** functions so *libpcre2* no
+ * longer needs to be a dependency of every project depending on *libyang*.
+ *
+ * Other changes include update internal *ietf-yang-types* and *ietf-inet-types* YANG modules to their latest revision.
+ * Then, extension plugin API has been improved and refactored to be much better integrated into the whole library.
+ * Additionally, support for *OpenConfig* extensions modifying pattern restirctions has been added. Finally, anydata
+ * data tree contents were integrated and are now natively supported when traversing a data tree even when using
+ * an (X)Path expressions.
+ *
+ * Here is the overview of the changed / removed / added functions.
+ *
+ * libyang 4.x                  | libyang 5.0                      | Notes
+ * :----------------------------|:---------------------------------|:-------------------------------------------------------
+ * lyplg_type_identity_module() | ::lys_find_module()              | Function renamed with the same functionality.
+ * lyd_parse_ext_data()         | -                                | Functionality integrated into non-ext function variant.
+ * lyd_parse_ext_op()           | -                                | ^
+ * lyplg_ext_insert()           | -                                | ^
+ * lyd_new_ext_any()            | -                                | ^
+ * lyd_new_ext_inner()          | -                                | ^
+ * lyd_new_ext_list()           | -                                | ^
+ * lyd_new_ext_path()           | -                                | ^
+ * lyd_new_ext_term()           | -                                | ^
+ * lys_getnext_ext()            | -                                | ^
+ * lyd_validate_ext()           | lyd_validate_ext()               | Function remained but should be used only by extension plugin callbacks. For ext data validation standard functions should be used.
+ *
+ *
+ * The complete generated list of changes (without any additional notes) can be found in
+ * <a href="../compat_report_4_5.html">the compatibility report</a>.
+ *
+ */
