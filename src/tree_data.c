@@ -3700,6 +3700,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *expr = NULL;
     struct ly_path *lypath = NULL;
+    const struct lyd_node *tree = NULL;
 
     LY_CHECK_ARG_RET(NULL, ctx_node, ctx_node->schema, path, LY_EINVAL);
 
@@ -3713,8 +3714,14 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
             output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, 0, LY_VALUE_JSON, NULL, &lypath);
     LY_CHECK_GOTO(ret, cleanup);
 
+    if (lypath[0].doc_root) {
+        /* use the root context node for absolute paths, avoids specific XPath evaluation rules of extensions */
+        tree = ctx_node;
+        ctx_node = NULL;
+    }
+
     /* evaluate the path */
-    ret = ly_path_eval_partial(lypath, ctx_node, NULL, 0, NULL, match);
+    ret = ly_path_eval_partial(lypath, ctx_node, tree, NULL, 0, NULL, match);
 
 cleanup:
     lyxp_expr_free(expr);

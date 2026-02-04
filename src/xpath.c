@@ -5878,7 +5878,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type node_type, co
 const struct lyd_node *
 lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd_node *tree)
 {
-    const struct lyd_node *top_node, *first = NULL;
+    const struct lyd_node *top_node = NULL, *first = NULL;
     const struct ly_ctx *ctx;
     const char *mod_name, *name;
     const struct lysc_node *schema;
@@ -5887,15 +5887,15 @@ lyxp_node_first_doc_root_child(const struct lyd_node *cur_node, const struct lyd
 
     assert(cur_node || (tree && !tree->parent));
 
-    if (cur_node) {
-        /* try to find an ext instance data node */
-        top_node = cur_node;
-        while (top_node->parent && !(top_node->flags & LYD_EXT)) {
-            top_node = top_node->parent;
-        }
-    } else {
-        /* just use the first top-level node */
-        top_node = tree;
+    if (!cur_node) {
+        /* search in all the trees */
+        return lyd_first_sibling(tree);
+    }
+
+    /* try to find an ext instance data node */
+    top_node = cur_node;
+    while (top_node->parent && !(top_node->flags & LYD_EXT)) {
+        top_node = top_node->parent;
     }
 
     if (top_node->flags & LYD_EXT) {

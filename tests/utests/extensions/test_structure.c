@@ -20,7 +20,6 @@ static void
 test_schema(void **state)
 {
     struct lys_module *mod;
-    struct lysc_ext_instance *e;
     char *printed = NULL;
     const char *data, *info;
 
@@ -40,7 +39,6 @@ test_schema(void **state)
             "}}";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
 
     /* valid augment data */
@@ -57,7 +55,6 @@ test_schema(void **state)
             "}}";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 2);
 
     /* yang compiled print */
@@ -139,7 +136,6 @@ test_schema(void **state)
             "}\n";
 
     UTEST_ADD_MODULE(data, LYS_IN_YANG, NULL, &mod);
-    assert_non_null(e = mod->compiled->exts);
     assert_int_equal(LY_ARRAY_COUNT(mod->compiled->exts), 1);
     assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0));
     assert_string_equal(printed, info);
@@ -214,8 +210,6 @@ test_schema_invalid(void **state)
 static void
 test_parse(void **state)
 {
-    struct lys_module *mod;
-    struct lysc_ext_instance *e;
     struct lyd_node *tree = NULL, *node;
     const char *yang, *xml, *json;
     char *lyb;
@@ -225,7 +219,7 @@ test_parse(void **state)
             "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
             "anydata any;"
             "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
-    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
 
     yang = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
             "import ietf-yang-structure-ext {prefix sx;}"
@@ -234,9 +228,6 @@ test_parse(void **state)
             "  leaf x2 {type uint32;}"
             "}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
-
-    /* get extension after recompilation */
-    assert_non_null(e = mod->compiled->exts);
 
     /* structure data, in all the formats */
     xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
@@ -350,6 +341,58 @@ test_parse(void **state)
             "/a:struct/x/struct/x/any/c:cont", 1);
 }
 
+static void
+test_xpath(void **state)
+{
+    struct lyd_node *tree = NULL;
+    struct ly_set *set;
+    const char *yang, *xml;
+
+    yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
+            "anydata any;"
+            "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    yang = "module c {yang-version 1.1; namespace urn:tests:c; prefix c;"
+            "container cont {"
+            "  leaf l {type string;}"
+            "}}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    xml = "<struct xmlns=\"urn:tests:extensions:structure:a\">"
+            "<x>"
+            "<struct>"
+            "<x>"
+            "<any>"
+            "<cont xmlns=\"urn:tests:c\"><l>val</l></cont>"
+            "</any>"
+            "</x>"
+            "</struct>"
+            "</x>"
+            "</struct>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(xml, &UTEST_IN));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_XML,
+            LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LYD_STRING_PARAM(tree, xml, LYD_XML, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS);
+
+    /* find xpath */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath3(NULL, tree, "/a:struct/x/struct/x/any/c:cont/l", LY_VALUE_JSON, NULL,
+            NULL, &set));
+    assert_int_equal(set->count, 1);
+    ly_set_free(set, NULL);
+
+    /* find path */
+    assert_int_equal(LY_SUCCESS, lyd_find_path(tree, "/a:struct/x/struct/x/any/c:cont/l", 0, NULL));
+
+    lyd_free_all(tree);
+
+    /* create path */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:struct/x/struct/x/any/c:cont/l", "val", 0, &tree));
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -357,6 +400,7 @@ main(void)
         UTEST(test_schema),
         UTEST(test_schema_invalid),
         UTEST(test_parse),
+        UTEST(test_xpath),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -533,7 +533,7 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     const char *pref, *name;
     size_t len, name_len;
     const struct lys_module *mod;
-    const struct lysc_node *node = NULL;
+    const struct lysc_node *node = NULL, *sparent;
     uint32_t getnext_opts = 0;
 
     assert(expr->tokens[tok_idx] == LYXP_TOKEN_NAMETEST);
@@ -580,7 +580,8 @@ ly_path_compile_snode(const struct ly_ctx *ctx, const struct lysc_node *cur_node
     }
 
     /* find a standard schema node */
-    while ((node = lys_getnext(node, ctx_node, mod->compiled, getnext_opts))) {
+    sparent = (ctx_node && !(ctx_node->nodetype & LYD_NODE_ANY)) ? ctx_node : NULL;
+    while ((node = lys_getnext(node, sparent, mod->compiled, getnext_opts))) {
         if (node->module != mod) {
             continue;
         }
@@ -1327,21 +1328,21 @@ ly_path_compile_leafref(const struct ly_ctx *ctx, const struct lysc_node *ctx_no
 }
 
 LY_ERR
-ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyxp_var *vars,
-        ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
+ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *ctx_node, const struct lyd_node *tree,
+        const struct lyxp_var *vars, ly_bool with_opaq, LY_ARRAY_COUNT_TYPE *path_idx, struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *elem, *node = NULL, *target;
     uint64_t pos;
 
-    assert(path && ctx_node);
+    assert(path && (ctx_node || tree));
 
     if (!path[0].doc_root) {
         /* relative path, start from the parent children */
         ctx_node = lyd_child_any(ctx_node);
     } else {
         /* absolute path, start from the first document root child */
-        ctx_node = lyxp_node_first_doc_root_child(ctx_node, NULL);
+        ctx_node = lyxp_node_first_doc_root_child(ctx_node, tree);
     }
 
     LY_ARRAY_FOR(path, u) {
@@ -1436,7 +1437,7 @@ ly_path_eval(const struct ly_path *path, const struct lyd_node *ctx_node, const 
     LY_ERR ret;
     struct lyd_node *m;
 
-    ret = ly_path_eval_partial(path, ctx_node, vars, 0, NULL, &m);
+    ret = ly_path_eval_partial(path, ctx_node, NULL, vars, 0, NULL, &m);
 
     if (ret == LY_SUCCESS) {
         /* last node was found */

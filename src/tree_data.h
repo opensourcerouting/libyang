@@ -1484,6 +1484,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_attr2(struct lyd_node *parent, const char *modul
  * (or lists) either positional predicate can be used or leaf-list (or key) predicate, when an instance is always
  * created at the end. If no predicate is used for these nodes, they are always created.
  *
+ * For anydata nodes, it is possible to directly create its descendants if the @p path continues after the node.
+ *
  * @param[in] parent Data parent to add to/modify, can be NULL. Note that in case a first top-level sibling is used,
  * it may no longer be first if @p path is absolute and starts with a non-existing top-level node inserted
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.

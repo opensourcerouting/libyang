@@ -1406,6 +1406,22 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
     return ret;
 }
 
+/**
+ * @brief Check the compiled path to be created.
+ *
+ * Check:
+ * 1) existence of predicates of (leaf-)lists;
+ * 2) validity of nodes and decide between creating data and opaque nodes;
+ * 3) which nodues should be created even though may exist.
+ *
+ * @param[in] path Compiled path.
+ * @param[in] str_path String path for logging.
+ * @param[in] value Value to use.
+ * @param[in] value_size_bits Size in bits of @p value.
+ * @param[in] format Format of @p value.
+ * @param[in] option New path options.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const void *value, uint32_t value_size_bits,
         LY_VALUE_FORMAT format, uint32_t options)
@@ -1481,7 +1497,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
         struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
-    struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent, *iter;
+    struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent, *iter, *tree = NULL;
     const struct lysc_node *schema;
     const char *val = NULL;
     ly_bool store_only = (options & LYD_NEW_VAL_STORE_ONLY) ? 1 : 0;
@@ -1499,7 +1515,10 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
 
     /* try to find any existing nodes in the path */
     if (parent) {
-        r = ly_path_eval_partial(p, parent, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx, &node);
+        if (p[0].doc_root) {
+            for (tree = parent; tree->parent; tree = tree->parent) {}
+        }
+        r = ly_path_eval_partial(p, tree ? NULL : parent, tree, NULL, options & LYD_NEW_PATH_WITH_OPAQ, &path_idx, &node);
         if (r == LY_SUCCESS) {
             if (orig_count == LY_ARRAY_COUNT(p)) {
                 /* the node exists, are we supposed to update it or is it just a default? */
@@ -1656,7 +1675,12 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, any_use_value, 1, &node), cleanup);
+            if (path_idx < LY_ARRAY_COUNT(p) - 1) {
+                /* creating descendants of the node directly, use no value now */
+                LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, LYD_ANYDATA_DATATREE, 1, 0, &node), cleanup);
+            } else {
+                LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, any_use_value, 1, &node), cleanup);
+            }
             break;
         default:
             LOGINT(ctx);
