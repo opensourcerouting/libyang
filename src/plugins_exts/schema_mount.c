@@ -1210,6 +1210,12 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
         goto cleanup;
     }
     if (!ext_data) {
+        if (!strcmp(node->schema->module->name, "ietf-yang-library") ||
+                !strcmp(node->schema->module->name, "ietf-yang-schema-mount")) {
+            /* parsing operational data in the ext callback, recursively */
+            return lyd_validate_ext(&node, ext, 0, diff);
+        }
+
         /* ext data must have been provided */
         lyplg_ext_compile_log(NULL, ext, LY_LLERR, LY_EINVAL, "No ext data provided for schema mount validation.");
         ret = LY_EINVAL;

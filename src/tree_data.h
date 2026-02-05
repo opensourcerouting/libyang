@@ -192,6 +192,9 @@ struct rb_node;
  * additional contexts. When the top-level node right under a schema node with a mount-point is created, always use
  * this node for creation of any descendants. So, when using ::lyd_new_path(), use the node as `parent` and specify
  * relative `path`.
+ *
+ * There is an example (in `libyang/examples/schema_mount`) showing simple YANG data parse and print that include some
+ * mounted-data.
  */
 
 /**

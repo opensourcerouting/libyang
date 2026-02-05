@@ -1,0 +1,15 @@
+<network-instances xmlns="urn:ietf:params:xml:ns:yang:ietf-network-instance">
+    <network-instance>
+        <name>inst0</name>
+        <vrf-root>
+            <routing xmlns="urn:ietf:params:xml:ns:yang:ietf-routing">
+                <control-plane-protocols>
+                    <control-plane-protocol>
+                        <type>direct</type>
+                        <name>prot0</name>
+                    </control-plane-protocol>
+                </control-plane-protocols>
+            </routing>
+        </vrf-root>
+    </network-instance>
+</network-instances>
