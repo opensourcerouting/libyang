@@ -550,11 +550,7 @@ test_parse_inline(void **state)
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
             "      <oper-status>not-present</oper-status>\n"
             "      <statistics>\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "        <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
-#else
             "        <discontinuity-time>2022-01-01T10:00:00Z</discontinuity-time>\n"
-#endif
             "      </statistics>\n"
             "    </interface>\n"
             "  </interfaces-state>\n"
@@ -582,11 +578,7 @@ test_parse_inline(void **state)
             "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
             "          \"oper-status\": \"not-present\",\n"
             "          \"statistics\": {\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
-#else
             "            \"discontinuity-time\": \"2022-01-01T10:00:00Z\"\n"
-#endif
             "          }\n"
             "        }\n"
             "      ]\n"
@@ -766,11 +758,7 @@ test_parse_shared(void **state)
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
             "      <oper-status>not-present</oper-status>\n"
             "      <statistics>\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "        <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
-#else
             "        <discontinuity-time>2022-01-01T10:00:00Z</discontinuity-time>\n"
-#endif
             "      </statistics>\n"
             "    </interface>\n"
             "  </interfaces-state>\n"
@@ -797,11 +785,7 @@ test_parse_shared(void **state)
             "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
             "          \"oper-status\": \"not-present\",\n"
             "          \"statistics\": {\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
-#else
             "            \"discontinuity-time\": \"2022-01-01T10:00:00Z\"\n"
-#endif
             "          }\n"
             "        }\n"
             "      ]\n"
@@ -1028,11 +1012,7 @@ test_parse_shared(void **state)
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
             "      <oper-status>not-present</oper-status>\n"
             "      <statistics>\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "        <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
-#else
             "        <discontinuity-time>2022-01-01T10:00:00Z</discontinuity-time>\n"
-#endif
             "      </statistics>\n"
             "    </interface>\n"
             "  </interfaces-state>\n"
@@ -1050,11 +1030,7 @@ test_parse_shared(void **state)
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:fddi</type>\n"
             "      <oper-status>down</oper-status>\n"
             "      <statistics>\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "        <discontinuity-time>2020-01-01T10:00:00-00:00</discontinuity-time>\n"
-#else
             "        <discontinuity-time>2022-01-01T10:00:00Z</discontinuity-time>\n"
-#endif
             "      </statistics>\n"
             "    </interface>\n"
             "  </interfaces-state>\n"
@@ -1081,11 +1057,7 @@ test_parse_shared(void **state)
             "          \"type\": \"iana-if-type:ethernetCsmacd\",\n"
             "          \"oper-status\": \"not-present\",\n"
             "          \"statistics\": {\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "            \"discontinuity-time\": \"2022-01-01T10:00:00-00:00\"\n"
-#else
             "            \"discontinuity-time\": \"2022-01-01T10:00:00Z\"\n"
-#endif
             "          }\n"
             "        }\n"
             "      ]\n"
@@ -1107,11 +1079,7 @@ test_parse_shared(void **state)
             "          \"type\": \"iana-if-type:fddi\",\n"
             "          \"oper-status\": \"down\",\n"
             "          \"statistics\": {\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "            \"discontinuity-time\": \"2020-01-01T10:00:00-00:00\"\n"
-#else
             "            \"discontinuity-time\": \"2020-01-01T10:00:00Z\"\n"
-#endif
             "          }\n"
             "        }\n"
             "      ]\n"
@@ -1740,11 +1708,7 @@ test_new(void **state)
             "      <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n"
             "      <oper-status>not-present</oper-status>\n"
             "      <statistics>\n"
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            "        <discontinuity-time>2022-01-01T10:00:00-00:00</discontinuity-time>\n"
-#else
             "        <discontinuity-time>2022-01-01T10:00:00Z</discontinuity-time>\n"
-#endif
             "      </statistics>\n"
             "    </interface>\n"
             "  </interfaces-state>\n"
