@@ -265,7 +265,6 @@ else()
     set(INTERNAL_DOCS NO)
 endif()
 
-option(ENABLE_DATE_AND_TIME_TYPE_COMPAT "Print ietf-yang-types 'date-and-time' values in an unknown timezone with '-00:00' instead of 'Z'" OFF)
 set(LYD_VALUE_SIZE "24" CACHE STRING "Maximum size in bytes of data node values that do not need to be allocated dynamically, minimum is 8")
 if(LYD_VALUE_SIZE LESS 8)
     message(FATAL_ERROR "Data node value size \"${LYD_VALUE_SIZE}\" is not valid.")

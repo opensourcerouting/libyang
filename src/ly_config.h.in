@@ -78,9 +78,6 @@
 #  define LIBYANG_API_DECL
 #endif
 
-/** date-and-time canonical value with an unknown time zone printed in backwards-compatible way with -00:00 instead of Z */
-#cmakedefine ENABLE_DATE_AND_TIME_TYPE_COMPAT
-
 /** existence of regex.h */
 #cmakedefine HAVE_REGEX_H
 

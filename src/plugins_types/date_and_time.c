@@ -120,11 +120,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         goto cleanup;
     }
 
-    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6)
-#ifndef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            || (((char *)value)[value_size - 1] == 'Z')
-#endif
-       ) {
+    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6) || (((char *)value)[value_size - 1] == 'Z')) {
         /* unknown timezone, timezone format supported for backwards compatibility */
         val->unknown_tz = 1;
     }
@@ -272,7 +268,6 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
     struct lyd_value_date_and_time *val;
     struct tm tm;
     char *ret;
-    const char *unknown_tz;
 
     LYD_VALUE_GET(value, val);
 
@@ -308,14 +303,9 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
                 return NULL;
             }
 
-#ifdef ENABLE_DATE_AND_TIME_TYPE_COMPAT
-            unknown_tz = "-00:00";
-#else
-            unknown_tz = "Z";
-#endif
-            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
+            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%sZ",
                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "", unknown_tz) == -1) {
+                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "") == -1) {
                 return NULL;
             }
         } else {
