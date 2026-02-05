@@ -194,7 +194,7 @@ struct rb_node;
  * relative `path`.
  *
  * There is an example (in `libyang/examples/schema_mount`) showing simple YANG data parse and print that include some
- * mounted-data.
+ * mounted data.
  */
 
 /**
