@@ -1520,6 +1520,34 @@ lysp_resolve_ext_instance_log_path(const struct lysp_ctx *pctx, const struct lys
 }
 
 /**
+ * @brief Find ext instance plugins for all the parsed extensions.
+ *
+ * @param[in] mod Module to use.
+ */
+static void
+lysp_resolve_ext_instance_plugins(struct lys_module *mod)
+{
+    LY_ARRAY_COUNT_TYPE u, v;
+    const struct lysp_include *inc;
+
+    /* module */
+    LY_ARRAY_FOR(mod->parsed->extensions, u) {
+        mod->parsed->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
+                mod->revision, mod->parsed->extensions[u].name);
+    }
+
+    /* submodules */
+    LY_ARRAY_FOR(mod->parsed->includes, v) {
+        inc = &mod->parsed->includes[v];
+
+        LY_ARRAY_FOR(inc->submodule->extensions, u) {
+            inc->submodule->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
+                    mod->revision, inc->submodule->extensions[u].name);
+        }
+    }
+}
+
+/**
  * @brief Resolve (find) all extension instance records and finish their parsing.
  *
  * @param[in] pctx Parse context with all the parsed extension instances.
@@ -2218,7 +2246,6 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     struct lysp_yang_ctx *yangctx = NULL;
     struct lysp_yin_ctx *yinctx = NULL;
     struct lysp_ctx *pctx = NULL;
-    LY_ARRAY_COUNT_TYPE u;
     ly_bool mod_created = 0, mod_exists = 0;
 
     assert(ctx && in && new_mods);
@@ -2355,10 +2382,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const st
     LY_CHECK_GOTO(rc = lysp_resolve_import_include(pctx, mod->parsed, new_mods), cleanup);
 
     /* resolve extension plugins and parse extension instances */
-    LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        mod->parsed->extensions[u].plugin_ref = lyplg_ext_plugin_find(mod->ctx, mod->name,
-                mod->revision, mod->parsed->extensions[u].name);
-    }
+    lysp_resolve_ext_instance_plugins(mod);
     LY_CHECK_GOTO(rc = lysp_resolve_ext_instance_records(pctx), cleanup);
 
     /* check name collisions */

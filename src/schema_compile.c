@@ -1824,8 +1824,15 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_compile_extensions(struct lys_module *mod)
+/**
+ * @brief Compile all extension definitions in a parsed module into the main module.
+ *
+ * @param[in] mod Module to use.
+ * @param[in] pmod Parsed (sub)module to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_extensions_pmod(struct lys_module *mod, struct lysp_module *pmod)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lysc_ctx ctx = {0};
@@ -1833,49 +1840,96 @@ lys_compile_extensions(struct lys_module *mod)
     struct lysp_ext *ep;
     struct lysc_ext *ec;
 
-    if (!mod->parsed->extensions) {
-        return LY_SUCCESS;
-    }
+    LYSC_CTX_INIT_PMOD(ctx, pmod, NULL);
 
-    LYSC_CTX_INIT_PMOD(ctx, mod->parsed, NULL);
+    LY_ARRAY_FOR(pmod->extensions, u) {
+        ep = &pmod->extensions[u];
 
-    /* allocate the array */
-    LY_ARRAY_CREATE_RET(mod->ctx, mod->extensions, LY_ARRAY_COUNT(mod->parsed->extensions), LY_EMEM);
-
-    /* compile all extension definitions */
-    LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        ep = &mod->parsed->extensions[u];
-        ec = &mod->extensions[u];
+        /* allocate a new extension */
+        LY_ARRAY_NEW_GOTO(mod->ctx, mod->extensions, ec, rc, cleanup);
 
         /* compile the extension definition */
         DUP_STRING_GOTO(ctx.ctx, ep->name, ec->name, rc, cleanup);
         DUP_STRING_GOTO(ctx.ctx, ep->argname, ec->argname, rc, cleanup);
         ec->module = mod;
         ec->plugin_ref = ep->plugin_ref;
-
-        LY_ARRAY_INCREMENT(mod->extensions);
     }
 
-    /* compile all nested extension instances, which can reference the compiled definitions */
-    LY_ARRAY_FOR(mod->parsed->extensions, u) {
-        ep = &mod->parsed->extensions[u];
-        ec = &mod->extensions[u];
+cleanup:
+    return rc;
+}
+
+/**
+ * @brief Compile all ext instances of extension definitions in a parsed module.
+ *
+ * @param[in] mod Module to use.
+ * @param[in] mod_ext_idx Index in ext of @p mod to start at.
+ * @param[in] pmod Parsed (sub)module to use.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_extensions_ext_pmod(struct lys_module *mod, LY_ARRAY_COUNT_TYPE mod_ext_idx, struct lysp_module *pmod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct lysc_ctx ctx = {0};
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysp_ext *ep;
+    struct lysc_ext *ec;
+
+    LYSC_CTX_INIT_PMOD(ctx, pmod, NULL);
+
+    LY_ARRAY_FOR(pmod->extensions, u) {
+        ep = &pmod->extensions[u];
+        ec = &mod->extensions[mod_ext_idx];
 
         lysc_update_path(&ctx, NULL, "{extension}");
         lysc_update_path(&ctx, NULL, ep->name);
 
         /* compile nested extensions */
-        COMPILE_EXTS_GOTO(&ctx, ep->exts, ec->exts, ec, rc, cleanup);
+        COMPILE_EXTS_GOTO(&ctx, ep->exts, ec->exts, ec, rc, next_line);
+next_line:
+        lysc_update_path(&ctx, NULL, NULL);
+        lysc_update_path(&ctx, NULL, NULL);
 
-        lysc_update_path(&ctx, NULL, NULL);
-        lysc_update_path(&ctx, NULL, NULL);
+        LY_CHECK_GOTO(rc, cleanup);
+
+        ++mod_ext_idx;
     }
 
 cleanup:
-    if (rc) {
-        lysc_update_path(&ctx, NULL, NULL);
-        lysc_update_path(&ctx, NULL, NULL);
+    return rc;
+}
+
+LY_ERR
+lys_compile_extensions(struct lys_module *mod)
+{
+    LY_ERR rc = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u, v;
+    struct lysp_include *inc;
+
+    /* compile all module and submodule extension definitions */
+    LY_CHECK_GOTO(rc = lys_compile_extensions_pmod(mod, mod->parsed), cleanup);
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        LY_CHECK_GOTO(rc = lys_compile_extensions_pmod(mod, (struct lysp_module *)mod->parsed->includes[u].submodule),
+                cleanup);
     }
+
+    /* compile all nested extension instances, which can reference the compiled definitions,
+     * there is one extensions array in main mod for the parsed module and all submodules so we need a special index */
+    v = 0;
+    LY_CHECK_GOTO(rc = lys_compile_extensions_ext_pmod(mod, v, mod->parsed), cleanup);
+
+    v += LY_ARRAY_COUNT(mod->parsed->extensions);
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        inc = &mod->parsed->includes[u];
+        LY_CHECK_GOTO(rc = lys_compile_extensions_ext_pmod(mod, v, (struct lysp_module *)inc->submodule), cleanup);
+
+        v += LY_ARRAY_COUNT(inc->submodule->extensions);
+    }
+
+    assert(v == LY_ARRAY_COUNT(mod->extensions));
+
+cleanup:
     return rc;
 }
 
