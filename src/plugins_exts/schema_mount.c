@@ -1195,11 +1195,6 @@ schema_mount_validate(struct lysc_ext_instance *ext, struct lyd_node *node, cons
     ly_bool ext_data_free = 0;
     struct ly_set *ref_set = NULL;
 
-    if (!node) {
-        /* some data had to be parsed for this callback to be called */
-        EXT_LOGERR_INT_RET(NULL, ext);
-    }
-
     if (!(node->flags & LYD_EXT)) {
         /* no validation of the node with the mount-point */
         goto cleanup;
