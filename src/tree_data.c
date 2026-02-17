@@ -3716,7 +3716,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path, ly_bool output,
 
     if (lypath[0].doc_root) {
         /* use the root context node for absolute paths, avoids specific XPath evaluation rules of extensions */
-        tree = ctx_node;
+        for (tree = ctx_node; tree->parent; tree = tree->parent) {}
         ctx_node = NULL;
     }
 
