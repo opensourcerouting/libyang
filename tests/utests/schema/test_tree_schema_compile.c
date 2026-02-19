@@ -2081,6 +2081,23 @@ test_type_leafref(void **state)
             "leaf ref3 {type leafref {path /ref4;}}\n"
             "leaf ref4 {type leafref {path /ref1;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid leafref path \"/ref1\" - circular chain of leafrefs detected.", "/aaa:ref4", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module leafref-unions {\n"
+            "    namespace \"http://example.com/leafref-unions\"; prefix \"lu\";\n"
+            "    \n"
+            "    container config {\n"
+            "        leaf circular-ref-1 {\n"
+            "            type union {\n"
+            "                type leafref {\n"
+            "                    path \"../circular-ref-1\";\n"
+            "                }\n"
+            "            }\n"
+            "            default \"circular-value\";\n"
+            "        }\n"
+            "    }\n"
+            "}", LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Invalid leafref path \"../circular-ref-1\" - circular chain of leafrefs detected.",
+            "/leafref-unions:config/circular-ref-1", 0);
 }
 
 static void

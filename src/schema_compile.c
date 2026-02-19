@@ -811,6 +811,49 @@ lys_compile_unres_disabled_bitenum(struct lysc_ctx *ctx, struct lysc_node_leaf *
 }
 
 /**
+ * @brief Check a leafref for circular references.
+ *
+ * @param[in] type Referenced type, is checked recursively for other leafrefs.
+ * @param[in] lref Initial leafref type that cannot be referenced.
+ * @return LY_SUCCESS on success;
+ * @return LY_EVALID on a circular chein of leafrefs.
+ */
+static LY_ERR
+lys_compile_leafref_circ_check(const struct lysc_type *type, const struct lysc_type *lref)
+{
+    const struct lysc_type_union *un;
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (!type) {
+        /* not resolved yet */
+        return LY_SUCCESS;
+    }
+
+    if (type == lref) {
+        /* circular chain detected */
+        return LY_EVALID;
+    }
+
+    switch (type->basetype) {
+    case LY_TYPE_LEAFREF:
+        /* check the referenced type */
+        LY_CHECK_RET(lys_compile_leafref_circ_check(((struct lysc_type_leafref *)type)->realtype, lref));
+        break;
+    case LY_TYPE_UNION:
+        /* check all the union types */
+        un = (struct lysc_type_union *)type;
+        LY_ARRAY_FOR(un->types, u) {
+            LY_CHECK_RET(lys_compile_leafref_circ_check(un->types[u], lref));
+        }
+    default:
+        /* no more leafref references */
+        break;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check leafref for its target existence on a complete compiled schema tree.
  *
  * @param[in] ctx Compile context.
@@ -825,7 +868,6 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 {
     const struct lysc_node *target = NULL;
     struct ly_path *p;
-    struct lysc_type *type;
     uint16_t flg;
 
     assert(node->nodetype & (LYS_LEAF | LYS_LEAFLIST));
@@ -881,17 +923,12 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     }
 
     /* check for circular chain of leafrefs */
-    for (type = ((struct lysc_node_leaf *)target)->type;
-            type && (type->basetype == LY_TYPE_LEAFREF);
-            type = ((struct lysc_type_leafref *)type)->realtype) {
-        if (type == (struct lysc_type *)lref) {
-            /* circular chain detected */
-            LOG_LOCSET(node);
-            LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid leafref path \"%s\" - circular chain of leafrefs detected.",
-                    lref->path->expr);
-            LOG_LOCBACK(1);
-            return LY_EVALID;
-        }
+    if (lys_compile_leafref_circ_check(((struct lysc_node_leaf *)target)->type, (struct lysc_type *)lref)) {
+        LOG_LOCSET(node);
+        LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid leafref path \"%s\" - circular chain of leafrefs detected.",
+                lref->path->expr);
+        LOG_LOCBACK(1);
+        return LY_EVALID;
     }
 
     /* store the type */
