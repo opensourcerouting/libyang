@@ -1022,55 +1022,6 @@ cleanup:
     return ret;
 }
 
-LIBYANG_API_DEF LY_ERR
-lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type)
-{
-    struct lyd_node_any *t;
-    struct lyd_node *node;
-
-    LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
-    LY_CHECK_ARG_RET(NULL, trg->schema, trg->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
-
-    t = (struct lyd_node_any *)trg;
-
-    /* free trg */
-    switch (t->value_type) {
-    case LYD_ANYDATA_DATATREE:
-        lyd_free_siblings(t->child);
-        t->child = NULL;
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
-        lydict_remove(LYD_CTX(trg), t->value);
-        t->value = NULL;
-        break;
-    }
-
-    if (!value) {
-        /* only free value in this case */
-        return LY_SUCCESS;
-    }
-
-    /* copy src */
-    t->value_type = value_type;
-    switch (value_type) {
-    case LYD_ANYDATA_DATATREE:
-        LY_CHECK_RET(lyd_dup_siblings(value, NULL, LYD_DUP_RECURSIVE, &t->child));
-        LY_LIST_FOR(t->child, node) {
-            node->parent = &t->node;
-        }
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
-        LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value, 0, &t->value));
-        break;
-    }
-
-    return LY_SUCCESS;
-}
-
 LIBYANG_API_DEF const struct lysc_node *
 lyd_node_schema(const struct lyd_node *node)
 {

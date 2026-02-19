@@ -369,6 +369,82 @@ cleanup:
     return rc;
 }
 
+LIBYANG_API_DEF LY_ERR
+lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type)
+{
+    struct lyd_node_any *t;
+    struct lyd_node *node;
+    struct ly_in *in;
+    ly_bool use_value = 0;
+    LY_ERR r;
+
+    LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, trg->schema, trg->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
+
+    t = (struct lyd_node_any *)trg;
+
+    /* free trg */
+    switch (t->value_type) {
+    case LYD_ANYDATA_DATATREE:
+        lyd_free_siblings(t->child);
+        t->child = NULL;
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        lydict_remove(LYD_CTX(trg), t->value);
+        t->value = NULL;
+        break;
+    }
+
+    if (!value) {
+        /* only free value in this case */
+        return LY_SUCCESS;
+    }
+
+    if (value_type == LYD_ANYDATA_STRING) {
+        /* try to learn what the actual value is */
+        lyd_create_any_string_valtype(value, &value_type);
+
+        if ((value_type == LYD_ANYDATA_XML) || (value_type == LYD_ANYDATA_JSON)) {
+            /* create input */
+            LY_CHECK_RET(ly_in_new_memory(value, &in));
+
+            /* try to parse as a data tree */
+            r = lyd_create_any_datatree(LYD_CTX(trg), in, value_type, 0, &node);
+            ly_in_free(in, 0);
+            if (!r) {
+                /* use the parsed data tree */
+                use_value = 1;
+                value = node;
+                value_type = LYD_ANYDATA_DATATREE;
+            }
+        }
+    }
+
+    /* copy src */
+    t->value_type = value_type;
+    switch (value_type) {
+    case LYD_ANYDATA_DATATREE:
+        if (use_value) {
+            t->child = (void *)value;
+        } else {
+            LY_CHECK_RET(lyd_dup_siblings(value, NULL, LYD_DUP_RECURSIVE, &t->child));
+        }
+        LY_LIST_FOR(t->child, node) {
+            node->parent = &t->node;
+        }
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value, 0, &t->value));
+        break;
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_create_opaq(const struct ly_ctx *ctx, const char *name, uint32_t name_len, const char *prefix, uint32_t pref_len,
         const char *module_key, uint32_t module_key_len, const char *value, uint32_t value_len, ly_bool *dynamic,
