@@ -1,9 +1,10 @@
 /**
  * @file parser_schema.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema parsers for libyang
  *
- * Copyright (c) 2015-2020 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -42,10 +43,13 @@ struct lys_module;
  *
  * When the [context](@ref howtoContext) is created, it already contains the following YANG modules, which
  * are implemented internally by libyang:
+ * - ietf-inet-types@2025-12-22
+ * - ietf-yang-types@2025-12-22
  * - ietf-yang-metadata@2016-08-05
- * - yang@2020-06-17
- * - ietf-inet-types@2013-07-15
- * - ietf-yang-types@2013-07-15
+ * - yang@2025-01-29
+ * - default@2025-06-18
+ * - ietf-yang-schema-mount@2019-01-14
+ * - ietf-yang-structure-ext@2020-06-17
  * - ietf-datastores@2018-02-14
  * - ietf-yang-library@2019-01-04
  *
