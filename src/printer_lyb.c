@@ -843,7 +843,7 @@ static LY_ERR
 lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
 {
     uint32_t count = 0;
-    const struct lys_module *df_mod = NULL;
+    const struct lys_module *wd_mod = NULL;
     struct lyd_meta *iter;
 
     /* with-defaults */
@@ -851,14 +851,12 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
         if (((node->flags & LYD_DEFAULT) && (lybctx->print_options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
                 ((lybctx->print_options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
-            if (ly_ctx_get_module_latest(LYD_CTX(node), "ietf-netconf-with-defaults")) {
-                df_mod = ly_ctx_get_module_latest(LYD_CTX(node), "default");
-            }
+            wd_mod = ly_ctx_get_module_latest(LYD_CTX(node), "ietf-netconf-with-defaults");
         }
     }
 
     /* count metadata */
-    if (df_mod) {
+    if (wd_mod) {
         ++count;
     }
     LY_LIST_FOR(node->meta, iter) {
@@ -876,12 +874,12 @@ lyb_print_metadata(const struct lyd_node *node, struct lyd_lyb_ctx *lybctx)
     /* write the number of metadata */
     LY_CHECK_RET(lyb_write_count(count, lybctx->print_ctx));
 
-    if (df_mod) {
+    if (wd_mod) {
         /* write the "default" metadata */
         if (lybctx->print_ctx->shrink) {
-            LY_CHECK_RET(lyb_print_module_idx(df_mod, lybctx->print_ctx));
+            LY_CHECK_RET(lyb_print_module_idx(wd_mod, lybctx->print_ctx));
         } else {
-            LY_CHECK_RET(lyb_print_module(df_mod, lybctx->print_ctx));
+            LY_CHECK_RET(lyb_print_module(wd_mod, lybctx->print_ctx));
         }
         LY_CHECK_RET(lyb_write_string("default", 0, lybctx->print_ctx));
         LY_CHECK_RET(lyb_write_string("true", 0, lybctx->print_ctx));

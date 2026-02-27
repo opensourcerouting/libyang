@@ -286,6 +286,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
         const struct lysc_ext_instance *ext)
 {
     struct lyd_meta *meta2, *prev_meta = NULL, *next_meta = NULL;
+    const struct lys_module *mod;
 
     if (lydctx->parse_opts & LYD_PARSE_NO_NEW) {
         node->flags &= ~LYD_NEW;
@@ -303,8 +304,9 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
     }
 
     LY_LIST_FOR(*meta, meta2) {
-        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "default") &&
-                meta2->value.boolean) {
+        mod = meta2->annotation->module;
+        if (!strcmp(meta2->name, "default") &&
+                (!strcmp(mod->name, "default") || !strcmp(mod->name, "ietf-netconf-with-defaults")) && meta2->value.boolean) {
             /* node is default according to the metadata */
             node->flags |= LYD_DEFAULT;
 

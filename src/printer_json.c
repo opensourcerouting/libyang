@@ -540,18 +540,17 @@ node_has_printable_meta(const struct lyd_node *node)
 static LY_ERR
 json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_bool inner)
 {
-    const struct lys_module *df_mod = NULL;
+    const struct lys_module *wd_mod = NULL;
 
     if (node->schema && (node->schema->nodetype != LYS_CONTAINER) && (((node->flags & LYD_DEFAULT) &&
             (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
             ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node)))) {
-        /* we have implicit OR explicit default node, print only if we have with-defaults module */
-        if (ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults")) {
-            df_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "default");
-        }
+        /* we have implicit OR explicit default node, print only if we have with-defaults module
+         * (module name according to https://datatracker.ietf.org/doc/html/rfc8040#page-60) */
+        wd_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
     }
 
-    if (node->schema && (df_mod || node_has_printable_meta(node))) {
+    if (node->schema && (wd_mod || node_has_printable_meta(node))) {
         if (inner) {
             LY_CHECK_RET(json_print_member2(pctx, node->parent, LY_VALUE_JSON, NULL, 1));
         } else {
@@ -559,7 +558,7 @@ json_print_attributes(struct jsonpr_ctx *pctx, const struct lyd_node *node, ly_b
         }
         ly_print_(pctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
-        LY_CHECK_RET(json_print_metadata(pctx, node, df_mod));
+        LY_CHECK_RET(json_print_metadata(pctx, node, wd_mod));
         LEVEL_DEC;
         ly_print_(pctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         LEVEL_PRINTED;
@@ -832,7 +831,7 @@ json_print_array_is_last_inst(struct jsonpr_ctx *pctx, const struct lyd_node *no
 static LY_ERR
 json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
 {
-    const struct lys_module *df_mod = NULL;
+    const struct lys_module *wd_mod = NULL;
 
     if (!is_open_array(pctx, node)) {
         LY_CHECK_RET(json_print_member(pctx, node, NULL, 0));
@@ -856,11 +855,9 @@ json_print_leaf_list(struct jsonpr_ctx *pctx, const struct lyd_node *node)
             if (((node->flags & LYD_DEFAULT) && (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
                     ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(node))) {
                 /* we have implicit OR explicit default node, print only if we have with-defaults module */
-                if (ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults")) {
-                    df_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "default");
-                }
+                wd_mod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
             }
-            if (df_mod || node_has_printable_meta(node)) {
+            if (wd_mod || node_has_printable_meta(node)) {
                 /* we will be printing metadata for these siblings */
                 pctx->first_leaflist = node;
             }
@@ -913,16 +910,14 @@ static LY_ERR
 json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
 {
     const struct lyd_node *prev, *node, *iter;
-    const struct lys_module *df_mod = NULL, *iter_dfmod;
+    const struct lys_module *wd_mod = NULL, *iter_wdmod;
     const struct lyd_node_opaq *opaq = NULL;
 
     assert(pctx->first_leaflist);
 
     if (pctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG)) {
         /* we have implicit OR explicit default node, print only if we have with-defaults module */
-        if (ly_ctx_get_module_implemented(pctx->ctx, "ietf-netconf-with-defaults")) {
-            df_mod = ly_ctx_get_module_implemented(pctx->ctx, "default");
-        }
+        wd_mod = ly_ctx_get_module_implemented(pctx->ctx, "ietf-netconf-with-defaults");
     }
 
     /* node is the first instance of the leaf-list */
@@ -942,16 +937,16 @@ json_print_meta_attr_leaflist(struct jsonpr_ctx *pctx)
     LY_LIST_FOR(node, iter) {
         PRINT_COMMA;
         if (iter->schema && ((iter->flags & LYD_DEFAULT) || ((pctx->options & LYD_PRINT_WD_ALL_TAG) && lyd_is_default(iter)))) {
-            iter_dfmod = df_mod;
+            iter_wdmod = wd_mod;
         } else {
-            iter_dfmod = NULL;
+            iter_wdmod = NULL;
         }
-        if ((iter->schema && (node_has_printable_meta(iter) || iter_dfmod)) || (opaq && opaq->attr)) {
+        if ((iter->schema && (node_has_printable_meta(iter) || iter_wdmod)) || (opaq && opaq->attr)) {
             ly_print_(pctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
 
             if (iter->schema) {
-                LY_CHECK_RET(json_print_metadata(pctx, iter, iter_dfmod));
+                LY_CHECK_RET(json_print_metadata(pctx, iter, iter_wdmod));
             } else {
                 LY_CHECK_RET(json_print_attribute(pctx, (struct lyd_node_opaq *)iter));
             }
