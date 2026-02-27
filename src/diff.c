@@ -406,7 +406,10 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         dup = diff_parent;
     } else {
-        diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS;
+        diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS;
+        if (lysc_is_userordered(node->schema)) {
+            diff_opts |= LYD_DUP_NO_LYDS;
+        }
         if ((op != LYD_DIFF_OP_REPLACE) || !lysc_is_userordered(node->schema) || (node->schema->flags & LYS_CONFIG_R)) {
             /* move applies only to the user-ordered list, no descendants */
             diff_opts |= LYD_DUP_RECURSIVE;
@@ -2865,6 +2868,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     struct lyd_node *child, *diff_node = NULL;
     enum lyd_diff_op src_op, cur_op;
     struct ly_ht *child_dup_inst = NULL;
+    uint32_t diff_opts;
 
     /* get source node operation */
     LY_CHECK_RET(lyd_diff_get_op(src_diff, &src_op, NULL));
@@ -2932,8 +2936,11 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     } else {
 add_diff:
         /* add new diff node with all descendants */
-        LY_CHECK_RET(lyd_dup_single(src_diff, diff_parent, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS | LYD_DUP_NO_LYDS,
-                &diff_node));
+        diff_opts = LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS;
+        if (lysc_is_userordered(src_diff->schema)) {
+            diff_opts |= LYD_DUP_NO_LYDS;
+        }
+        LY_CHECK_RET(lyd_dup_single(src_diff, diff_parent, diff_opts, &diff_node));
 
         /* insert node into diff if not already */
         if (!diff_parent) {
@@ -3455,7 +3462,7 @@ lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
     }
 
     /* duplicate diff */
-    LY_CHECK_GOTO(rc = lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE | LYD_DUP_NO_LYDS, diff), cleanup);
+    LY_CHECK_GOTO(rc = lyd_dup_siblings(src_diff, NULL, LYD_DUP_RECURSIVE, diff), cleanup);
 
     /* find 'yang' module */
     mod = ly_ctx_get_module_implemented(LYD_CTX(src_diff), "yang");
