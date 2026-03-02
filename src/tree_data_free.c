@@ -243,7 +243,7 @@ lyd_free_subtree(struct lyd_node *node)
         assert(!((struct lyd_node_any *)node)->children_ht);
 
         /* only frees the value this way */
-        lyd_any_copy_value(node, NULL, 0);
+        lyd_any_copy_value(node, NULL, 0, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         struct lyd_node_term *node_term = (struct lyd_node_term *)node;
 

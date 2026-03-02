@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief JSON printer for libyang data structure
  *
- * Copyright (c) 2015 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -617,12 +617,11 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
 
     assert(any->schema->nodetype & LYD_NODE_ANY);
 
-    if ((any->schema->nodetype == LYS_ANYDATA) && (any->value_type != LYD_ANYDATA_DATATREE)) {
+    if ((any->schema->nodetype == LYS_ANYDATA) && any->value) {
         LOGINT_RET(pctx->ctx);
     }
 
-    switch (any->value_type) {
-    case LYD_ANYDATA_DATATREE:
+    if (any->child) {
         /* print as an object */
         ly_print_(pctx->out, "{%s", DO_FORMAT ? "\n" : "");
         LEVEL_INC;
@@ -646,34 +645,22 @@ json_print_any_content(struct jsonpr_ctx *pctx, struct lyd_node_any *any)
         } else {
             ly_print_(pctx->out, "}");
         }
-        break;
-    case LYD_ANYDATA_JSON:
-        if (!any->value) {
-            /* no content */
-            if (any->schema->nodetype == LYS_ANYXML) {
-                ly_print_(pctx->out, "null");
-            } else {
-                ly_print_(pctx->out, "{}");
-            }
-        } else {
-            /* print without escaping special characters */
+    } else if (any->value) {
+        if (any->hints & (LYD_VALHINT_DECNUM | LYD_VALHINT_BOOLEAN | LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+            /* print directly as JSON data */
             ly_print_(pctx->out, "%s", any->value);
-        }
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-        if (!any->value) {
-            /* no content */
-            if (any->schema->nodetype == LYS_ANYXML) {
-                ly_print_(pctx->out, "null");
-            } else {
-                ly_print_(pctx->out, "{}");
-            }
         } else {
             /* print as a string */
             json_print_string(pctx->out, any->value);
         }
-        break;
+    } else {
+        /* no content */
+        if (any->hints & LYD_VALHINT_EMPTY) {
+            assert(any->schema->nodetype != LYS_ANYDATA);
+            ly_print_(pctx->out, "null");
+        } else {
+            ly_print_(pctx->out, "{}");
+        }
     }
 
     return LY_SUCCESS;

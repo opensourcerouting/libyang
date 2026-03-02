@@ -133,7 +133,7 @@ test_anydata(void **state)
     tree = tree->next;
     /* cont should be normally parsed */
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "any", 0, LYS_ANYDATA, 0, 0, NULL, 0);
-    CHECK_LYD_NODE_ANY((struct lyd_node_any *)tree, 0, 0, 0, LYD_ANYDATA_DATATREE);
+    CHECK_LYD_NODE_ANY((struct lyd_node_any *)tree, 0, 0, 0);
     struct lyd_node *tree_tmp = ((struct lyd_node_any *)tree)->child;
 
     CHECK_LYSC_NODE(tree_tmp->schema, NULL, 0, LYS_CONFIG_W | LYS_STATUS_CURR, 1, "cont", 1, LYS_CONTAINER, 0, 0, NULL, 0);

@@ -153,7 +153,7 @@ test_anydata(void **state)
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
     lyd_free_all(tree);
 
-    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), 0, &tree, NULL));
     free(str);
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);
@@ -208,7 +208,7 @@ test_anydata_strict_validation(void **state)
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
     lyd_free_all(tree);
 
-    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:any", str, strlen(str), 0, &tree, NULL));
     free(str);
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);
@@ -244,7 +244,7 @@ test_anyxml(void **state)
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, &str));
     lyd_free_all(tree);
 
-    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", str, strlen(str), LYD_ANYDATA_XML, 0, &tree, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_new_path2(NULL, UTEST_LYCTX, "/a:anyx", str, strlen(str), 0, &tree, NULL));
     free(str);
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);

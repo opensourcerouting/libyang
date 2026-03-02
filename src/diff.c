@@ -1890,7 +1890,7 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
             } else {
                 struct lyd_node_any *any = (struct lyd_node_any *)diff_node;
 
-                LY_CHECK_RET(lyd_any_copy_value(match, any->child ? any->child : (void *)any->value, any->value_type));
+                LY_CHECK_RET(lyd_any_copy_value(match, any->child, any->value, any->hints));
             }
 
             /* with flags */
@@ -2278,7 +2278,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
 
             /* modify the node value */
             any = (struct lyd_node_any *)src_diff;
-            LY_CHECK_RET(lyd_any_copy_value(diff_match, any->child ? any->child : (void *)any->value, any->value_type));
+            LY_CHECK_RET(lyd_any_copy_value(diff_match, any->child, any->value, any->hints));
             break;
         default:
             LOGINT_RET(LYD_CTX(src_diff));
@@ -3051,7 +3051,7 @@ lyd_diff_reverse_value(struct lyd_node *node, const struct lys_module *mod)
     if (node->schema->nodetype == LYS_LEAF) {
         LY_CHECK_GOTO(ret = lyd_change_term(node, val1), cleanup);
     } else {
-        LY_CHECK_GOTO(ret = lyd_any_copy_value(node, val1, LYD_ANYDATA_STRING), cleanup);
+        LY_CHECK_GOTO(ret = lyd_any_copy_value(node, NULL, val1, 0), cleanup);
     }
     node->flags = flags;
     LY_CHECK_GOTO(ret = lyd_change_meta(meta, val2), cleanup);

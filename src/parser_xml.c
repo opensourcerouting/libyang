@@ -934,7 +934,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
 
     if (xmlctx->ws_only) {
         /* create empty node first */
-        r = lyd_create_any(snode, NULL, LYD_ANYDATA_DATATREE, 1, 0, node);
+        r = lyd_create_any(snode, NULL, NULL, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         datatree_val = 1;
     } else {
@@ -943,7 +943,7 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
         LY_CHECK_ERR_GOTO(!val, LOGMEM(xmlctx->ctx); rc = LY_EMEM, cleanup);
 
         /* create node */
-        r = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, 1, node);
+        r = lyd_create_any(snode, NULL, val, 0, 1, 1, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
     }

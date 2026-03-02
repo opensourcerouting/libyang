@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Data tree new functions
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -177,45 +177,22 @@ cleanup:
 }
 
 /**
- * @brief Learn actual any value type in case it is currently ::LYD_ANYDATA_STRING.
- *
- * @param[in] value Any value.
- * @param[out] value_type Detected value type.
- */
-static void
-lyd_create_any_string_valtype(const void *value, LYD_ANYDATA_VALUETYPE *value_type)
-{
-    /* detect format */
-    if (!value) {
-        /* interpret it as an empty data tree */
-        *value_type = LYD_ANYDATA_DATATREE;
-    } else if (((char *)value)[0] == '<') {
-        *value_type = LYD_ANYDATA_XML;
-    } else if (((char *)value)[0] == '{') {
-        *value_type = LYD_ANYDATA_JSON;
-    } else {
-        /* really just some string */
-        *value_type = LYD_ANYDATA_STRING;
-    }
-}
-
-/**
- * @brief Convert an any value into a datatree.
+ * @brief Convert an any string value into a datatree.
  *
  * @param[in] ctx libyang context.
- * @param[in] value_in Any value as an input.
- * @param[in] value_type Any @p value type.
+ * @param[in] value Any string value.
  * @param[in] log Whether parsing errors should be logged.
  * @param[out] tree Parsed data tree.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_ANYDATA_VALUETYPE value_type, ly_bool log,
-        struct lyd_node **tree)
+lyd_create_any_datatree(const struct ly_ctx *ctx, const char *value, ly_bool log, struct lyd_node **tree)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyd_ctx *lydctx = NULL;
+    struct ly_in *in = NULL;
     uint32_t parse_opts, int_opts, *prev_lo = NULL, temp_lo = 0;
+    const char *ptr;
 
     *tree = NULL;
 
@@ -228,22 +205,24 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
         prev_lo = ly_temp_log_options(&temp_lo);
     }
 
-    switch (value_type) {
-    case LYD_ANYDATA_DATATREE:
-    case LYD_ANYDATA_STRING:
-        /* unreachable */
-        LOGINT_RET(ctx);
-    case LYD_ANYDATA_XML:
-        rc = lyd_parse_xml(ctx, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, &lydctx);
-        break;
-    case LYD_ANYDATA_JSON:
-        rc = lyd_parse_json(ctx, NULL, NULL, tree, value_in, parse_opts, 0, int_opts, NULL, &lydctx);
-        break;
+    /* create input */
+    LY_CHECK_GOTO(rc = ly_in_new_memory(value, &in), cleanup);
+
+    /* detect type */
+    for (ptr = value; isspace(ptr[0]); ++ptr) {}
+    if (ptr[0] == '<') {
+        rc = lyd_parse_xml(ctx, NULL, tree, in, parse_opts, 0, int_opts, NULL, &lydctx);
+    } else if (ptr[0] == '{') {
+        rc = lyd_parse_json(ctx, NULL, NULL, tree, in, parse_opts, 0, int_opts, NULL, &lydctx);
+    } else {
+        rc = LY_ENOT;
     }
+
+cleanup:
+    ly_in_free(in, 0);
     if (lydctx) {
         lydctx->free(lydctx);
     }
-
     if (!log) {
         /* restore logging */
         ly_temp_log_options(prev_lo);
@@ -256,16 +235,16 @@ lyd_create_any_datatree(const struct ly_ctx *ctx, struct ly_in *value_in, LYD_AN
 }
 
 LY_ERR
-lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type, ly_bool use_value,
-        ly_bool try_parse, struct lyd_node **node)
+lyd_create_any(const struct lysc_node *schema, const struct lyd_node *child, const char *value, uint32_t hints,
+        ly_bool use_value, ly_bool try_parse, struct lyd_node **node)
 {
     LY_ERR rc = LY_SUCCESS, r;
     struct lyd_node *tree;
     struct lyd_node_any *any = NULL;
-    struct ly_in *in = NULL;
 
     assert(schema->nodetype & LYD_NODE_ANY);
-    assert((schema->nodetype == LYS_ANYXML) || (value_type == LYD_ANYDATA_DATATREE) || try_parse);
+    assert((schema->nodetype == LYS_ANYXML) || !value || try_parse);
+    assert(!child || !value);
 
     any = calloc(1, sizeof *any);
     LY_CHECK_ERR_RET(!any, LOGMEM(schema->module->ctx), LY_EMEM);
@@ -276,18 +255,9 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 
     if (schema->nodetype == LYS_ANYDATA) {
         /* anydata */
-        if (value_type == LYD_ANYDATA_STRING) {
-            /* detect value type */
-            lyd_create_any_string_valtype(value, &value_type);
-        }
-
-        if (value_type != LYD_ANYDATA_DATATREE) {
-            /* create input */
-            assert(value);
-            LY_CHECK_GOTO(rc = ly_in_new_memory(value, &in), cleanup);
-
+        if (value) {
             /* parse as a data tree */
-            if ((r = lyd_create_any_datatree(schema->module->ctx, in, value_type, 1, &tree))) {
+            if ((r = lyd_create_any_datatree(schema->module->ctx, value, 1, &tree))) {
                 LOGERR(schema->module->ctx, rc, "Failed to parse any content into a data tree.");
                 rc = r;
                 goto cleanup;
@@ -296,67 +266,41 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
             /* use the parsed data tree */
             if (use_value) {
                 free((void *)value);
+                value = NULL;
             }
             use_value = 1;
-            value = tree;
-            value_type = LYD_ANYDATA_DATATREE;
+            child = tree;
         }
     } else {
         /* anyxml */
-        switch (value_type) {
-        case LYD_ANYDATA_DATATREE:
-            /* fine, just use the value */
-            break;
-        case LYD_ANYDATA_STRING:
-            /* detect value type */
-            lyd_create_any_string_valtype(value, &value_type);
-            if ((value_type == LYD_ANYDATA_DATATREE) || (value_type == LYD_ANYDATA_STRING)) {
-                break;
-            }
-        /* fallthrough */
-        case LYD_ANYDATA_XML:
-        case LYD_ANYDATA_JSON:
-            if (!value || !try_parse) {
-                /* nothing to parse or redundant */
-                break;
-            }
-
-            /* create input */
-            LY_CHECK_GOTO(rc = ly_in_new_memory(value, &in), cleanup);
-
+        if (value && try_parse) {
             /* try to parse as a data tree */
-            r = lyd_create_any_datatree(schema->module->ctx, in, value_type, 0, &tree);
+            r = lyd_create_any_datatree(schema->module->ctx, value, 0, &tree);
             if (!r) {
                 /* use the parsed data tree */
                 if (use_value) {
                     free((void *)value);
+                    value = NULL;
                 }
                 use_value = 1;
-                value = tree;
-                value_type = LYD_ANYDATA_DATATREE;
+                child = tree;
             }
-            break;
         }
     }
 
     if (use_value) {
-        switch (value_type) {
-        case LYD_ANYDATA_DATATREE:
-            any->child = (void *)value;
+        if (child) {
+            any->child = (void *)child;
             LY_LIST_FOR(any->child, tree) {
                 tree->parent = &any->node;
             }
-            break;
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_XML:
-        case LYD_ANYDATA_JSON:
+        } else if (value) {
             LY_CHECK_GOTO(rc = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value), cleanup);
-            break;
         }
-        any->value_type = value_type;
     } else {
-        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, value, value_type), cleanup);
+        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, child, value, 0), cleanup);
     }
+    any->hints = hints;
     lyd_hash(&any->node);
 
 cleanup:
@@ -365,82 +309,57 @@ cleanup:
     } else {
         *node = &any->node;
     }
-    ly_in_free(in, 0);
     return rc;
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type)
+lyd_any_copy_value(struct lyd_node *trg, const struct lyd_node *child, const char *value, uint32_t hints)
 {
     struct lyd_node_any *t;
     struct lyd_node *node;
-    struct ly_in *in;
     ly_bool use_value = 0;
-    LY_ERR r;
 
-    LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, trg, !child || !value, LY_EINVAL);
     LY_CHECK_ARG_RET(NULL, trg->schema, trg->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
 
     t = (struct lyd_node_any *)trg;
 
     /* free trg */
-    switch (t->value_type) {
-    case LYD_ANYDATA_DATATREE:
-        lyd_free_siblings(t->child);
-        t->child = NULL;
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
-        lydict_remove(LYD_CTX(trg), t->value);
-        t->value = NULL;
-        break;
-    }
+    lyd_free_siblings(t->child);
+    t->child = NULL;
+    lydict_remove(LYD_CTX(trg), t->value);
+    t->value = NULL;
 
-    if (!value) {
+    if (!child && !value) {
         /* only free value in this case */
         return LY_SUCCESS;
     }
 
-    if (value_type == LYD_ANYDATA_STRING) {
-        /* try to learn what the actual value is */
-        lyd_create_any_string_valtype(value, &value_type);
-
-        if ((value_type == LYD_ANYDATA_XML) || (value_type == LYD_ANYDATA_JSON)) {
-            /* create input */
-            LY_CHECK_RET(ly_in_new_memory(value, &in));
-
-            /* try to parse as a data tree */
-            r = lyd_create_any_datatree(LYD_CTX(trg), in, value_type, 0, &node);
-            ly_in_free(in, 0);
-            if (!r) {
-                /* use the parsed data tree */
-                use_value = 1;
-                value = node;
-                value_type = LYD_ANYDATA_DATATREE;
-            }
+    if (value) {
+        /* try to parse as a data tree */
+        if (!lyd_create_any_datatree(LYD_CTX(trg), value, 0, &node)) {
+            /* use the parsed data tree */
+            use_value = 1;
+            child = node;
         }
     }
 
     /* copy src */
-    t->value_type = value_type;
-    switch (value_type) {
-    case LYD_ANYDATA_DATATREE:
+    if (child) {
         if (use_value) {
-            t->child = (void *)value;
+            t->child = (struct lyd_node *)child;
         } else {
-            LY_CHECK_RET(lyd_dup_siblings(value, NULL, LYD_DUP_RECURSIVE, &t->child));
+            LY_CHECK_RET(lyd_dup_siblings(child, NULL, LYD_DUP_RECURSIVE, &t->child));
         }
         LY_LIST_FOR(t->child, node) {
             node->parent = &t->node;
         }
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
+    } else {
         LY_CHECK_RET(lydict_insert(LYD_CTX(trg), value, 0, &t->value));
-        break;
     }
+
+    /* hints */
+    t->hints = hints;
 
     return LY_SUCCESS;
 }
@@ -838,8 +757,8 @@ lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node)
+lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const struct lyd_node *child,
+        const char *value, uint32_t options, struct lyd_node **node)
 {
     LY_ERR r;
     struct lyd_node *ret = NULL;
@@ -849,8 +768,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     uint32_t getnext_opts = (options & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0;
     ly_bool use_value = (options & LYD_NEW_ANY_USE_VALUE) ? 1 : 0;
 
-    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name,
-            (value_type == LYD_ANYDATA_DATATREE) || (value_type == LYD_ANYDATA_STRING) || value, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, !child || !value, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, module ? module->ctx : NULL, LY_EINVAL);
 
     if (!module) {
@@ -864,7 +782,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     }
     LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    LY_CHECK_RET(lyd_create_any(schema, value, value_type, use_value, 1, &ret));
+    LY_CHECK_RET(lyd_create_any(schema, child, value, 0, use_value, 1, &ret));
     if (ext) {
         ret->flags |= LYD_EXT;
     }
@@ -1372,7 +1290,6 @@ static void
 lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
 {
     struct lyd_node_any *any1, *any2;
-    LYD_ANYDATA_VALUETYPE value_type;
     const char *value;
     struct lyd_node *child, *iter;
 
@@ -1384,7 +1301,6 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
     /* backup any1 */
     child = any1->child;
     value = any1->value;
-    value_type = any1->value_type;
 
     /* set any1 */
     any1->child = any2->child;
@@ -1392,7 +1308,6 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
         iter->parent = &any1->node;
     }
     any1->value = any2->value;
-    any1->value_type = any2->value_type;
 
     /* set any2 */
     any2->child = child;
@@ -1400,7 +1315,6 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
         iter->parent = &any2->node;
     }
     any2->value = value;
-    any2->value_type = value_type;
 }
 
 /**
@@ -1409,7 +1323,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
  * @param[in] node Node to update.
  * @param[in] value New value to set.
  * @param[in] value_size_bits Size of @p value in bits.
- * @param[in] value_type Type of @p value for anydata/anyxml node.
+ * @param[in] options New path options.
  * @param[in] format Format of @p value.
  * @param[in] any_use_value Whether to spend @p value when updating an anydata/anyxml node or not.
  * @param[out] new_parent Set to @p node if the value was updated, otherwise set to NULL.
@@ -1417,11 +1331,13 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type,
+lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_size_bits, uint32_t options,
         LY_VALUE_FORMAT format, ly_bool any_use_value, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *new_any;
+    const struct lyd_node *child;
+    const char *val_str;
 
     switch (node->schema->nodetype) {
     case LYS_CONTAINER:
@@ -1458,7 +1374,14 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
     case LYS_ANYDATA:
     case LYS_ANYXML:
         /* create a new any node */
-        LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, any_use_value, 1, &new_any));
+        if (options & LYD_NEW_PATH_ANY_DATATREE) {
+            child = value;
+            val_str = NULL;
+        } else {
+            child = NULL;
+            val_str = value;
+        }
+        LY_CHECK_RET(lyd_create_any(node->schema, child, val_str, 0, any_use_value, 1, &new_any));
 
         /* compare with the existing one */
         if (lyd_compare_single(node, new_any, 0)) {
@@ -1495,7 +1418,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
  * @param[in] value Value to use.
  * @param[in] value_size_bits Size in bits of @p value.
  * @param[in] format Format of @p value.
- * @param[in] option New path options.
+ * @param[in] options New path options.
  * @return LY_ERR value.
  */
 static LY_ERR
@@ -1569,8 +1492,8 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
 LY_ERR
 lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
-        struct lyd_node **new_parent, struct lyd_node **new_node)
+        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
     struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent, *iter, *tree = NULL;
@@ -1608,7 +1531,7 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                 }
 
                 /* update the existing node */
-                ret = lyd_new_path_update(node, value, value_size_bits, value_type, format, any_use_value, &nparent, &nnode);
+                ret = lyd_new_path_update(node, value, value_size_bits, options, format, any_use_value, &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
         } else if (r == LY_EINCOMPLETE) {
@@ -1753,9 +1676,10 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
         case LYS_ANYXML:
             if (path_idx < LY_ARRAY_COUNT(p) - 1) {
                 /* creating descendants of the node directly, use no value now */
-                LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, LYD_ANYDATA_DATATREE, 1, 0, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, NULL, 0, 1, 0, &node), cleanup);
             } else {
-                LY_CHECK_GOTO(ret = lyd_create_any(schema, value, value_type, any_use_value, 1, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_any(schema, (options & LYD_NEW_PATH_ANY_DATATREE) ? value : NULL,
+                        (options & LYD_NEW_PATH_ANY_DATATREE) ? NULL : value, 0, any_use_value, 1, &node), cleanup);
             }
             break;
         default:
@@ -1819,10 +1743,9 @@ cleanup:
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
  * @param[in] value Value of the new leaf/leaf-list (const char *) in ::LY_VALUE_JSON format. If creating an
- * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
+ * anyxml/anydata node, the expected type depends on @p options. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
  * creating anyxml/anydata nodes.
- * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
@@ -1830,8 +1753,7 @@ cleanup:
  */
 static LY_ERR
 lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
-        struct lyd_node **new_node)
+        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -1853,8 +1775,8 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* create nodes */
-    LY_CHECK_GOTO(ret = lyd_new_path_create(parent, ctx, p, path, value, value_size_bits, value_type, options,
-            new_parent, new_node), cleanup);
+    LY_CHECK_GOTO(ret = lyd_new_path_create(parent, ctx, p, path, value, value_size_bits, options, new_parent,
+            new_node), cleanup);
 
 cleanup:
     lyxp_expr_free(exp);
@@ -1869,14 +1791,12 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, !(options & LYD_NEW_VAL_BIN), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
-    return lyd_new_path_(parent, ctx, path, value, value ? strlen(value) * 8 : 0, LYD_ANYDATA_STRING, options,
-            node, NULL);
+    return lyd_new_path_(parent, ctx, path, value, value ? strlen(value) * 8 : 0, options, node, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
-        struct lyd_node **new_node)
+        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
@@ -1886,7 +1806,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         value_size_bits = strlen(value) * 8;
     }
 
-    return lyd_new_path_(parent, ctx, path, value, value_size_bits, value_type, options, new_parent, new_node);
+    return lyd_new_path_(parent, ctx, path, value, value_size_bits, options, new_parent, new_node);
 }
 
 LY_ERR

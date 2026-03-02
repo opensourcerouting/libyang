@@ -1183,8 +1183,9 @@ static LY_ERR
 lyb_print_node_any(struct lyd_node_any *anydata, struct lyd_lyb_ctx *lybctx)
 {
     LY_ERR rc = LY_SUCCESS;
+    uint32_t value_type;
 
-    if ((anydata->schema->nodetype == LYS_ANYDATA) && (anydata->value_type != LYD_ANYDATA_DATATREE)) {
+    if ((anydata->schema->nodetype == LYS_ANYDATA) && anydata->value) {
         LOGINT_RET(lybctx->print_ctx->ctx);
     }
 
@@ -1192,23 +1193,15 @@ lyb_print_node_any(struct lyd_node_any *anydata, struct lyd_lyb_ctx *lybctx)
     LY_CHECK_RET(lyb_print_node_header((struct lyd_node *)anydata, lybctx));
 
     /* write anydata value type */
-    LY_CHECK_GOTO(rc = lyb_write_count(anydata->value_type, lybctx->print_ctx), cleanup);
+    value_type = (anydata->value ? 1 : 0);
+    LY_CHECK_GOTO(rc = lyb_write_count(value_type, lybctx->print_ctx), cleanup);
 
-    switch (anydata->value_type) {
-    case LYD_ANYDATA_DATATREE:
-        /* print LYB siblings */
-        LY_CHECK_GOTO(rc = lyb_print_siblings(anydata->child, 0, lybctx), cleanup);
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
+    if (anydata->value) {
         /* string value */
         LY_CHECK_GOTO(rc = lyb_write_string(anydata->value, 0, lybctx->print_ctx), cleanup);
-        break;
-    default:
-        LOGINT(lybctx->print_ctx->ctx);
-        rc = LY_EINT;
-        goto cleanup;
+    } else {
+        /* print LYB siblings, even empty */
+        LY_CHECK_GOTO(rc = lyb_print_siblings(anydata->child, 0, lybctx), cleanup);
     }
 
 cleanup:

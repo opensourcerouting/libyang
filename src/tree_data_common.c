@@ -981,45 +981,29 @@ LIBYANG_API_DEF LY_ERR
 lyd_any_value_str(const struct lyd_node *any, char **value_str)
 {
     const struct lyd_node_any *a;
-    struct lyd_node *tree = NULL;
-    const char *str = NULL;
-    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, any, value_str, LY_EINVAL);
     LY_CHECK_ARG_RET(NULL, any->schema, any->schema->nodetype & LYS_ANYDATA, LY_EINVAL);
 
-    a = (struct lyd_node_any *)any;
     *value_str = NULL;
 
+    a = (struct lyd_node_any *)any;
+
     if (!a->child && !a->value) {
-        /* there is no value in the union */
+        /* there is no value */
         return LY_SUCCESS;
     }
 
-    switch (a->value_type) {
-    case LYD_ANYDATA_DATATREE:
-        tree = a->child;
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
-        /* simply use the string */
-        str = a->value;
-        break;
-    }
-
-    if (tree) {
+    if (a->child) {
         /* print into a string */
-        ret = lyd_print_mem(value_str, tree, LYD_XML, LYD_PRINT_SIBLINGS);
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_RET(lyd_print_mem(value_str, a->child, LYD_XML, LYD_PRINT_SIBLINGS));
     } else {
-        assert(str);
-        *value_str = strdup(str);
-        LY_CHECK_ERR_GOTO(!*value_str, LOGMEM(LYD_CTX(any)), cleanup);
+        /* simply use the string */
+        *value_str = strdup(a->value);
+        LY_CHECK_ERR_RET(!*value_str, LOGMEM(LYD_CTX(any)), LY_EMEM);
     }
 
-cleanup:
-    return ret;
+    return LY_SUCCESS;
 }
 
 LIBYANG_API_DEF const struct lysc_node *

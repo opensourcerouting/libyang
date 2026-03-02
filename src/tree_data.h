@@ -517,21 +517,6 @@ typedef enum {
     LYD_LYB              /**< LYB instance data format */
 } LYD_FORMAT;
 
-/**
- * @brief List of possible value types stored in ::lyd_node_any.
- */
-typedef enum {
-    LYD_ANYDATA_DATATREE,   /**< Value is a pointer to ::lyd_node structure (first sibling). When provided as input
-                                 parameter, the pointer is directly connected into the anydata node without duplication,
-                                 caller is supposed to not manipulate with the data after a successful call (including
-                                 calling ::lyd_free_all() on the provided data) */
-    LYD_ANYDATA_STRING,     /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in
-                                 JSON encoded as string). XML sensitive characters (such as & or \>) are automatically
-                                 escaped when the anydata is printed in XML format. */
-    LYD_ANYDATA_XML,        /**< Value is a string containing the serialized XML data. */
-    LYD_ANYDATA_JSON        /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
-} LYD_ANYDATA_VALUETYPE;
-
 /** @} */
 
 /**
@@ -901,10 +886,10 @@ struct lyd_node_any {
         };
     };                                      /**< common part corresponding to ::lyd_node */
 
-    struct lyd_node *child;             /**< pointer to the first child node, if any (based on value_type) */
+    struct lyd_node *child;             /**< pointer to the first child node, if any */
     struct ly_ht *children_ht;          /**< unused, always NULL */
-    const char *value;                  /**< pointer to the stored value representation of the anydata/anyxml node */
-    LYD_ANYDATA_VALUETYPE value_type;   /**< type of the data stored in ::value or ::child */
+    const char *value;                  /**< pointer to the string value, if any */
+    uint32_t hints;                     /**< additional value format information, see the [hints list](@ref lydhints) */
 };
 
 /**
@@ -1000,8 +985,8 @@ struct lyd_node_opaq {
 
     struct ly_opaq_name name;       /**< node name with module information */
     const char *value;              /**< original value */
-    uint32_t hints;                 /**< additional information about from the data source, see the [hints list](@ref lydhints) */
-    LY_VALUE_FORMAT format;        /**< format of the node and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
+    uint32_t hints;                 /**< additional value format information, see the [hints list](@ref lydhints) */
+    LY_VALUE_FORMAT format;         /**< format of the node and any prefixes, ::LY_VALUE_XML or ::LY_VALUE_JSON */
     void *val_prefix_data;          /**< format-specific prefix data */
 
     struct lyd_attr *attr;          /**< pointer to the list of generic attributes of this node */
@@ -1205,12 +1190,16 @@ LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, char **val
 /**
  * @brief Copy anydata value from one node to another. Target value is freed first.
  *
+ * Only one of @p child and @p value can be set. If neither is set, @p trg value is only freed.
+ *
  * @param[in,out] trg Target node.
- * @param[in] value Source value. If not set, @p trg value is only freed.
- * @param[in] value_type Source value type.
+ * @param[in] child Data tree source value.
+ * @param[in] value String source value.
+ * @param[in] hints String value hints, see [value hints](@ref lydvalhints).
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const void *value, LYD_ANYDATA_VALUETYPE value_type);
+LIBYANG_API_DECL LY_ERR lyd_any_copy_value(struct lyd_node *trg, const struct lyd_node *child, const char *value,
+        uint32_t hints);
 
 /**
  * @brief Get schema node of a data node. Useful especially for opaque nodes.
@@ -1284,7 +1273,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_
                                           invalid value (leaf/leaf-list), it is created as opaque. Otherwise a regular node
                                           is created. */
 #define LYD_NEW_PATH_WITH_OPAQ 0x80  /**< Consider opaque nodes normally when searching for existing nodes. */
-#define LYD_NEW_ANY_USE_VALUE 0x100  /**< Whether to use dynamic @p value or make a copy. */
+#define LYD_NEW_PATH_ANY_DATATREE 0x100 /**< The @p value is actually a data tree, not a string. */
+#define LYD_NEW_ANY_USE_VALUE 0x200  /**< Whether to use dynamic @p value or make a copy. */
 
 /** @} newvaloptions */
 
@@ -1373,14 +1363,14 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct l
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
- * @param[in] value Value for the node. Expected type is determined by @p value_type.
- * @param[in] value_type Type of the provided value in @p value.
+ * @param[in] child Data tree value of the node, not set if @p value is set.
+ * @param[in] value String value for the node, not set if @p child is set.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
+        const struct lyd_node *child, const char *value, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new metadata.
@@ -1516,11 +1506,10 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * before @p parent. Use ::lyd_first_sibling() to adjust @p parent in these cases.
  * @param[in] ctx libyang context, must be set if @p parent is NULL.
  * @param[in] path [Path](@ref howtoXPath) to create.
- * @param[in] value Value of the new leaf/leaf-list. If creating an anyxml/anydata node, the expected type depends on
- * @p value_type. For other node types, it should be NULL.
+ * @param[in] value Value of the new leaf/leaf-list. If creating an anyxml/anydata node, a string value is expected
+ * but can be a data tree based on @p options. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits. Does not have to be set if a 0-terminated string and XML or
  * JSON value format. Ignored when creating anyxml/anydata nodes.
- * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional target node of @p path (the last created node, the list instance in case of a list).
@@ -1531,8 +1520,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent,
-        struct lyd_node **new_node);
+        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
 
 /**
  * @ingroup datatree

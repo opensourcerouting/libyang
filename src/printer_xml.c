@@ -440,59 +440,39 @@ xml_print_anydata(struct xmlpr_ctx *pctx, const struct lyd_node_any *node)
     uint32_t prev_opts;
     LY_ERR ret;
 
-    if ((node->schema->nodetype == LYS_ANYDATA) && (node->value_type != LYD_ANYDATA_DATATREE)) {
+    if ((node->schema->nodetype == LYS_ANYDATA) && node->value) {
         LOGINT_RET(pctx->ctx);
     }
 
     xml_print_node_open(pctx, &node->node);
 
-    if (!any->child && !any->value) {
-        /* no content */
-no_content:
-        ly_print_(pctx->out, "/>%s", DO_FORMAT ? "\n" : "");
-        return LY_SUCCESS;
-    } else {
-        switch (any->value_type) {
-        case LYD_ANYDATA_DATATREE:
-            /* close opening tag and print data */
-            prev_opts = pctx->options;
-            pctx->options &= ~LYD_PRINT_SIBLINGS;
-            LEVEL_INC;
+    if (any->child) {
+        /* close opening tag and print data */
+        prev_opts = pctx->options;
+        pctx->options &= ~LYD_PRINT_SIBLINGS;
+        LEVEL_INC;
 
-            ly_print_(pctx->out, ">%s", DO_FORMAT ? "\n" : "");
-            LY_LIST_FOR(any->child, iter) {
-                ret = xml_print_node(pctx, iter);
-                LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
-            }
-
-            LEVEL_DEC;
-            pctx->options = prev_opts;
-            break;
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_JSON:
-            /* escape XML-sensitive characters */
-            if (!any->value[0]) {
-                goto no_content;
-            }
-            /* close opening tag and print data */
-            ly_print_(pctx->out, ">");
-            lyxml_dump_text(pctx->out, any->value, 0);
-            break;
-        case LYD_ANYDATA_XML:
-            /* print without escaping special characters */
-            if (!any->value[0]) {
-                goto no_content;
-            }
-            ly_print_(pctx->out, ">%s", any->value);
-            break;
+        ly_print_(pctx->out, ">%s", DO_FORMAT ? "\n" : "");
+        LY_LIST_FOR(any->child, iter) {
+            ret = xml_print_node(pctx, iter);
+            LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
         }
+
+        LEVEL_DEC;
+        pctx->options = prev_opts;
 
         /* closing tag */
-        if (any->value_type == LYD_ANYDATA_DATATREE) {
-            ly_print_(pctx->out, "%*s</%s>%s", INDENT, node->schema->name, DO_FORMAT ? "\n" : "");
-        } else {
-            ly_print_(pctx->out, "</%s>%s", node->schema->name, DO_FORMAT ? "\n" : "");
-        }
+        ly_print_(pctx->out, "%*s</%s>%s", INDENT, node->schema->name, DO_FORMAT ? "\n" : "");
+    } else if (any->value && any->value[0]) {
+        /* close opening tag and print data, escape XML-sensitive characters */
+        ly_print_(pctx->out, ">");
+        lyxml_dump_text(pctx->out, any->value, 0);
+
+        /* closing tag */
+        ly_print_(pctx->out, "</%s>%s", node->schema->name, DO_FORMAT ? "\n" : "");
+    } else {
+        /* no content, close */
+        ly_print_(pctx->out, "/>%s", DO_FORMAT ? "\n" : "");
     }
 
     return LY_SUCCESS;

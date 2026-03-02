@@ -290,7 +290,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 
     if (LY_ARRAY_COUNT(p)) {
         /* create nodes */
-        LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, 0, new_val_options, &new_top_parent,
+        LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, new_val_options, &new_top_parent,
                 &new_last_parent), cleanup);
     }
 
@@ -1784,20 +1784,19 @@ lyd_compare_single_data(const struct lyd_node *node1, const struct lyd_node *nod
             any1 = (struct lyd_node_any *)node1;
             any2 = (struct lyd_node_any *)node2;
 
-            if (any1->value_type != any2->value_type) {
+            if (!any1->child && !any1->value && !any2->child && !any2->value) {
+                /* empty */
+                return LY_SUCCESS;
+            }
+            if ((any1->child && !any2->child) || (any1->value && !any2->value)) {
+                /* different value type */
                 return LY_ENOT;
             }
-            switch (any1->value_type) {
-            case LYD_ANYDATA_DATATREE:
+            if (any1->child) {
                 return lyd_compare_siblings_(any1->child, any2->child, options, 1);
-            case LYD_ANYDATA_STRING:
-            case LYD_ANYDATA_XML:
-            case LYD_ANYDATA_JSON:
-                if ((!any1->value && any2->value) || (any1->value && !any2->value)) {
-                    return LY_ENOT;
-                } else if (!any1->value && !any2->value) {
-                    return LY_SUCCESS;
-                }
+            } else {
+                assert(any1->value && any2->value);
+
                 len1 = strlen(any1->value);
                 len2 = strlen(any2->value);
                 if ((len1 != len2) || strcmp(any1->value, any2->value)) {
@@ -2315,7 +2314,8 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
     } else if (dup->schema->nodetype & LYD_NODE_ANY) {
         dup->hash = node->hash;
         any = (struct lyd_node_any *)node;
-        LY_CHECK_GOTO(rc = lyd_any_copy_value(dup, any->child ? any->child : (void *)any->value, any->value_type), cleanup);
+        LY_CHECK_GOTO(rc = lyd_any_copy_value(dup, any->child, any->value, any->hints), cleanup);
+        ((struct lyd_node_any *)dup)->hints = any->hints;
     }
 
     /* insert */
@@ -2700,8 +2700,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg,
         } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare_single(sibling_src, match_trg, 0)) {
             /* update value */
             any = (const struct lyd_node_any *)sibling_src;
-
-            LY_CHECK_RET(lyd_any_copy_value(match_trg, any->child ? any->child : (void *)any->value, any->value_type));
+            LY_CHECK_RET(lyd_any_copy_value(match_trg, any->child, any->value, any->hints));
 
             /* copy flags and add LYD_NEW */
             match_trg->flags = sibling_src->flags | ((options & LYD_MERGE_WITH_FLAGS) ? 0 : LYD_NEW);

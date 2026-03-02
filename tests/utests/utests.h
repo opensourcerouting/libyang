@@ -849,16 +849,14 @@ struct utest_context {
  * @param[in] FLAGS      expected [data node flags](@ref dnodeflags)
  * @param[in] META       0 meta isnt present , 1 meta is present
  * @param[in] PARENT     0 it is root node , 1 node have parent
- * @param[in] VALUE_TYPE value type ::lyd_node_any.value
  */
-#define CHECK_LYD_NODE_ANY(NODE, FLAGS, META, PARENT, VALUE_TYPE) \
+#define CHECK_LYD_NODE_ANY(NODE, FLAGS, META, PARENT) \
     assert_non_null(NODE); \
     assert_int_equal((NODE)->flags, FLAGS); \
     CHECK_POINTER((NODE)->meta, META); \
     CHECK_POINTER((NODE)->meta, PARENT); \
     assert_non_null((NODE)->prev); \
-    assert_non_null((NODE)->schema); \
-    assert_int_equal((NODE)->value_type, VALUE_TYPE);
+    assert_non_null((NODE)->schema);
 
 /**
  * @brief assert that lyd_node_opaq structure members are correct

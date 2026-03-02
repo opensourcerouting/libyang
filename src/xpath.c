@@ -565,19 +565,14 @@ cast_string_recursive(const struct lyd_node *node, struct lyxp_set *set, uint32_
             } else {
                 struct ly_out *out;
 
-                switch (any->value_type) {
-                case LYD_ANYDATA_STRING:
-                case LYD_ANYDATA_XML:
-                case LYD_ANYDATA_JSON:
-                    buf = strdup(any->value ? any->value : "");
+                if (any->value) {
+                    buf = strdup(any->value);
                     LY_CHECK_ERR_RET(!buf, LOGMEM(set->ctx), LY_EMEM);
-                    break;
-                case LYD_ANYDATA_DATATREE:
+                } else {
                     LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
                     rc = lyd_print_all(out, any->child, LYD_XML, 0);
                     ly_out_free(out, NULL, 0);
                     LY_CHECK_RET(rc);
-                    break;
                 }
             }
 

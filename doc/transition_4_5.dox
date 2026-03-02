@@ -4,8 +4,9 @@
  * There are few non-backwards-compatible changes that should not affect the majority of users. These include an
  * **updated canonical value** of *date-and-time* value in an unknown timezone. Also, there were minor changes in a few
  * public structures. These include changing the type of the `parent` member of ::lyd_node or
- * removing the `lyd_anydata_value` union. Both these changes made the data node structures more unified and
- * user-friendly.
+ * removing the `lyd_anydata_value` union and `value_type` member of `struct lyd_node_any`. Both these changes made the
+ * data node structures more unified and user-friendly. Anyxml and anydata nodes now have either a data tree or string
+ * value, with string values having hints that aid in correctly printing and preserving the values.
  *
  * To mention all the significant changes, the binary **LYB format was improved** and now fully supports 2 variants.
  * The default one is optimized for performance and has fairly lenient restrictions on the context parsing these data.

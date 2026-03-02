@@ -275,18 +275,17 @@ LY_ERR lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t
 /**
  * @brief Create an anyxml/anydata node.
  *
- * Hash is calculated and flags are properly set based on @p is_valid.
- *
  * @param[in] schema Schema node of the new data node.
- * @param[in] value Value of the any node.
- * @param[in] value_type Value type of the value.
- * @param[in] use_value Whether to use dynamic @p value or duplicate it.
- * @param[in] try_parse Set if parsing the value into a data tree should be attempted.
+ * @param[in] child Data tree value.
+ * @param[in] value String value.
+ * @param[in] hints Value hints.
+ * @param[in] use_value Whether to use @p child / @p value or duplicate it.
+ * @param[in] try_parse Set if parsing the string value into a data tree should be attempted.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type,
+LY_ERR lyd_create_any(const struct lysc_node *schema, const struct lyd_node *child, const char *value, uint32_t hints,
         ly_bool use_value, ly_bool try_parse, struct lyd_node **node);
 
 /**
@@ -354,15 +353,14 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
  * creating anyxml/anydata nodes.
- * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of new value creation options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, LYD_ANYDATA_VALUETYPE value_type, uint32_t options,
-        struct lyd_node **new_parent, struct lyd_node **new_node);
+        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node);
 
 /**
  * @brief Check the existence and create any non-existing implicit children.

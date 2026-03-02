@@ -1247,7 +1247,7 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, co
     switch (*status) {
     case LYJSON_OBJECT:
         /* create empty node */
-        r = lyd_create_any(snode, NULL, LYD_ANYDATA_DATATREE, 1, 0, node);
+        r = lyd_create_any(snode, NULL, NULL, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         break;
     case LYJSON_ARRAY:
@@ -1267,20 +1267,21 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, co
             rc = LY_EMEM;
             goto cleanup;
         }
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, 0, node);
+        r = lyd_create_any(snode, NULL, val, LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
         break;
     case LYJSON_STRING:
         /* string value */
         if (lydctx->jsonctx->dynamic) {
-            LY_CHECK_GOTO(rc = lyd_create_any(snode, lydctx->jsonctx->value, LYD_ANYDATA_STRING, 1, 0, node), cleanup);
+            LY_CHECK_GOTO(rc = lyd_create_any(snode, NULL, lydctx->jsonctx->value,
+                    LYD_VALHINT_STRING | LYD_VALHINT_NUM64, 1, 0, node), cleanup);
             lydctx->jsonctx->dynamic = 0;
         } else {
             val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
             LY_CHECK_ERR_GOTO(!val, LOGMEM(lydctx->jsonctx->ctx); rc = LY_EMEM, cleanup);
 
-            r = lyd_create_any(snode, val, LYD_ANYDATA_STRING, 1, 0, node);
+            r = lyd_create_any(snode, NULL, val, LYD_VALHINT_STRING | LYD_VALHINT_NUM64, 1, 0, node);
             LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
             val = NULL;
         }
@@ -1293,13 +1294,13 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, co
         val = strndup(lydctx->jsonctx->value, lydctx->jsonctx->value_len);
         LY_CHECK_ERR_GOTO(!val, LOGMEM(lydctx->jsonctx->ctx); rc = LY_EMEM, cleanup);
 
-        r = lyd_create_any(snode, val, LYD_ANYDATA_JSON, 1, 0, node);
+        r = lyd_create_any(snode, NULL, val, (*status == LYJSON_NUMBER) ? LYD_VALHINT_DECNUM : LYD_VALHINT_BOOLEAN, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
         break;
     case LYJSON_NULL:
         /* no value */
-        r = lyd_create_any(snode, NULL, LYD_ANYDATA_JSON, 1, 0, node);
+        r = lyd_create_any(snode, NULL, NULL, LYD_VALHINT_EMPTY, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         break;
     default:

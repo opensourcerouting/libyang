@@ -1282,9 +1282,8 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     LY_ERR rc = LY_SUCCESS;
     struct lyd_node *node = NULL, *tree = NULL;
     struct lyd_meta *meta = NULL;
-    LYD_ANYDATA_VALUETYPE value_type = 0;
     char *value = NULL;
-    uint32_t flags = 0, prev_parse_opts, prev_int_opts;
+    uint32_t flags = 0, value_type = 0, prev_parse_opts, prev_int_opts;
     const struct ly_ctx *ctx = lybctx->parse_ctx->ctx;
 
     /* read necessary basic data */
@@ -1295,8 +1294,7 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
     lyb_read_count((uint32_t *)&value_type, lybctx->parse_ctx);
 
     /* create the node */
-    switch (value_type) {
-    case LYD_ANYDATA_DATATREE:
+    if (value_type == 0) {
         /* backup original options and use specific ones */
         prev_parse_opts = lybctx->parse_opts;
         prev_int_opts = lybctx->int_opts;
@@ -1310,23 +1308,19 @@ lyb_parse_node_any(struct lyd_lyb_ctx *lybctx, struct lyd_node *parent, const st
         LY_CHECK_GOTO(rc, cleanup);
 
         /* use the data tree value */
-        rc = lyd_create_any(snode, tree, value_type, 1, 0, &node);
+        rc = lyd_create_any(snode, tree, NULL, 0, 1, 0, &node);
         LY_CHECK_GOTO(rc, cleanup);
         tree = NULL;
-        break;
-    case LYD_ANYDATA_STRING:
-    case LYD_ANYDATA_XML:
-    case LYD_ANYDATA_JSON:
+    } else if (value_type == 1) {
         /* string value */
         rc = lyb_read_string(&value, lybctx->parse_ctx);
         LY_CHECK_GOTO(rc, cleanup);
 
         /* use the string value */
-        rc = lyd_create_any(snode, value, value_type, 1, 0, &node);
+        rc = lyd_create_any(snode, NULL, value, 0, 1, 0, &node);
         LY_CHECK_GOTO(rc, cleanup);
         value = NULL;
-        break;
-    default:
+    } else {
         LOGINT(ctx);
         rc = LY_EINT;
         goto cleanup;
