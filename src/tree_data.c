@@ -290,7 +290,7 @@ lyd_parse_value_fragment(const struct ly_ctx *ctx, const char *path, struct ly_i
 
     if (LY_ARRAY_COUNT(p)) {
         /* create nodes */
-        LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, new_val_options, &new_top_parent,
+        LY_CHECK_GOTO(ret = lyd_new_path_create(NULL, ctx, p, path, NULL, 0, 0, new_val_options, &new_top_parent,
                 &new_last_parent), cleanup);
     }
 

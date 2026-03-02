@@ -889,7 +889,8 @@ struct lyd_node_any {
     struct lyd_node *child;             /**< pointer to the first child node, if any */
     struct ly_ht *children_ht;          /**< unused, always NULL */
     const char *value;                  /**< pointer to the string value, if any */
-    uint32_t hints;                     /**< additional value format information, see the [hints list](@ref lydhints) */
+    uint32_t hints;                     /**< additional value format information, see the [val hints](@ref lydvalhints)
+                                             and [node hints](@ref lydnodehints) */
 };
 
 /**
@@ -1182,10 +1183,11 @@ lyd_get_value(const struct lyd_node *node)
  * @brief Get anydata string value.
  *
  * @param[in] any Anyxml/anydata node to read from.
+ * @param[in] format Format to use in case the value is a data tree.
  * @param[out] value_str String representation of the value.
  * @return LY_ERR value.
  */
-LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, char **value_str);
+LIBYANG_API_DECL LY_ERR lyd_any_value_str(const struct lyd_node *any, LYD_FORMAT format, char **value_str);
 
 /**
  * @brief Copy anydata value from one node to another. Target value is freed first.
@@ -1365,12 +1367,13 @@ LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct l
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] child Data tree value of the node, not set if @p value is set.
  * @param[in] value String value for the node, not set if @p child is set.
+ * @param[in] hints String @p value hints (@ref lydvalhints or @ref lydnodehints), if any.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] node Optional created node.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const struct lyd_node *child, const char *value, uint32_t options, struct lyd_node **node);
+        const struct lyd_node *child, const char *value, uint32_t hints, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new metadata.
@@ -1510,6 +1513,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * but can be a data tree based on @p options. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits. Does not have to be set if a 0-terminated string and XML or
  * JSON value format. Ignored when creating anyxml/anydata nodes.
+ * @param[in] any_hints Hints for @p value when creating an anyxml/anydata node.
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional target node of @p path (the last created node, the list instance in case of a list).
@@ -1519,8 +1523,9 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @return LY_EVALID on invalid @p value.
  * @return LY_ERR on other errors.
  */
-LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
+LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path,
+        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node);
 
 /**
  * @ingroup datatree

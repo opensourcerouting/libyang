@@ -353,13 +353,14 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  * anyxml/anydata node, the expected type depends on @p value_type. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
  * creating anyxml/anydata nodes.
+ * @param[in] any_hints Hints for @p value when creating an anyxml/anydata node.
  * @param[in] options Bitmask of new value creation options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent,
+        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
 
 /**

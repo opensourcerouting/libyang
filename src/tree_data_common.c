@@ -978,7 +978,7 @@ lyd_value_get_canonical(const struct ly_ctx *ctx, const struct lyd_value *value)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyd_any_value_str(const struct lyd_node *any, char **value_str)
+lyd_any_value_str(const struct lyd_node *any, LYD_FORMAT format, char **value_str)
 {
     const struct lyd_node_any *a;
 
@@ -996,7 +996,7 @@ lyd_any_value_str(const struct lyd_node *any, char **value_str)
 
     if (a->child) {
         /* print into a string */
-        LY_CHECK_RET(lyd_print_mem(value_str, a->child, LYD_XML, LYD_PRINT_SIBLINGS));
+        LY_CHECK_RET(lyd_print_mem(value_str, a->child, format, LYD_PRINT_SIBLINGS));
     } else {
         /* simply use the string */
         *value_str = strdup(a->value);

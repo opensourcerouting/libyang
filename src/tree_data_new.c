@@ -758,7 +758,7 @@ lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const
 
 LIBYANG_API_DEF LY_ERR
 lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const struct lyd_node *child,
-        const char *value, uint32_t options, struct lyd_node **node)
+        const char *value, uint32_t hints, uint32_t options, struct lyd_node **node)
 {
     LY_ERR r;
     struct lyd_node *ret = NULL;
@@ -782,7 +782,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     }
     LY_CHECK_ERR_RET(r, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), LY_ENOTFOUND);
 
-    LY_CHECK_RET(lyd_create_any(schema, child, value, 0, use_value, 1, &ret));
+    LY_CHECK_RET(lyd_create_any(schema, child, value, hints, use_value, 1, &ret));
     if (ext) {
         ret->flags |= LYD_EXT;
     }
@@ -1292,6 +1292,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
     struct lyd_node_any *any1, *any2;
     const char *value;
     struct lyd_node *child, *iter;
+    uint32_t hints;
 
     assert((node1->schema->nodetype & LYD_NODE_ANY) && (node2->schema->nodetype & LYD_NODE_ANY));
 
@@ -1301,6 +1302,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
     /* backup any1 */
     child = any1->child;
     value = any1->value;
+    hints = any1->hints;
 
     /* set any1 */
     any1->child = any2->child;
@@ -1308,6 +1310,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
         iter->parent = &any1->node;
     }
     any1->value = any2->value;
+    any1->hints = any2->hints;
 
     /* set any2 */
     any2->child = child;
@@ -1315,6 +1318,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
         iter->parent = &any2->node;
     }
     any2->value = value;
+    any2->hints = hints;
 }
 
 /**
@@ -1323,6 +1327,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
  * @param[in] node Node to update.
  * @param[in] value New value to set.
  * @param[in] value_size_bits Size of @p value in bits.
+ * @param[in] any_hints Hints for @p value when updating an anyxml/anydata node.
  * @param[in] options New path options.
  * @param[in] format Format of @p value.
  * @param[in] any_use_value Whether to spend @p value when updating an anydata/anyxml node or not.
@@ -1331,7 +1336,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_size_bits, uint32_t options,
+lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options,
         LY_VALUE_FORMAT format, ly_bool any_use_value, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1381,7 +1386,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
             child = NULL;
             val_str = value;
         }
-        LY_CHECK_RET(lyd_create_any(node->schema, child, val_str, 0, any_use_value, 1, &new_any));
+        LY_CHECK_RET(lyd_create_any(node->schema, child, val_str, any_hints, any_use_value, 1, &new_any));
 
         /* compare with the existing one */
         if (lyd_compare_single(node, new_any, 0)) {
@@ -1492,7 +1497,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
 LY_ERR
 lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent,
+        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
@@ -1531,7 +1536,8 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
                 }
 
                 /* update the existing node */
-                ret = lyd_new_path_update(node, value, value_size_bits, options, format, any_use_value, &nparent, &nnode);
+                ret = lyd_new_path_update(node, value, value_size_bits, any_hints, options, format, any_use_value,
+                        &nparent, &nnode);
                 goto cleanup;
             } /* else we were not searching for the whole path */
         } else if (r == LY_EINCOMPLETE) {
@@ -1676,10 +1682,10 @@ lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly
         case LYS_ANYXML:
             if (path_idx < LY_ARRAY_COUNT(p) - 1) {
                 /* creating descendants of the node directly, use no value now */
-                LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, NULL, 0, 1, 0, &node), cleanup);
+                LY_CHECK_GOTO(ret = lyd_create_any(schema, NULL, NULL, any_hints, 1, 0, &node), cleanup);
             } else {
                 LY_CHECK_GOTO(ret = lyd_create_any(schema, (options & LYD_NEW_PATH_ANY_DATATREE) ? value : NULL,
-                        (options & LYD_NEW_PATH_ANY_DATATREE) ? NULL : value, 0, any_use_value, 1, &node), cleanup);
+                        (options & LYD_NEW_PATH_ANY_DATATREE) ? NULL : value, any_hints, any_use_value, 1, &node), cleanup);
             }
             break;
         default:
@@ -1746,6 +1752,7 @@ cleanup:
  * anyxml/anydata node, the expected type depends on @p options. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits, must be set correctly. Ignored when
  * creating anyxml/anydata nodes.
+ * @param[in] any_hints Hints for @p value when creating an anyxml/anydata node.
  * @param[in] options Bitmask of options, see @ref pathoptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional last node created.
@@ -1753,7 +1760,8 @@ cleanup:
  */
 static LY_ERR
 lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
+        uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_expr *exp = NULL;
@@ -1775,7 +1783,7 @@ lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY, 0, LY_VALUE_JSON, NULL, &p), cleanup);
 
     /* create nodes */
-    LY_CHECK_GOTO(ret = lyd_new_path_create(parent, ctx, p, path, value, value_size_bits, options, new_parent,
+    LY_CHECK_GOTO(ret = lyd_new_path_create(parent, ctx, p, path, value, value_size_bits, any_hints, options, new_parent,
             new_node), cleanup);
 
 cleanup:
@@ -1791,12 +1799,13 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, !(options & LYD_NEW_VAL_BIN), LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
-    return lyd_new_path_(parent, ctx, path, value, value ? strlen(value) * 8 : 0, options, node, NULL);
+    return lyd_new_path_(parent, ctx, path, value, value ? strlen(value) * 8 : 0, 0, options, node, NULL);
 }
 
 LIBYANG_API_DEF LY_ERR
 lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node)
+        uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        struct lyd_node **new_node)
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
             !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
@@ -1806,7 +1815,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         value_size_bits = strlen(value) * 8;
     }
 
-    return lyd_new_path_(parent, ctx, path, value, value_size_bits, options, new_parent, new_node);
+    return lyd_new_path_(parent, ctx, path, value, value_size_bits, any_hints, options, new_parent, new_node);
 }
 
 LY_ERR

@@ -949,7 +949,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
             *orig_value = strdup(str_val ? str_val : "");
             LY_CHECK_ERR_RET(!*orig_value, LOGMEM(schema->module->ctx), LY_EMEM);
         } else {
-            LY_CHECK_RET(lyd_any_value_str(first, orig_value));
+            LY_CHECK_RET(lyd_any_value_str(first, LYD_XML, orig_value));
         }
     }
 
@@ -3043,7 +3043,7 @@ lyd_diff_reverse_value(struct lyd_node *node, const struct lys_module *mod)
     if (node->schema->nodetype == LYS_LEAF) {
         val2 = strdup(lyd_get_value(node));
     } else {
-        LY_CHECK_RET(lyd_any_value_str(node, &val2));
+        LY_CHECK_RET(lyd_any_value_str(node, LYD_XML, &val2));
     }
 
     /* switch values, keep default flag */
