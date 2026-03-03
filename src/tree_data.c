@@ -2311,6 +2311,9 @@ lyd_dup_r(const struct lyd_node *node, const struct ly_ctx *trg_ctx, struct lyd_
             }
         }
         lyd_hash(dup);
+
+        /* NP cont dflt flag */
+        lyd_np_cont_dflt_set(dup);
     } else if (dup->schema->nodetype & LYD_NODE_ANY) {
         dup->hash = node->hash;
         any = (struct lyd_node_any *)node;
