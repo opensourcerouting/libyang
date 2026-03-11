@@ -367,8 +367,8 @@ test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct 
 {
     LY_ERR r;
     struct lyd_node *data = NULL;
-    uint32_t i, k2_len, l_len;
-    char k2_val[32], l_val[32];
+    uint32_t i;
+    char k_val[32], k2_val[32], l_val[32];
     struct lyd_node *list;
 
     *size = 0;
@@ -379,13 +379,14 @@ test_create_new_bin(struct test_state *state, struct timespec *ts_start, struct 
     }
 
     for (i = 0; i < state->count; ++i) {
-        k2_len = sprintf(k2_val, "str%" PRIu32, i);
-        l_len = sprintf(l_val, "l%" PRIu32, i);
+        sprintf(k_val, "%" PRIu32, i);
+        sprintf(k2_val, "str%" PRIu32, i);
+        sprintf(l_val, "l%" PRIu32, i);
 
-        if ((r = lyd_new_list(data, NULL, "lst", LYD_NEW_VAL_BIN, &list, &i, sizeof i * 8, k2_val, k2_len * 8))) {
+        if ((r = lyd_new_list(data, NULL, "lst", 0, &list, &i, k2_val))) {
             return r;
         }
-        if ((r = lyd_new_term_bin(list, NULL, "l", l_val, l_len * 8, 0, NULL))) {
+        if ((r = lyd_new_term(list, NULL, "l", l_val, 0, NULL))) {
             return r;
         }
     }

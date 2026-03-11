@@ -427,11 +427,9 @@ finish:
 static LY_ERR
 lyd_new_val_get_format(uint32_t options, LY_VALUE_FORMAT *format)
 {
-    LY_CHECK_ARG_RET(NULL, format, !((options & LYD_NEW_VAL_BIN) && (options & LYD_NEW_VAL_CANON)), LY_EVALID);
+    LY_CHECK_ARG_RET(NULL, format, LY_EVALID);
 
-    if (options & LYD_NEW_VAL_BIN) {
-        *format = LY_VALUE_LYB;
-    } else if (options & LYD_NEW_VAL_CANON) {
+    if (options & LYD_NEW_VAL_CANON) {
         *format = LY_VALUE_CANON;
     } else {
         *format = LY_VALUE_JSON;
@@ -740,20 +738,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *value,
         uint32_t options, struct lyd_node **node)
 {
-    const struct ly_ctx *ctx = parent ? LYD_CTX(parent) : (module ? module->ctx : NULL);
-
-    LY_CHECK_ARG_RET(ctx, !(options & LYD_NEW_VAL_BIN), LY_EINVAL);
-
     return _lyd_new_term(parent, module, name, value, value ? strlen(value) * 8 : 0, options, node);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **node)
-{
-    options |= LYD_NEW_VAL_BIN;
-
-    return _lyd_new_term(parent, module, name, value, value_size_bits, options, node);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1796,7 +1781,7 @@ LIBYANG_API_DEF LY_ERR
 lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, uint32_t options,
         struct lyd_node **node)
 {
-    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, !(options & LYD_NEW_VAL_BIN), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
     return lyd_new_path_(parent, ctx, path, value, value ? strlen(value) * 8 : 0, 0, options, node, NULL);
@@ -1807,11 +1792,10 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
         uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
 {
-    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent,
-            !(options & LYD_NEW_VAL_BIN) || !(options & LYD_NEW_VAL_CANON), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
     LY_CHECK_CTX_EQUAL_RET(__func__, parent ? LYD_CTX(parent) : NULL, ctx, LY_EINVAL);
 
-    if (!(options & LYD_NEW_VAL_BIN) && !value_size_bits && value) {
+    if (!value_size_bits && value) {
         value_size_bits = strlen(value) * 8;
     }
 

@@ -192,7 +192,6 @@ test_validation(void **state)
     const char *schema, *data;
     struct lyd_node *tree;
     char *out;
-    uint32_t uint_val;
 
     schema = MODULE_CREATE_YANG("val",
             "leaf l1 {\n"
@@ -290,8 +289,7 @@ test_validation(void **state)
 
     /* remove the target and create another, which is represented the same way in LYB */
     lyd_free_tree(lyd_child(tree));
-    uint_val = 1;
-    assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", LYD_NEW_VAL_BIN, NULL, &uint_val, sizeof uint_val * 8));
+    assert_int_equal(LY_SUCCESS, lyd_new_list(tree, NULL, "b", 0, NULL, "1"));
     assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Invalid LYB union value - no matching subtype found:\n"
             "    ly2 leafref: Invalid leafref value \"one\" - no target instance \"../../a/name\" with the same value.\n"

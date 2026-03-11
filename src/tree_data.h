@@ -255,7 +255,6 @@ struct rb_node;
  * --------------
  * - ::lyd_new_inner()
  * - ::lyd_new_term()
- * - ::lyd_new_term_bin()
  * - ::lyd_new_list()
  * - ::lyd_new_list2()
  * - ::lyd_new_list3()
@@ -1260,23 +1259,21 @@ LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_
 #define LYD_NEW_VAL_OUTPUT 0x01      /**< Flag in case the @p parent is RPC/Action. If value is 0, the input's data nodes of the RPC/Action are
                                           taken into consideration. Otherwise, the output's data node is going to be created. */
 #define LYD_NEW_VAL_STORE_ONLY 0x02  /**< Whether to perform only storing operation with no or minimum valitions */
-#define LYD_NEW_VAL_BIN 0x04         /**< Interpret the provided leaf/leaf-list @p value as being in the binary
-                                          ::LY_VALUE_LYB format, to learn what exactly is expected see @ref howtoDataLYB. */
-#define LYD_NEW_VAL_CANON 0x08       /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
+#define LYD_NEW_VAL_CANON 0x04       /**< Interpret the provided leaf/leaf-list @p value as being in the canonical
                                           (or JSON if no defined) ::LY_VALUE_CANON format. If it is not, it may lead
                                           to unexpected behavior. */
-#define LYD_NEW_META_CLEAR_DFLT 0x10 /**< Whether to clear the default flag starting from @p parent, recursively all NP containers. */
-#define LYD_NEW_PATH_UPDATE 0x20     /**< If the target node exists, is a leaf, and it is updated with a new value or its
+#define LYD_NEW_META_CLEAR_DFLT 0x08 /**< Whether to clear the default flag starting from @p parent, recursively all NP containers. */
+#define LYD_NEW_PATH_UPDATE 0x10     /**< If the target node exists, is a leaf, and it is updated with a new value or its
                                           default flag is changed, it is returned. If the target node exists and is not
                                           a leaf or generally no change occurs in the @p parent tree, NULL is returned and
                                           no error set. */
-#define LYD_NEW_PATH_OPAQ 0x40       /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
+#define LYD_NEW_PATH_OPAQ 0x20       /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
                                           in the path is not uniquely defined ((leaf-)list without a predicate) or has an
                                           invalid value (leaf/leaf-list), it is created as opaque. Otherwise a regular node
                                           is created. */
-#define LYD_NEW_PATH_WITH_OPAQ 0x80  /**< Consider opaque nodes normally when searching for existing nodes. */
-#define LYD_NEW_PATH_ANY_DATATREE 0x100 /**< The @p value is actually a data tree, not a string. */
-#define LYD_NEW_ANY_USE_VALUE 0x200  /**< Whether to use dynamic @p value or make a copy. */
+#define LYD_NEW_PATH_WITH_OPAQ 0x40  /**< Consider opaque nodes normally when searching for existing nodes. */
+#define LYD_NEW_PATH_ANY_DATATREE 0x80  /**< The @p value is actually a data tree, not a string. */
+#define LYD_NEW_ANY_USE_VALUE 0x0100    /**< Whether to use dynamic @p value or make a copy. */
 
 /** @} newvaloptions */
 
@@ -1290,7 +1287,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_
  * @param[out] node Optional created node.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for key-less lists.
- * In case options include ::LYD_NEW_VAL_BIN, every key value must be followed by its size in bits (uint32_t).
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name,
@@ -1331,8 +1327,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_
 /**
  * @brief Create a new term node in the data tree.
  *
- * To create a term node based on binary value, use ::lyd_new_term_bin().
- *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
@@ -1343,21 +1337,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_list3(struct lyd_node *parent, const struct lys_
  */
 LIBYANG_API_DECL LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name,
         const char *value, uint32_t options, struct lyd_node **node);
-
-/**
- * @brief Create a new term node in the data tree based on binary value.
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
- * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
- * @param[in] value Binary value of the node. To learn what exactly is expected see @ref howtoDataLYB.
- * @param[in] value_size_bits Size of @p value in bits.
- * @param[in] options Bitmask of options, see @ref newvaloptions.
- * @param[out] node Optional created node.
- * @return LY_ERR value.
- */
-LIBYANG_API_DECL LY_ERR lyd_new_term_bin(struct lyd_node *parent, const struct lys_module *module, const char *name,
-        const void *value, uint32_t value_size_bits, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
