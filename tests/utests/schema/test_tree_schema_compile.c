@@ -3383,6 +3383,15 @@ test_deviation(void **state)
     assert_string_equal(node->name, "l");
     assert_null(node->next);
 
+    /* extension */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-a {namespace urn:mod-a;prefix a;"
+            "container cont {leaf l {type string;} leaf l2 {type string;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-b {namespace urn:mod-b;prefix b;"
+            "extension ext1; extension ext2;}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-c {namespace urn:mod-c;prefix c;"
+            "import mod-a {prefix a;} import mod-b {prefix b;}"
+            "deviation \"/a:cont/a:l\" {deviate add {b:ext1;}}}", LYS_IN_YANG, NULL));
+
     /* default identity referencing deprecated */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a1-imp {namespace urn:a1-imp;prefix a1i;"
             "identity id-base;"
