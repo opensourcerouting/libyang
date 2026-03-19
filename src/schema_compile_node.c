@@ -2142,6 +2142,12 @@ preparenext:
         ret = lys_compile_type_(ctx, context_pnode, context_flags, context_name, (struct lysp_type *)type_p, basetype,
                 NULL, base, plugin_ref, &tpdf_chain, 0, type);
         LY_CHECK_GOTO(ret, cleanup);
+
+        /* always fill the type name */
+        if (tpdf_chain.count) {
+            ret = lysdict_insert(ctx->ctx, ((struct lys_type_item *)tpdf_chain.objs[0])->tpdf->name, 0, &(*type)->name);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     } else {
         /* no changes of the type in the leaf, just use the base compiled type */
         *type = base;

@@ -38,6 +38,7 @@
     "  import ietf-inet-types {\n" \
     "    prefix inet;\n" \
     "  }\n" \
+    "  extension myext;\n" \
     NODES \
     "}\n"
 
@@ -96,14 +97,14 @@ test_data_xml(void **state)
 {
     const char *schema;
 
-    /* xml test */
+    /* xml test, ext instance added so the type is compiled for the leaf */
     schema = MODULE_CREATE_YANG("a",
             "leaf l {type inet:ip-address;}"
             "leaf l2 {type inet:ipv6-address;}"
             "leaf l3 {type inet:ip-address-no-zone;}"
             "leaf l4 {type inet:ipv6-address-no-zone;}"
             "leaf l5 {type inet:ip-prefix;}"
-            "leaf l6 {type inet:ipv4-prefix;}"
+            "leaf l6 {type inet:ipv4-prefix {pref:myext;}}"
             "leaf l7 {type inet:ipv6-prefix;}");
     UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
 
