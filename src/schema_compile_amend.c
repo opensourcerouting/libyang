@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Schema compilation of augments, deviations, and refines.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -1275,8 +1275,57 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysp_deviate_add *d, struct l
         *num = d->max;
     }
 
+    /* *ext-inst */
+    DUP_EXTS(ctx->ctx, ctx->pmod, target, lyplg_ext_nodetype2stmt(target->nodetype), d->exts, target->exts, lysp_ext_dup);
+
 cleanup:
     return ret;
+}
+
+/**
+ * @brief Find a matching parsed ext instance.
+ *
+ * @param[in] ctx Context to use.
+ * @param[in] pmod Current parsed module.
+ * @param[in] ext_def1 Ext inst definition to match.
+ * @param[in] ext_arg1 Ext inst argument to match.
+ * @param[in] exts2 Ext inst array to search in.
+ * @param[out] v Index of the matching ext inst in @p exts2.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_apply_deviate_ext_inst_find(const struct ly_ctx *ctx, const struct lysp_module *pmod,
+        const struct lysp_ext *ext_def1, const char *ext_arg1, const struct lysp_ext_instance *exts2, LY_ARRAY_COUNT_TYPE *v)
+{
+    struct lysp_ext *ext_def2;
+
+    LY_ARRAY_FOR(exts2, *v) {
+        if (!(exts2[*v].parent_stmt & LY_STMT_NODE_MASK)) {
+            /* match only node ext instances */
+            continue;
+        }
+
+        lysp_ext_find_definition(ctx, pmod, &exts2[*v], NULL, &ext_def2);
+        assert(ext_def2);
+        if (ext_def1 != ext_def2) {
+            /* definition mismatch */
+            continue;
+        }
+
+        if ((ext_arg1 && !exts2[*v].argument) || (!ext_arg1 && exts2[*v].argument) ||
+                (ext_arg1 && exts2[*v].argument && strcmp(ext_arg1, exts2[*v].argument))) {
+            /* argument mismatch */
+            continue;
+        }
+
+        /* match */
+        break;
+    }
+
+    if (LY_ARRAY_COUNT(exts2) == *v) {
+        return LY_ENOTFOUND;
+    }
+    return LY_SUCCESS;
 }
 
 /**
@@ -1294,6 +1343,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
     struct lysp_restr **musts;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lysp_qname **uniques, **dflts;
+    struct lysp_ext *ext_def;
 
 #define DEV_DEL_ARRAY(DEV_ARRAY, ORIG_ARRAY, DEV_MEMBER, ORIG_MEMBER, FREE_FUNC, FREE_CTX, PROPERTY) \
     LY_ARRAY_FOR(d->DEV_ARRAY, u) { \
@@ -1396,6 +1446,30 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysp_deviate_del *d, struc
         }
     }
 
+    /* *ext-inst */
+    LY_ARRAY_FOR(d->exts, u) {
+        lysp_ext_find_definition(ctx->ctx, ctx->pmod, &d->exts[u], NULL, &ext_def);
+        assert(ext_def);
+
+        if (lys_apply_deviate_ext_inst_find(ctx->ctx, ctx->pmod, ext_def, d->exts[u].argument, target->exts, &v)) {
+            LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid deviation deleting \"ext-inst\" property \"%s%s%s\" "
+                    "which does not match any of the target's property values.", d->exts[u].name,
+                    d->exts[u].argument ? " " : "", d->exts[u].argument ? d->exts[u].argument : "");
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+
+        LY_ARRAY_DECREMENT(target->exts);
+        lysp_ext_instance_free(ctx->ctx, &target->exts[v]);
+        if (v < LY_ARRAY_COUNT(target->exts)) {
+            memmove(&target->exts[v], &target->exts[v + 1], (LY_ARRAY_COUNT(target->exts) - v) * sizeof *target->exts);
+        }
+    }
+    if (!LY_ARRAY_COUNT(target->exts)) {
+        LY_ARRAY_FREE(target->exts);
+        target->exts = NULL;
+    }
+
 cleanup:
     return ret;
 }
@@ -1412,7 +1486,10 @@ static LY_ERR
 lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, struct lysp_node *target)
 {
     LY_ERR ret = LY_SUCCESS;
+    LY_ARRAY_COUNT_TYPE u, v;
     uint32_t *num;
+    struct lysp_ext *ext_def;
+    enum ly_stmt parent_stmt;
 
 #define DEV_CHECK_PRESENCE(TYPE, MEMBER, DEVTYPE, PROPERTY, VALUE) \
     if (!((TYPE)target)->MEMBER) { \
@@ -1537,6 +1614,25 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysp_deviate_rpl *d, stru
         *num = d->max;
     }
 
+    /* *ext-inst */
+    LY_ARRAY_FOR(d->exts, u) {
+        lysp_ext_find_definition(ctx->ctx, ctx->pmod, &d->exts[u], NULL, &ext_def);
+        assert(ext_def);
+
+        if (lys_apply_deviate_ext_inst_find(ctx->ctx, ctx->pmod, ext_def, d->exts[u].argument, target->exts, &v)) {
+            LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Invalid deviation replacing \"ext-inst\" property \"%s%s%s\" "
+                    "which is not present.", d->exts[u].name, d->exts[u].argument ? " " : "",
+                    d->exts[u].argument ? d->exts[u].argument : "");
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+
+        parent_stmt = target->exts[v].parent_stmt;
+        lysp_ext_instance_free(ctx->ctx, &target->exts[v]);
+        memset(&target->exts[v], 0, sizeof target->exts[v]);
+        LY_CHECK_GOTO(ret = lysp_ext_dup(ctx->ctx, ctx->pmod, target, parent_stmt, &d->exts[u], &target->exts[v]), cleanup);
+    }
+
 cleanup:
     return ret;
 }
@@ -1587,9 +1683,6 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysp_deviation *dev, const stru
         }
         LY_CHECK_GOTO(ret, cleanup);
     }
-
-    /* deviation extension instances */
-    DUP_EXTS(ctx->ctx, dev_pmod, target, lyplg_ext_nodetype2stmt(target->nodetype), dev->exts, target->exts, lysp_ext_dup);
 
 cleanup:
     ctx->cur_mod = orig_mod;

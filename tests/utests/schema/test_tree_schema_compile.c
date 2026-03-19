@@ -3400,13 +3400,45 @@ test_deviation(void **state)
     assert_null(node->next);
 
     /* extension */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-a {namespace urn:mod-a;prefix a;"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module amod-a {namespace urn:amod-a;prefix a;"
             "container cont {leaf l {type string;} leaf l2 {type string;}}}", LYS_IN_YANG, NULL));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-b {namespace urn:mod-b;prefix b;"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module amod-b {namespace urn:amod-b;prefix b;"
             "extension ext1; extension ext2;}", LYS_IN_YANG, NULL));
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module mod-c {namespace urn:mod-c;prefix c;"
-            "import mod-a {prefix a;} import mod-b {prefix b;}"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module amod-c {namespace urn:amod-c;prefix c;"
+            "import amod-a {prefix a;} import amod-b {prefix b;}"
             "deviation \"/a:cont/a:l\" {deviate add {b:ext1;}}}", LYS_IN_YANG, NULL));
+    assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "amod-a")));
+    node = mod->compiled->data;
+    assert_string_equal(node->name, "cont");
+    assert_non_null(node = lysc_node_child(node));
+    assert_string_equal(node->name, "l");
+    assert_non_null(node->exts);
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module bmod-a {namespace urn:bmod-a;prefix a;"
+            "extension ext1;"
+            "container cont {leaf l {type string; a:ext1;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module bmod-b {namespace urn:bmod-b;prefix b;"
+            "import bmod-a {prefix a;}"
+            "deviation \"/a:cont/a:l\" {deviate delete {a:ext1;}}}", LYS_IN_YANG, NULL));
+    assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "bmod-a")));
+    node = mod->compiled->data;
+    assert_string_equal(node->name, "cont");
+    assert_non_null(node = lysc_node_child(node));
+    assert_string_equal(node->name, "l");
+    assert_null(node->exts);
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cmod-a {namespace urn:cmod-a;prefix a;"
+            "extension ext1;"
+            "container cont {leaf l {type string; a:ext1;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cmod-b {namespace urn:cmod-b;prefix b;"
+            "import cmod-a {prefix a;}"
+            "deviation \"/a:cont/a:l\" {deviate replace {a:ext1;}}}", LYS_IN_YANG, NULL));
+    assert_non_null((mod = ly_ctx_get_module_implemented(UTEST_LYCTX, "cmod-a")));
+    node = mod->compiled->data;
+    assert_string_equal(node->name, "cont");
+    assert_non_null(node = lysc_node_child(node));
+    assert_string_equal(node->name, "l");
+    assert_non_null(node->exts);
 
     /* default identity referencing deprecated */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "module a1-imp {namespace urn:a1-imp;prefix a1i;"
@@ -3665,7 +3697,8 @@ test_deviation(void **state)
             "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
             "(Value \"300\" is out of type uint8 min/max bounds.).", "/oo1:x", 0);
-    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo2 {yang-version 1.1;namespace urn:oo2;prefix oo2; leaf-list x {type uint16; default 10; default 300;}"
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo2 {yang-version 1.1;namespace urn:oo2;prefix oo2;"
+            "leaf-list x {type uint16; default 10; default 300;}"
             "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
             "(Value \"300\" is out of type uint8 min/max bounds.).", "/oo2:x", 0);
@@ -3674,12 +3707,21 @@ test_deviation(void **state)
     CHECK_LOG_CTX("Invalid default - value does not fit the type "
             "(Value \"300\" is out of type uint8 min/max bounds.).", "/oo3:x", 0);
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp; leaf l { type leafref {path /c/x;}}"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp;"
+            "leaf l { type leafref {path /c/x;}}"
             "container c {leaf x {type string;} leaf y {type string;}}}", LYS_IN_YANG, &mod));
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}"
             "deviation /pp:c/pp:x {deviate not-supported;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Target of leafref \"l\" cannot be referenced because it is disabled.", "/pp:l", 0);
     CHECK_LOG_CTX("Not found node \"x\" in path.", "/pp:l", 0);
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module emod-a {namespace urn:emod-a;prefix a;"
+            "extension ext1; extension ext2 {argument arg;}"
+            "container cont {leaf l {type string; a:ext2 my-arg;}}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module emod-b {namespace urn:emod-b;prefix b;"
+            "import emod-a {prefix a;}"
+            "deviation \"/a:cont/a:l\" {deviate delete {a:ext2 not-arg;}}}", LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Invalid deviation deleting \"ext-inst\" property \"a:ext2 not-arg\" which does not match any of the target's property values.", "/emod-b:{deviation='/a:cont/a:l'}", 0);
 }
 
 static void
