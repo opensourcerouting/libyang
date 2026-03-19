@@ -139,7 +139,7 @@ yprp_extension_instance(struct lys_ypr_ctx *pctx, enum ly_stmt substmt, uint8_t 
     inner_flag = 0;
 
     /* we need the definition */
-    if (lysp_ext_find_definition(pctx->module->ctx, ext, NULL, &ext_def)) {
+    if (lysp_ext_find_definition(pctx->module->ctx, pctx->module->parsed, ext, NULL, &ext_def)) {
         return;
     }
 

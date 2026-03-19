@@ -40,28 +40,44 @@ test_imp_free_data(void *model_data, void *UNUSED(user_data))
 }
 
 static LY_ERR
-test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-        const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+test_imp_clb(const char *mod_name, const char *UNUSED(mod_rev), const char *submod_name, const char *UNUSED(sub_rev),
+        void *user_data, LYS_INFORMAT *format, const char **module_data,
+        void (**free_module_data)(void *model_data, void *user_data))
 {
-    char *nl;
+    char *ptr, *ptr2;
+    uint32_t skip;
 
-    if ((nl = strchr(user_data, '\n'))) {
-        /* more modules */
-        if (!strncmp((char *)user_data + 7, mod_name, strlen(mod_name))) {
-            *module_data = strndup(user_data, nl - (char *)user_data);
-            *format = LYS_IN_YANG;
-            *free_module_data = test_imp_free_data;
-        } else {
-            *module_data = strdup(nl + 1);
-            *format = LYS_IN_YANG;
-            *free_module_data = test_imp_free_data;
-        }
-    } else {
-        *module_data = user_data;
-        *format = LYS_IN_YANG;
-        *free_module_data = NULL;
+    skip = submod_name ? 10 : 7;
+    if (submod_name) {
+        mod_name = submod_name;
     }
+
+    ptr = user_data;
+    do {
+        /* check module */
+        if (!strncmp(ptr + skip, mod_name, strlen(mod_name))) {
+            break;
+        }
+
+        /* next module */
+        ptr = strchr(ptr, '\n');
+        if (ptr) {
+            ++ptr;
+        }
+    } while (ptr);
+
+    if (!ptr) {
+        return LY_ENOTFOUND;
+    }
+
+    /* find module end */
+    ptr2 = strchr(ptr, '\n');
+
+    /* duplicate the data */
+    *module_data = ptr2 ? strndup(ptr, ptr2 - ptr) : strdup(ptr);
+    *format = LYS_IN_YANG;
+    *free_module_data = test_imp_free_data;
+
     return LY_SUCCESS;
 }
 

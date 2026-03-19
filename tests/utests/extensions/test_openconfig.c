@@ -123,7 +123,7 @@ test_schema_invalid(void **state)
     UTEST_INVALID_MODULE(yang, LYS_IN_YANG, NULL, LY_EINVAL);
     CHECK_LOG_CTX("Ext plugin \"ly2 OpenConfig\": Extension \"oc-ext:regexp-posix\" is allowed only in 'module' or "
             "'submodule' statements, but it is placed in \"container\" statement.",
-            "/a:c/{extension='oc-ext:regexp-posix'}", 0);
+            "/a:c/{ext-inst='oc-ext:regexp-posix'}", 0);
 }
 
 static void

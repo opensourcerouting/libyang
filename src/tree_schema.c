@@ -1424,19 +1424,20 @@ lysp_resolve_import_include(struct lysp_ctx *pctx, struct lysp_module *pmod, str
 }
 
 /**
- * @brief Generate path of the given paresed node.
+ * @brief Generate path of the given parsed node.
  *
  * @param[in] node Schema path of this node will be generated.
  * @param[in] parent Build relative path only until this parent is found. If NULL, the full absolute path is printed.
+ * @param[in] pmod Parsed module of a top-level parent of @p node.
  * @return NULL in case of memory allocation error, path of the node otherwise.
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
 static char *
 lysp_path_until(const struct lysp_node *node, const struct lysp_node *parent, const struct lysp_module *pmod)
 {
-    const struct lysp_node *iter, *par;
+    const struct lysp_node *iter;
     char *path = NULL, *s;
-    const char *slash;
+    const char *slash, *mod_colon, *mod_prefix, *node_start, *node_end;
     int len = 0;
 
     for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
@@ -1446,74 +1447,388 @@ lysp_path_until(const struct lysp_node *node, const struct lysp_node *parent, co
             slash = "/";
         }
 
-        s = path;
-        par = iter->parent;
-        if (!par) {
-            /* print prefix */
-            len = asprintf(&path, "%s%s:%s%s", slash, pmod->mod->name, iter->name, s ? s : "");
-        } else {
+        if (iter->parent) {
             /* prefix is the same as in parent */
-            len = asprintf(&path, "%s%s%s", slash, iter->name, s ? s : "");
+            mod_colon = "";
+            mod_prefix = "";
+        } else {
+            /* print prefix */
+            mod_colon = ":";
+            mod_prefix = pmod->mod->name;
         }
+
+        /* non-compiled schema nodes */
+        switch (iter->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_CHOICE:
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+        case LYS_LIST:
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+        case LYS_CASE:
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            node_start = "";
+            node_end = "";
+            break;
+        case LYS_USES:
+            node_start = "{uses='";
+            node_end = "'}";
+            break;
+        case LYS_GROUPING:
+            node_start = "{grouping='";
+            node_end = "'}";
+            break;
+        case LYS_AUGMENT:
+            node_start = "{augment='";
+            node_end = "'}";
+            break;
+        default:
+            len = -1;
+            goto cleanup;
+        }
+
+        s = path;
+        len = asprintf(&path, "%s%s%s%s%s%s%s", slash, mod_prefix, mod_colon, node_start, iter->name, node_end, s ? s : "");
         free(s);
     }
 
-    if (len < 0) {
-        free(path);
-        path = NULL;
-    } else if (len == 0) {
+    if (len == 0) {
         path = strdup("/");
     }
 
+cleanup:
+    if (len < 0) {
+        free(path);
+        path = NULL;
+    }
     return path;
 }
 
 /**
- * @brief Build log path for a parsed extension instance.
+ * @brief Append a formatted message to a buffer.
  *
- * @param[in] pcxt Parse context.
- * @param[in] ext Parsed extension instance.
- * @param[out] path Generated path.
+ * @param[in,out] buf Buffer to use.
+ * @param[in,out] size Size of @p buf.
+ * @param[in] format Message format.
+ * @param[in] ... Message format arguments.
  * @return LY_ERR value.
  */
 static LY_ERR
-lysp_resolve_ext_instance_log_path(const struct lysp_ctx *pctx, const struct lysp_ext_instance *ext, char **path)
+lysp_ext_instance_path_append(char **buf, uint32_t *size, const char *format, ...)
+{
+    va_list ap;
+    uint32_t len;
+
+    /* learn the required length */
+    va_start(ap, format);
+    len = vsnprintf(*buf + *size, 0, format, ap);
+    va_end(ap);
+
+    /* realloc */
+    *buf = ly_realloc(*buf, (*size) + len + 1);
+    LY_CHECK_ERR_RET(!*buf, LOGMEM(NULL), LY_EMEM);
+
+    /* print */
+    va_start(ap, format);
+    *size += vsnprintf(*buf + *size, len + 1, format, ap);
+    va_end(ap);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Append the log path of a statement to a string, recursively.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] stmt Statement to append.
+ * @param[in] stmt_idx Index of @p stmt.
+ * @param[in] stmt_p Pointer to the statement structure.
+ * @param[in] pmod Parsed module to use.
+ * @param[in,out] buf Buffer to use.
+ * @param[in,out] size Size of @p buf.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_ext_instance_path_stmt_append_r(const struct ly_ctx *ctx, enum ly_stmt stmt, LY_ARRAY_COUNT_TYPE stmt_idx,
+        const void *stmt_p, const struct lysp_module *pmod, char **buf, uint32_t *size)
+{
+    if (*size && ((*buf)[*size - 1] != ':')) {
+        /* slash after the previous path, if not module name */
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/"));
+    }
+
+    switch (stmt) {
+    case LY_STMT_NOTIFICATION:
+    case LY_STMT_INPUT:
+    case LY_STMT_OUTPUT:
+    case LY_STMT_ACTION:
+    case LY_STMT_RPC:
+    case LY_STMT_ANYDATA:
+    case LY_STMT_ANYXML:
+    case LY_STMT_AUGMENT:
+    case LY_STMT_CASE:
+    case LY_STMT_CHOICE:
+    case LY_STMT_CONTAINER:
+    case LY_STMT_GROUPING:
+    case LY_STMT_LEAF:
+    case LY_STMT_LEAF_LIST:
+    case LY_STMT_LIST:
+    case LY_STMT_USES:
+        *buf = lysp_path_until(stmt_p, NULL, pmod);
+        LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+        *size = strlen(*buf);
+        break;
+    case LY_STMT_ARGUMENT:
+    case LY_STMT_YIN_ELEMENT:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_BASE: {
+        const char * const *bases = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), bases[stmt_idx]));
+        break;
+    }
+    case LY_STMT_BELONGS_TO: {
+        const struct lysp_submodule *submod = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), submod->name));
+        break;
+    }
+    case LY_STMT_BIT:
+    case LY_STMT_ENUM: {
+        const struct lysp_type_enum *be = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), be->name));
+        break;
+    }
+    case LY_STMT_CONFIG:
+    case LY_STMT_CONTACT:
+    case LY_STMT_DESCRIPTION:
+    case LY_STMT_MANDATORY:
+    case LY_STMT_MAX_ELEMENTS:
+    case LY_STMT_MIN_ELEMENTS:
+    case LY_STMT_NAMESPACE:
+    case LY_STMT_ORGANIZATION:
+    case LY_STMT_PREFIX:
+    case LY_STMT_YANG_VERSION:
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_DEFAULT: {
+        const struct lysp_qname *qn = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qn->str));
+        break;
+    }
+    case LY_STMT_DEVIATE: {
+        const struct lysp_deviate *d = stmt_p;
+
+        switch (d->mod) {
+        case LYS_DEV_NOT_SUPPORTED:
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='not-supported'}", lyplg_ext_stmt2str(stmt)));
+            break;
+        case LYS_DEV_ADD:
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='add'}", lyplg_ext_stmt2str(stmt)));
+            break;
+        case LYS_DEV_DELETE:
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='delete'}", lyplg_ext_stmt2str(stmt)));
+            break;
+        case LYS_DEV_REPLACE:
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='replace'}", lyplg_ext_stmt2str(stmt)));
+            break;
+        }
+        break;
+    }
+    case LY_STMT_DEVIATION: {
+        const struct lysp_deviation *dev = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), dev->nodeid));
+        break;
+    }
+    case LY_STMT_ERROR_APP_TAG:
+    case LY_STMT_ERROR_MESSAGE:
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{restriction}/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_EXTENSION: {
+        const struct lysp_ext *ext = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), ext->name));
+        break;
+    }
+    case LY_STMT_EXTENSION_INSTANCE: {
+        const struct lysp_ext_instance *ext = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{ext-inst='%s'}", ext->name));
+        if (ext->argument) {
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/%s", ext->argument));
+        }
+        break;
+    }
+    case LY_STMT_FEATURE: {
+        const struct lysp_feature *f = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), f->name));
+        break;
+    }
+    case LY_STMT_FRACTION_DIGITS:
+    case LY_STMT_PATH:
+    case LY_STMT_REQUIRE_INSTANCE:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_TYPE, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_IDENTITY: {
+        const struct lysp_ident *id = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), id->name));
+        break;
+    }
+    case LY_STMT_IF_FEATURE:
+    case LY_STMT_UNIQUE: {
+        const struct lysp_qname *qns = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), qns[stmt_idx].str));
+        break;
+    }
+    case LY_STMT_IMPORT: {
+        const struct lysp_import *imp = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), imp->name));
+        break;
+    }
+    case LY_STMT_INCLUDE:  {
+        const struct lysp_include *inc = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), inc->name));
+        break;
+    }
+    case LY_STMT_KEY:
+    case LY_STMT_ORDERED_BY:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_LIST, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_LENGTH:
+    case LY_STMT_MUST:
+    case LY_STMT_RANGE: {
+        const struct lysp_restr *res = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str));
+        break;
+    }
+    case LY_STMT_MODIFIER:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_PATTERN, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_PATTERN: {
+        const struct lysp_restr *res = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), res->arg.str + 1));
+        break;
+    }
+    case LY_STMT_POSITION:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_BIT, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_PRESENCE:
+    case LY_STMT_REFERENCE:
+    case LY_STMT_REVISION_DATE:
+    case LY_STMT_UNITS: {
+        const char *str = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), str));
+        break;
+    }
+    case LY_STMT_REFINE: {
+        const struct lysp_refine *rf = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rf->nodeid));
+        break;
+    }
+    case LY_STMT_REVISION: {
+        const struct lysp_revision *rev = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), rev->date));
+        break;
+    }
+    case LY_STMT_STATUS: {
+        const uint16_t *flags = stmt_p;
+
+        if (*flags & LYS_STATUS_OBSLT) {
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='obsolete'}", lyplg_ext_stmt2str(stmt)));
+        } else if (*flags & LYS_STATUS_DEPRC) {
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='deprecated'}", lyplg_ext_stmt2str(stmt)));
+        } else {
+            LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='current'}", lyplg_ext_stmt2str(stmt)));
+        }
+        break;
+    }
+    case LY_STMT_TYPE: {
+        const struct lysp_type *typ = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), typ->name));
+        break;
+    }
+    case LY_STMT_TYPEDEF: {
+        const struct lysp_tpdf *tpdf = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), tpdf->name));
+        break;
+    }
+    case LY_STMT_VALUE:
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_ENUM, 0, stmt_p, pmod, buf, size));
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "/{%s}", lyplg_ext_stmt2str(stmt)));
+        break;
+    case LY_STMT_WHEN: {
+        const struct lysp_when *wh = stmt_p;
+
+        LY_CHECK_RET(lysp_ext_instance_path_append(buf, size, "{%s='%s'}", lyplg_ext_stmt2str(stmt), wh->cond));
+        break;
+    }
+    case LY_STMT_NONE:
+    case LY_STMT_MODULE:
+    case LY_STMT_SUBMODULE:
+    case LY_STMT_SYNTAX_SEMICOLON:
+    case LY_STMT_SYNTAX_LEFT_BRACE:
+    case LY_STMT_SYNTAX_RIGHT_BRACE:
+    case LY_STMT_ARG_TEXT:
+    case LY_STMT_ARG_VALUE:
+        /* invalid */
+        LOGINT_RET(ctx);
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_ext_instance_path(const struct ly_ctx *ctx, const struct lysp_module *pmod, const struct lysp_ext_instance *ext,
+        char **path)
 {
     char *buf = NULL;
-    uint32_t used = 0, size = 0;
+    uint32_t size = 0;
 
-    if (ext->parent_stmt & LY_STMT_NODE_MASK) {
-        /* parsed node path */
-        buf = lysp_path_until(ext->parent, NULL, PARSER_CUR_PMOD(pctx));
-        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
-        size = used = strlen(buf);
-
-        /* slash */
-        size += 1;
-        buf = realloc(buf, size + 1);
-        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
-        used += sprintf(buf + used, "/");
+    if (ext->parent_stmt == LY_STMT_MODULE) {
+        /* module name */
+        LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", ((struct lysp_module *)ext->parent)->mod->name));
+    } else if (ext->parent_stmt == LY_STMT_SUBMODULE) {
+        /* submodule name */
+        LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", ((struct lysp_submodule *)ext->parent)->name));
     } else {
-        /* module */
-        size += 1 + strlen(PARSER_CUR_PMOD(pctx)->mod->name) + 1;
-        buf = realloc(buf, size + 1);
-        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
-        used += sprintf(buf + used, "/%s:", PARSER_CUR_PMOD(pctx)->mod->name);
+        /* start with the module name unless a node is parent, which will include its module name */
+        if (!(ext->parent_stmt & LY_STMT_NODE_MASK)) {
+            LY_CHECK_RET(lysp_ext_instance_path_append(&buf, &size, "/%s:", pmod->mod->name));
+        }
+
+        /* generate path of the parent statement */
+        LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, ext->parent_stmt, ext->parent_stmt_index, ext->parent, pmod,
+                &buf, &size));
     }
 
-    /* extension name */
-    size += 12 + strlen(ext->name) + 2;
-    buf = realloc(buf, size + 1);
-    LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
-    used += sprintf(buf + used, "{extension='%s'}", ext->name);
-
-    /* extension argument */
-    if (ext->argument) {
-        size += 1 + strlen(ext->argument);
-        buf = realloc(buf, size + 1);
-        LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(pctx)), LY_EMEM);
-        used += sprintf(buf + used, "/%s", ext->argument);
-    }
+    /* append the extension instance path */
+    LY_CHECK_RET(lysp_ext_instance_path_stmt_append_r(ctx, LY_STMT_EXTENSION_INSTANCE, 0, ext, pmod, &buf, &size));
 
     *path = buf;
     return LY_SUCCESS;
@@ -1557,7 +1872,7 @@ static LY_ERR
 lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
 {
     LY_ERR r;
-    struct lysp_ext_instance *exts, *ext;
+    struct lysp_ext_instance *ext, *exts;
     struct lysp_ext *ext_def;
     const struct lys_module *mod;
     uint32_t i;
@@ -1572,7 +1887,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             ext = &exts[u];
 
             /* find the extension definition, use its plugin */
-            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), ext, &mod, &ext_def));
+            LY_CHECK_RET(lysp_ext_find_definition(PARSER_CTX(pctx), PARSER_CUR_PMOD(pctx), ext, &mod, &ext_def));
             ext->plugin_ref = ext_def->plugin_ref;
 
             /* resolve the argument, if needed */
@@ -1591,9 +1906,7 @@ lysp_resolve_ext_instance_records(struct lysp_ctx *pctx)
             }
 
             /* set up log path */
-            if ((r = lysp_resolve_ext_instance_log_path(pctx, ext, &path))) {
-                return r;
-            }
+            LY_CHECK_RET(lysp_ext_instance_path(PARSER_CTX(pctx), PARSER_CUR_PMOD(pctx), ext, &path));
             ly_log_location(NULL, path, NULL);
 
             /* parse */

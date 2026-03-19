@@ -84,7 +84,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
             "Extension \"yangmnt:mount-point\" instance not allowed in YANG version 1 module.",
-            "/sm:root/{extension='yangmnt:mount-point'}/root", 0);
+            "/sm:root/{ext-inst='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -101,7 +101,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:{extension='yangmnt:mount-point'}/root", 0);
+            "/sm:{ext-inst='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -123,7 +123,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
             "Extension \"yangmnt:mount-point\" instance allowed only in container or list statement.",
-            "/sm:root/l/{extension='yangmnt:mount-point'}/root", 0);
+            "/sm:root/l/{ext-inst='yangmnt:mount-point'}/root", 0);
 
     schema =
             "module sm {\n"
@@ -147,7 +147,7 @@ test_schema(void **state)
     assert_int_equal(LY_EINVAL, lys_parse_mem(UTEST_LYCTX, schema, LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Ext plugin \"ly2 schema mount\": "
             "Multiple extension \"yangmnt:mount-point\" instances.",
-            "/sm:l/{extension='yangmnt:mount-point'}/root", 0);
+            "/sm:l/{ext-inst='yangmnt:mount-point'}/root", 0);
 
     /* valid */
     schema =

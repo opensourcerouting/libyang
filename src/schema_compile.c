@@ -123,7 +123,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *extp, struct lys
     ext->parent_stmt_index = extp->parent_stmt_index;
 
     lysc_update_path(ctx, (ext->parent_stmt & LY_STMT_NODE_MASK) ? ((struct lysc_node *)ext->parent)->module : NULL,
-            "{extension}");
+            "{ext-inst}");
     lysc_update_path(ctx, NULL, extp->name);
 
     /* find the compiled extension definition */
@@ -1629,13 +1629,13 @@ lys_compile_unres_mod(struct lysc_ctx *ctx)
         aug = ctx->augs.objs[i];
         ctx->cur_mod = aug->aug_pmod->mod;
         if (aug->ext) {
-            lysc_update_path(ctx, NULL, "{extension}");
+            lysc_update_path(ctx, NULL, "{ext-inst}");
             lysc_update_path(ctx, NULL, aug->ext->name);
         }
         lysc_update_path(ctx, NULL, "{augment}");
         lysc_update_path(ctx, NULL, aug->nodeid->str);
         LOGVAL(ctx->ctx, NULL, LYVE_REFERENCE, "Augment%s target node \"%s\" from module \"%s\" was not found.",
-                aug->ext ? " extension" : "", aug->nodeid->str, LYSP_MODULE_NAME(aug->aug_pmod));
+                aug->ext ? " ext-inst" : "", aug->nodeid->str, LYSP_MODULE_NAME(aug->aug_pmod));
         ctx->cur_mod = orig_mod;
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);

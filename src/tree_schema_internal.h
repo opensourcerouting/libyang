@@ -441,14 +441,15 @@ struct lysc_must **lysc_node_musts_p(const struct lysc_node *node);
  * @brief Find parsed extension definition for the given extension instance.
  *
  * @param[in] ctx libyang context.
+ * @param[in] pmod Top-level parsed module to use.
  * @param[in] ext Extension instance for which the definition will be searched.
  * @param[out] ext_mod Module of the extension definition of @p ext.
  * @param[out] ext_def Optional found extension definition.
  * @return LY_SUCCESS when the definition was found.
  * @return LY_EVALID when the extension instance is invalid and/or the definition not found.
  */
-LY_ERR lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, const struct lys_module **ext_mod,
-        struct lysp_ext **ext_def);
+LY_ERR lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmod,
+        const struct lysp_ext_instance *ext, const struct lys_module **ext_mod, struct lysp_ext **ext_def);
 
 /**
  * @brief Find compiled extension definition for the given extension instance.
@@ -602,6 +603,18 @@ struct lysp_load_module_data {
  */
 LY_ERR lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         const struct lysp_load_module_data *mod_data, struct ly_set *new_mods, struct lys_module **module);
+
+/**
+ * @brief Build log path for a parsed extension instance.
+ *
+ * @param[in] cxt Context to use.
+ * @param[in] pmod Ext instance parsed module.
+ * @param[in] ext Parsed extension instance.
+ * @param[out] path Generated path.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_ext_instance_path(const struct ly_ctx *ctx, const struct lysp_module *pmod,
+        const struct lysp_ext_instance *ext, char **path);
 
 /**
  * @brief Parse submodule.

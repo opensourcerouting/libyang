@@ -2256,14 +2256,15 @@ lysp_match_kw(struct ly_in *in, uint64_t *indent)
 }
 
 LY_ERR
-lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instance *ext, const struct lys_module **ext_mod,
-        struct lysp_ext **ext_def)
+lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_module *pmod, const struct lysp_ext_instance *ext,
+        const struct lys_module **ext_mod, struct lysp_ext **ext_def)
 {
     const char *tmp, *name, *prefix;
     uint32_t pref_len, name_len;
     LY_ARRAY_COUNT_TYPE u, v;
     const struct lys_module *mod = NULL;
     const struct lysp_submodule *submod;
+    char *path;
 
     if (ext_def) {
         *ext_def = NULL;
@@ -2276,8 +2277,14 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     /* get module where the extension definition should be placed */
     mod = ly_resolve_prefix(ctx, prefix, pref_len, ext->format, ext->prefix_data);
     if (!mod) {
+        LY_CHECK_RET(lysp_ext_instance_path(ctx, pmod, ext, &path));
+        ly_log_location(NULL, path, NULL);
+
         LOGVAL(ctx, NULL, LYVE_REFERENCE, "Invalid prefix \"%.*s\" used for extension instance identifier.",
                 (int)pref_len, prefix);
+
+        ly_log_location_revert(0, 1, 0);
+        free(path);
         return LY_EVALID;
     }
     if (ext_mod) {
@@ -2309,7 +2316,13 @@ lysp_ext_find_definition(const struct ly_ctx *ctx, const struct lysp_ext_instanc
     }
 
     if (!*ext_def) {
+        LY_CHECK_RET(lysp_ext_instance_path(ctx, pmod, ext, &path));
+        ly_log_location(NULL, path, NULL);
+
         LOGVAL(ctx, NULL, LYVE_REFERENCE, "Extension definition of extension instance \"%s\" not found.", ext->name);
+
+        ly_log_location_revert(0, 1, 0);
+        free(path);
         return LY_EVALID;
     }
 
