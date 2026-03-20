@@ -58,7 +58,7 @@ string_check_chars(const char *value, uint32_t value_size, struct ly_err_item **
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
+lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint64_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)

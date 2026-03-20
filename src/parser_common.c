@@ -203,13 +203,13 @@ cleanup:
 
 LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const struct lyd_node *lnode,
-        const void *value, uint32_t value_bits_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
+        const void *value, uint64_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
         uint32_t hints, struct lyd_node **node)
 {
     ly_bool incomplete;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
-    LY_CHECK_RET(lyd_create_term(schema, lnode, value, value_bits_len, 1, store_only, dynamic, format, prefix_data,
+    LY_CHECK_RET(lyd_create_term(schema, lnode, value, value_size_bits, 1, store_only, dynamic, format, prefix_data,
             hints, &incomplete, node));
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
@@ -220,7 +220,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
-        const char *name, uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        const char *name, uint32_t name_len, const void *value, uint64_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node, const struct lyd_node *lnode)
 {
     LY_ERR rc = LY_SUCCESS;

@@ -480,7 +480,7 @@ lyd_data_next_module(struct lyd_node **next, struct lyd_node **first)
 
 LY_ERR
 lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, struct lyd_value *val,
-        const struct lysc_type *type, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        const struct lysc_type *type, const void *value, uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_snode,
         ly_bool *incomplete)
 {
@@ -562,7 +562,7 @@ lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *
 }
 
 LY_ERR
-ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value, uint32_t value_size_bits,
+ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value, uint64_t value_size_bits,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints)
 {
     LY_ERR rc = LY_SUCCESS;

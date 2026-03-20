@@ -579,7 +579,7 @@ struct lyd_value_union {
     struct lyd_value value;      /**< representation of the value according to the selected union's subtype
                                       (stored as ::lyd_value.realtype here) */
     void *original;              /**< Original value. */
-    uint32_t orig_size_bits;     /**< Original value size in bits. */
+    uint64_t orig_size_bits;     /**< Original value size in bits. */
     uint32_t hints;              /**< [Value hints](@ref lydvalhints) from the parser */
     LY_VALUE_FORMAT format;      /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
@@ -1502,7 +1502,7 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * @return LY_ERR on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path,
-        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        const void *value, uint64_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
 
 /**

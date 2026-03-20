@@ -33,7 +33,7 @@ lyd_hash(struct lyd_node *node)
     struct lyd_node *iter;
     const void *hash_key;
     ly_bool dyn;
-    uint32_t key_size_bits;
+    uint64_t key_size_bits;
 
     if (!node->schema) {
         return LY_SUCCESS;

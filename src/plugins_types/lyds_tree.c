@@ -28,7 +28,7 @@ static void lyplg_type_free_lyds(const struct ly_ctx *ctx, struct lyd_value *val
 
 static void
 lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint32_t *fixed_size_bits)
+        uint64_t *fixed_size_bits)
 {
     *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
     *fixed_size_bits = 0;
@@ -36,7 +36,7 @@ lyplg_type_lyb_size_lyds(const struct lysc_type *UNUSED(type), enum lyplg_lyb_si
 
 static LY_ERR
 lyplg_type_store_lyds(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
-        uint32_t UNUSED(value_size_bits), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
+        uint64_t UNUSED(value_size_bits), uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data),
         uint32_t UNUSED(hints), const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage,
         struct lys_glob_unres *UNUSED(unres), struct ly_err_item **UNUSED(err))
 {
@@ -116,7 +116,7 @@ lyplg_type_sort_lyds(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *U
 
 static const void *
 lyplg_type_print_lyds(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *UNUSED(value),
-        LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
+        LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), ly_bool *dynamic, uint64_t *value_size_bits)
 {
     if (dynamic) {
         *dynamic = 0;

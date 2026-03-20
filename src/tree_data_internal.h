@@ -223,7 +223,7 @@ const char *ly_format2str(LY_VALUE_FORMAT format);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_term(const struct lysc_node *schema, const struct lyd_node *lnode, const void *value,
-        uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node);
 
 /**
@@ -360,7 +360,7 @@ LY_ERR lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        const void *value, uint64_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node);
 
 /**
@@ -532,7 +532,7 @@ struct lysc_ext_instance *lyd_get_meta_annotation(const struct lys_module *mod, 
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        uint32_t name_len, const void *value, uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         const struct lyd_node *lnode, ly_bool clear_dflt, ly_bool *incomplete);
 
@@ -602,7 +602,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, struct lyd_value *val,
-        const struct lysc_type *type, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        const struct lysc_type *type, const void *value, uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_snode,
         ly_bool *incomplete);
 
@@ -637,7 +637,7 @@ LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const void *value,
-        uint32_t value_size_bits, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
+        uint64_t value_size_bits, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

@@ -229,7 +229,7 @@ identityref_check_ident(const struct lysc_ident *ident, const char *value, uint3
 }
 
 static LY_ERR
-lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
+lyplg_type_store_identityref(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint64_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
 {
@@ -325,7 +325,7 @@ lyplg_type_sort_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_v
 
 static const void *
 lyplg_type_print_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits)
+        void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits)
 {
     char *ret;
     uint32_t value_size;

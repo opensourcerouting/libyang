@@ -307,10 +307,11 @@ lyb_read_string(char **str, struct lylyb_parse_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
+lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
 {
     enum lyplg_lyb_size_type size_type;
-    uint32_t fixed_size_bits;
+    uint32_t lyb_size_bits;
+    uint64_t fixed_size_bits;
     struct lysc_type_leafref *type_lf;
 
     assert(type && val && val_size_bits && lybctx);
@@ -331,8 +332,9 @@ lyb_read_value(const struct lysc_type *type, uint8_t **val, uint32_t *val_size_b
         /* data size is fixed */
         *val_size_bits = fixed_size_bits;
     } else {
-        /* parse value size in bits or bytes */
-        lyb_read_size(val_size_bits, lybctx);
+        /* parse value size in bits or bytes, uint32_t is enough because larger sizes will be stored as bytes */
+        lyb_read_size(&lyb_size_bits, lybctx);
+        *val_size_bits = lyb_size_bits;
         if (size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES) {
             *val_size_bits *= 8;
         }
@@ -584,7 +586,8 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
 {
     LY_ERR rc = LY_SUCCESS;
     ly_bool dynamic;
-    uint32_t i, count = 0, value_size_bits;
+    uint32_t i, count = 0;
+    uint64_t value_size_bits;
     char *meta_name = NULL;
     uint8_t *value;
     const struct lys_module *mod;
@@ -1140,7 +1143,7 @@ lyb_create_term(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode, const
     LY_ERR rc;
     ly_bool dynamic;
     uint8_t *value;
-    uint32_t value_size_bits;
+    uint64_t value_size_bits;
 
     /* parse the value */
     LY_CHECK_RET(lyb_read_value(((struct lysc_node_leaf *)snode)->type, &value, &value_size_bits, lybctx->parse_ctx));

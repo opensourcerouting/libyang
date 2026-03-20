@@ -402,6 +402,8 @@ lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, uint32_t *o
 #define BUFSIZE 24
 #define BUFSIZE_STEP 128
 
+    uint64_t req_size;
+
     if (!*buf) {
         /* prepare output buffer */
         *buf = malloc(BUFSIZE);
@@ -410,13 +412,14 @@ lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, uint32_t *o
     }
 
     /* overflow check */
-    if (*len + *offset + need_space < *size) {
+    req_size = *len + *offset + need_space;
+    if (req_size > UINT32_MAX) {
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "XML value too long.");
         return LY_EINVAL;
     }
 
     /* allocate needed space */
-    while (*len + *offset + need_space >= *size) {
+    while (req_size >= *size) {
         *buf = ly_realloc(*buf, *size + BUFSIZE_STEP);
         LY_CHECK_ERR_RET(!*buf, LOGMEM(ctx), LY_EMEM);
         *size += BUFSIZE_STEP;

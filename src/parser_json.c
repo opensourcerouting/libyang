@@ -104,11 +104,11 @@ lyjson_ctx_give_dynamic_value(struct lyjson_ctx *jsonctx, char **dst)
  * @param[out] is_meta_p Pointer to the metadata flag, set to 1 if the member-name contains \@, 0 otherwise.
  */
 static void
-lydjson_parse_name(const char *value, size_t value_len, const char **name_p, size_t *name_len_p, const char **prefix_p,
-        size_t *prefix_len_p, ly_bool *is_meta_p)
+lydjson_parse_name(const char *value, uint32_t value_len, const char **name_p, uint32_t *name_len_p, const char **prefix_p,
+        uint32_t *prefix_len_p, ly_bool *is_meta_p)
 {
     const char *name, *prefix = NULL;
-    size_t name_len, prefix_len = 0;
+    uint32_t name_len, prefix_len = 0;
     ly_bool is_meta = 0;
 
     name = memchr(value, ':', value_len);
@@ -150,8 +150,8 @@ lydjson_parse_name(const char *value, size_t value_len, const char **name_p, siz
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t local_prefix_len, const char **prefix_p,
-        size_t *prefix_len_p)
+lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, uint32_t local_prefix_len, const char **prefix_p,
+        uint32_t *prefix_len_p)
 {
     struct lyd_node_opaq *onode;
     const char *module_name = NULL;
@@ -253,8 +253,8 @@ lydjson_data_skip(struct lyjson_ctx *jsonctx)
  * @return LY_ERR on error.
  */
 static LY_ERR
-lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *prefix, size_t prefix_len, const char *name,
-        size_t name_len, struct lyd_node *parent, const struct lysc_node **snode, struct lysc_ext_instance **ext)
+lydjson_get_snode(struct lyd_json_ctx *lydctx, ly_bool is_attr, const char *prefix, uint32_t prefix_len, const char *name,
+        uint32_t name_len, struct lyd_node *parent, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
     LY_ERR r;
     struct lys_module *mod = NULL;
@@ -432,7 +432,7 @@ lydjson_check_list(struct lyd_json_ctx *lydctx, const struct lysc_node *list)
     if (status == LYJSON_OBJECT) {
         do {
             const char *name, *prefix;
-            size_t name_len, prefix_len;
+            uint32_t name_len, prefix_len;
             ly_bool is_attr;
 
             /* match the key */
@@ -589,7 +589,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
         uint64_t match = 0;
         ly_bool is_attr;
         const char *name, *prefix;
-        size_t name_len, prefix_len;
+        uint32_t name_len, prefix_len;
         const struct lysc_node *snode;
 
         if (attr->schema || (meta_container->name.name[0] != '@')) {
@@ -733,7 +733,7 @@ lydjson_meta_attr(struct lyd_json_ctx *lydctx, struct lyd_node *node)
     ly_bool in_parent = 0;
     const char *name, *prefix = NULL;
     char *dynamic_prefname = NULL;
-    size_t name_len, prefix_len = 0;
+    uint32_t name_len, prefix_len = 0;
     struct lys_module *mod;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
     ly_bool is_attr = 0;
@@ -867,7 +867,7 @@ next_entry:
         } else {
             /* create attribute */
             const char *module_name;
-            size_t module_name_len;
+            uint32_t module_name_len;
 
             lydjson_get_node_prefix(node, prefix, prefix_len, &module_name, &module_name_len);
 
@@ -929,12 +929,12 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
+lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_len, const char *prefix, uint32_t prefix_len,
         struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_inner_p, struct lyd_node **node_p)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *value = NULL, *module_name;
-    size_t value_len = 0, module_name_len = 0;
+    uint32_t value_len = 0, module_name_len = 0;
     ly_bool dynamic = 0;
     uint32_t type_hint = 0;
 
@@ -987,7 +987,7 @@ lydjson_create_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_l
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
+lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_len, const char *prefix, uint32_t prefix_len,
         struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p, enum LYJSON_PARSER_STATUS *status_inner_p,
         struct lyd_node **first_p, struct lyd_node **node)
 {
@@ -1084,8 +1084,8 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix,
-        size_t prefix_len, struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p,
+lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_len, const char *prefix,
+        uint32_t prefix_len, struct lyd_node *parent, enum LYJSON_PARSER_STATUS *status_p,
         struct lyd_node **first_p, struct lyd_node **node)
 {
     enum LYJSON_PARSER_STATUS status_inner = 0;
@@ -1132,12 +1132,12 @@ lydjson_ctx_next_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_
  */
 static LY_ERR
 lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node, const struct lysc_node *snode,
-        const char *name, size_t name_len, const char *prefix, size_t prefix_len, struct lyd_node *parent,
+        const char *name, uint32_t name_len, const char *prefix, uint32_t prefix_len, struct lyd_node *parent,
         enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR r;
     const char *opaq_name, *mod_name, *attr_mod = NULL;
-    size_t opaq_name_len, attr_mod_len = 0;
+    uint32_t opaq_name_len, attr_mod_len = 0;
 
     if (!attr_node) {
         /* learn the attribute module name */
@@ -1446,8 +1446,8 @@ cleanup:
  */
 static LY_ERR
 lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct lyd_node **first_p,
-        const struct lysc_node *snode, const struct lysc_ext_instance *ext, const char *name, size_t name_len,
-        const char *prefix, size_t prefix_len, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
+        const struct lysc_node *snode, const struct lysc_ext_instance *ext, const char *name, uint32_t name_len,
+        const char *prefix, uint32_t prefix_len, enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t type_hints = 0;
@@ -1467,7 +1467,8 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node *parent, str
 
             /* create terminal node */
             r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, parent, lydctx->jsonctx->value,
-                    lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL, type_hints, node);
+                    (uint64_t)lydctx->jsonctx->value_len * 8, &lydctx->jsonctx->dynamic, LY_VALUE_JSON, NULL,
+                    type_hints, node);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
             /* insert, needs LYD_EXT flag */
@@ -1537,7 +1538,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     LY_ERR r, rc = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(lydctx->jsonctx);
     const char *name, *prefix = NULL, *expected = NULL;
-    size_t name_len, prefix_len = 0;
+    uint32_t name_len, prefix_len = 0;
     ly_bool is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
@@ -2009,7 +2010,7 @@ lydjson_envelope(struct lyjson_ctx *jsonctx, const char *name, const char *modul
     LY_ERR rc = LY_SUCCESS, r;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(jsonctx);
     const char *nam, *prefix;
-    size_t nam_len, prefix_len;
+    uint32_t nam_len, prefix_len;
     ly_bool is_meta;
 
     assert(status == LYJSON_OBJECT);

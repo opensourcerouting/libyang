@@ -778,9 +778,9 @@ lyb_print_value(const struct ly_ctx *ctx, const struct lyd_value *value, struct 
     LY_ERR ret = LY_SUCCESS;
     ly_bool dynamic = 0;
     void *val;
-    uint32_t val_size_bits = 0;
+    uint64_t val_size_bits = 0;
     enum lyplg_lyb_size_type size_type;
-    uint32_t fixed_size_bits;
+    uint64_t fixed_size_bits;
     lyplg_type_print_clb print;
     struct lyplg_type *type_plg;
 

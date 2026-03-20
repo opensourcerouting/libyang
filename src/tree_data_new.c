@@ -53,7 +53,7 @@
 
 LY_ERR
 lyd_create_term(const struct lysc_node *schema, const struct lyd_node *lnode, const void *value,
-        uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
+        uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only, ly_bool *dynamic, LY_VALUE_FORMAT format,
         void *prefix_data, uint32_t hints, ly_bool *incomplete, struct lyd_node **node)
 {
     LY_ERR ret;
@@ -692,7 +692,7 @@ cleanup:
  */
 static LY_ERR
 _lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-        uint32_t value_size_bits, uint32_t options, struct lyd_node **node)
+        uint64_t value_size_bits, uint32_t options, struct lyd_node **node)
 {
     LY_ERR r;
     struct lyd_node *ret = NULL;
@@ -1186,7 +1186,7 @@ lyd_change_term_val(struct lyd_node *term, struct lyd_value *val, ly_bool use_va
  * @return LY_ERR value on other errors.
  */
 static LY_ERR
-_lyd_change_term(struct lyd_node *term, const void *value, uint32_t value_size_bits, LY_VALUE_FORMAT format)
+_lyd_change_term(struct lyd_node *term, const void *value, uint64_t value_size_bits, LY_VALUE_FORMAT format)
 {
     struct lyd_value val;
 
@@ -1206,14 +1206,6 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
     LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
 
     return _lyd_change_term(term, val_str, val_str ? strlen(val_str) * 8 : 0, LY_VALUE_JSON);
-}
-
-LIBYANG_API_DEF LY_ERR
-lyd_change_term_bin(struct lyd_node *term, const void *value, uint32_t value_size_bits)
-{
-    LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
-
-    return _lyd_change_term(term, value, value_size_bits, LY_VALUE_LYB);
 }
 
 LIBYANG_API_DEF LY_ERR
@@ -1321,7 +1313,7 @@ lyd_anydata_switch_value(struct lyd_node *node1, struct lyd_node *node2)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options,
+lyd_new_path_update(struct lyd_node *node, const void *value, uint64_t value_size_bits, uint32_t any_hints, uint32_t options,
         LY_VALUE_FORMAT format, ly_bool any_use_value, struct lyd_node **new_parent, struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1412,7 +1404,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, uint32_t value_siz
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const void *value, uint32_t value_size_bits,
+lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const void *value, uint64_t value_size_bits,
         LY_VALUE_FORMAT format, uint32_t options)
 {
     LY_ERR r;
@@ -1482,7 +1474,7 @@ lyd_new_path_check_find_lypath(struct ly_path *path, const char *str_path, const
 
 LY_ERR
 lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, struct ly_path *p, const char *path,
-        const void *value, uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        const void *value, uint64_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS, r;
@@ -1745,7 +1737,7 @@ cleanup:
  */
 static LY_ERR
 lyd_new_path_(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        uint64_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1789,7 +1781,7 @@ lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path
 
 LIBYANG_API_DEF LY_ERR
 lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        uint32_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
+        uint64_t value_size_bits, uint32_t any_hints, uint32_t options, struct lyd_node **new_parent,
         struct lyd_node **new_node)
 {
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);

@@ -371,7 +371,7 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const struct lyd_node *lnode,
-        const void *value, uint32_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
+        const void *value, uint64_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
         uint32_t hints, struct lyd_node **node);
 
 /**
@@ -394,7 +394,7 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @return LY_ERR value.
  */
 LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
-        const struct lys_module *mod, const char *name, uint32_t name_len, const void *value, uint32_t value_size_bits,
+        const struct lys_module *mod, const char *name, uint32_t name_len, const void *value, uint64_t value_size_bits,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         const struct lyd_node *lnode);
 

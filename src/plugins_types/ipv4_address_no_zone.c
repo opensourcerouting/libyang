@@ -49,7 +49,7 @@
 
 static void
 lyplg_type_lyb_size_ipv4_address_no_zone(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint32_t *fixed_size_bits)
+        uint64_t *fixed_size_bits)
 {
     *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
     *fixed_size_bits = 32;
@@ -60,7 +60,7 @@ lyplg_type_lyb_size_ipv4_address_no_zone(const struct lysc_type *UNUSED(type), e
  */
 static LY_ERR
 lyplg_type_store_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
-        uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
+        uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
 {
@@ -159,7 +159,7 @@ lyplg_type_sort_ipv4_address_no_zone(const struct ly_ctx *UNUSED(ctx), const str
  */
 static const void *
 lyplg_type_print_ipv4_address_no_zone(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint64_t *value_size_bits)
 {
     struct lyd_value_ipv4_address_no_zone *val;
     char *ret;

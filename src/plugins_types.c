@@ -203,7 +203,7 @@ lyplg_type_sort_simple(const struct ly_ctx *ctx, const struct lyd_value *val1, c
 
 LIBYANG_API_DEF const void *
 lyplg_type_print_simple(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *value, LY_VALUE_FORMAT UNUSED(format),
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint32_t *value_size_bits)
+        void *UNUSED(prefix_data), ly_bool *dynamic, uint64_t *value_size_bits)
 {
     if (dynamic) {
         *dynamic = 0;
@@ -239,14 +239,14 @@ lyplg_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 
 LIBYANG_API_DEF void
 lyplg_type_lyb_size_variable_bits(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint32_t *UNUSED(fixed_size_bits))
+        uint64_t *UNUSED(fixed_size_bits))
 {
     *size_type = LYPLG_LYB_SIZE_VARIABLE_BITS;
 }
 
 LIBYANG_API_DEF void
 lyplg_type_lyb_size_variable_bytes(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint32_t *UNUSED(fixed_size_bits))
+        uint64_t *UNUSED(fixed_size_bits))
 {
     *size_type = LYPLG_LYB_SIZE_VARIABLE_BYTES;
 }
@@ -562,22 +562,26 @@ type_get_hints_base(uint32_t hints)
 }
 
 LIBYANG_API_DEF LY_ERR
-lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format, uint32_t value_size_bits,
-        enum lyplg_lyb_size_type lyb_size_type, uint32_t lyb_fixed_size_bits, uint32_t *value_size,
+lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format, uint64_t value_size_bits,
+        enum lyplg_lyb_size_type lyb_size_type, uint64_t lyb_fixed_size_bits, uint32_t *value_size,
         struct ly_err_item **err)
 {
     if ((format == LY_VALUE_LYB) && (lyb_size_type == LYPLG_LYB_SIZE_FIXED_BITS) &&
             (value_size_bits != lyb_fixed_size_bits)) {
         /* LYB size not as expected */
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected %" PRIu32 " b).",
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu64 " b (expected %" PRIu64 " b).",
                 type_name, value_size_bits, lyb_fixed_size_bits);
     } else if (((format != LY_VALUE_LYB) || (lyb_size_type == LYPLG_LYB_SIZE_VARIABLE_BYTES)) && (value_size_bits % 8)) {
         /* value size in bits not rounded bytes */
-        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu32 " b (expected full bytes).",
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu64 " b (expected full bytes).",
                 type_name, value_size_bits);
     }
 
     /* get value length in bytes */
+    if (LYPLG_BITS2BYTES(value_size_bits) > UINT32_MAX) {
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid %s value size %" PRIu64 " b (too big).",
+                type_name, value_size_bits);
+    }
     *value_size = LYPLG_BITS2BYTES(value_size_bits);
 
     return LY_SUCCESS;

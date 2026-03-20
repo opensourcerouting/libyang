@@ -36,14 +36,14 @@
 
 static void
 lyplg_type_lyb_size_empty(const struct lysc_type *UNUSED(type), enum lyplg_lyb_size_type *size_type,
-        uint32_t *fixed_size_bits)
+        uint64_t *fixed_size_bits)
 {
     *size_type = LYPLG_LYB_SIZE_FIXED_BITS;
     *fixed_size_bits = 0;
 }
 
 static LY_ERR
-lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint32_t value_size_bits,
+lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint64_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT UNUSED(format), void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
         struct ly_err_item **err)
@@ -57,7 +57,7 @@ lyplg_type_store_empty(const struct ly_ctx *ctx, const struct lysc_type *type, c
 
     /* validation */
     if (value_size_bits) {
-        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value size %" PRIu32 " b.", value_size_bits);
+        ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Invalid empty value size %" PRIu64 " b.", value_size_bits);
         goto cleanup;
     }
     value_size = 0;

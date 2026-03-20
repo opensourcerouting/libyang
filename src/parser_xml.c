@@ -765,7 +765,7 @@ lydxml_subtree_term(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, c
     *node = NULL;
 
     /* create node */
-    r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, parent, xmlctx->value, xmlctx->value_len * 8,
+    r = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, parent, xmlctx->value, (uint64_t)xmlctx->value_len * 8,
             &xmlctx->dynamic, LY_VALUE_XML, &xmlctx->ns, LYD_HINT_DATA, node);
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 

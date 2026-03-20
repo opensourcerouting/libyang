@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic JSON format parser routines.
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -69,14 +69,14 @@ struct lyjson_ctx {
     struct ly_set status;   /* stack of ::LYJSON_PARSER_STATUS values corresponding to the JSON items being processed */
 
     const char *value;      /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT_NAME */
-    size_t value_len;       /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT_NAME */
+    uint32_t value_len;     /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT_NAME */
     ly_bool dynamic;        /* ::LYJSON_STRING, ::LYJSON_NUMBER, ::LYJSON_OBJECT_NAME */
 
     struct {
         enum LYJSON_PARSER_STATUS status;
         uint32_t status_count;
         const char *value;
-        size_t value_len;
+        uint32_t value_len;
         ly_bool dynamic;
         const char *input;
     } backup;

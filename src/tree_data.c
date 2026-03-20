@@ -1372,7 +1372,7 @@ lyd_get_meta_annotation(const struct lys_module *mod, const char *name, size_t n
 
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        uint32_t name_len, const void *value, uint32_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
+        uint32_t name_len, const void *value, uint64_t value_size_bits, ly_bool is_utf8, ly_bool store_only,
         ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lysc_node *ctx_node,
         const struct lyd_node *lnode, ly_bool clear_dflt, ly_bool *incomplete)
 {

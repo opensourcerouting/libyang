@@ -253,7 +253,7 @@ LIBYANG_API_DECL void ly_err_free(void *ptr);
  * @return LY_ERR value on error, @p err generated.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_check_value_size(const char *type_name, LY_VALUE_FORMAT format,
-        uint32_t value_size_bits, enum lyplg_lyb_size_type lyb_size_type, uint32_t lyb_fixed_size_bits,
+        uint64_t value_size_bits, enum lyplg_lyb_size_type lyb_size_type, uint64_t lyb_fixed_size_bits,
         uint32_t *value_size, struct ly_err_item **err);
 
 /**
@@ -342,7 +342,8 @@ LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_xpath10_print_token(const char *token, uint16_t tok_len, ly_bool is_nametest,
-        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
+        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,
+        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
         struct ly_err_item **err);
 
 /**
@@ -468,7 +469,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_print_xpath10_value(const struct lyd_value_xp
  * ::LYPLG_LYB_SIZE_FIXED_BITS.
  */
 LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type *type,
-        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
+        enum lyplg_lyb_size_type *size_type, uint64_t *fixed_size_bits);
 
 /**
  * @defgroup plugintypestoreopts Plugins: Type store callback options.
@@ -523,7 +524,7 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  * @return LY_ERR value on error, @p storage must not have any pointers to dynamic memory.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const void *value, uint32_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const void *value, uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -615,7 +616,7 @@ LIBYANG_API_DECL typedef int (*lyplg_type_sort_clb)(const struct ly_ctx *ctx, co
  * @return NULL in case of error.
  */
 LIBYANG_API_DECL typedef const void *(*lyplg_type_print_clb)(const struct ly_ctx *ctx, const struct lyd_value *value,
-        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits);
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits);
 
 /**
  * @brief Callback to duplicate data in the data structure.
@@ -699,7 +700,7 @@ LIBYANG_API_DEF int lyplg_type_sort_simple(const struct ly_ctx *ctx, const struc
  * @brief Implementation of ::lyplg_type_print_clb for a generic simple type.
  */
 LIBYANG_API_DECL const void *lyplg_type_print_simple(const struct ly_ctx *ctx, const struct lyd_value *value,
-        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_size_bits);
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for a generic simple type.
@@ -716,13 +717,13 @@ LIBYANG_API_DECL void lyplg_type_free_simple(const struct ly_ctx *ctx, struct ly
  * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length in bits.
  */
 LIBYANG_API_DECL void lyplg_type_lyb_size_variable_bits(const struct lysc_type *type,
-        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
+        enum lyplg_lyb_size_type *size_type, uint64_t *fixed_size_bits);
 
 /**
  * @brief Implementation of ::lyplg_type_lyb_size_clb for a type with variable length rounded to bytes.
  */
 LIBYANG_API_DECL void lyplg_type_lyb_size_variable_bytes(const struct lysc_type *type,
-        enum lyplg_lyb_size_type *size_type, uint32_t *fixed_size_bits);
+        enum lyplg_lyb_size_type *size_type, uint64_t *fixed_size_bits);
 
 /** @} pluginsTypesSimple */
 
@@ -735,7 +736,7 @@ LIBYANG_API_DECL void lyplg_type_free_instanceid(const struct ly_ctx *ctx, struc
  * @brief Implementation of ::lyplg_type_store_clb for the built-in string type.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_store_string(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
-        uint32_t value_len, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
         const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err);
 
 /**
@@ -748,7 +749,7 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_value_string(const struct ly_ctx *ct
  * @brief Implementation of ::lyplg_type_print_clb for the ietf-yang-types xpath1.0 type.
  */
 LIBYANG_API_DECL const void *lyplg_type_print_xpath10(const struct ly_ctx *ctx, const struct lyd_value *value,
-        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint32_t *value_len);
+        LY_VALUE_FORMAT format, void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits);
 
 /**
  * @brief Implementation of ::lyplg_type_dup_clb for the ietf-yang-types xpath1.0 type.

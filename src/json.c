@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic JSON format parser for libyang
  *
- * Copyright (c) 2020 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -106,7 +106,7 @@ lyjson_skip_ws(struct lyjson_ctx *jsonctx)
  * @param[in] dynamic Whether @p value is dynamically-allocated.
  */
 static void
-lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value_len, ly_bool dynamic)
+lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, uint32_t value_len, ly_bool dynamic)
 {
     assert(jsonctx);
 
@@ -127,11 +127,18 @@ lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value
 static LY_ERR
 lyjson_string(struct lyjson_ctx *jsonctx)
 {
+#define ADD_CHECK_OVERFLOW_GOTO(var, num, err_label) \
+        if (var + num < var) { \
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "JSON value too long."); \
+            goto err_label; \
+        } \
+        var += num;
+
     const char *in = jsonctx->in->current, *start, *c;
     char *buf = NULL;
-    size_t offset;   /* read offset in input buffer */
-    size_t len;      /* length of the output string (write offset in output buffer) */
-    size_t size = 0; /* size of the output buffer */
+    uint32_t offset;   /* read offset in input buffer */
+    uint32_t len;      /* length of the output string (write offset in output buffer) */
+    uint32_t size = 0; /* size of the output buffer */
     uint64_t start_line, orig_line;
     uint32_t u, value;
     uint8_t i;
@@ -160,7 +167,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
              * we will need 4 bytes at most since we support only the predefined
              * (one-char) entities and character references */
             if (len + offset + 4 >= size) {
-                size_t increment;
+                uint32_t increment;
 
                 for (increment = LYJSON_STRING_BUF_STEP; len + offset + 4 >= size + increment; increment += LYJSON_STRING_BUF_STEP) {}
                 buf = ly_realloc(buf, size + increment);
@@ -212,7 +219,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 break;
             case 'u':
                 /* Basic Multilingual Plane character \uXXXX */
-                offset++;
+                ADD_CHECK_OVERFLOW_GOTO(offset, 1, error);
                 for (value = i = 0; i < 4; i++) {
                     if (!in[offset + i]) {
                         LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", c);
@@ -233,7 +240,8 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 goto error;
             }
 
-            offset += i;   /* add read escaped characters */
+            /* add read escaped characters */
+            ADD_CHECK_OVERFLOW_GOTO(offset, i, error);
             LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], value, &u),
                     LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.*s\" (0x%08" PRIx32 ").",
                     (int)(&in[offset] - c), c, value),
@@ -258,7 +266,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 buf[len + offset] = '\0';
             }
             len += offset;
-            ++offset;
+            ADD_CHECK_OVERFLOW_GOTO(offset, 1, error);
             in += offset;
             goto success;
 
@@ -274,7 +282,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                     error);
 
             /* character is ok, continue */
-            offset += u;
+            ADD_CHECK_OVERFLOW_GOTO(offset, u, error);
             break;
         }
     }
@@ -438,7 +446,7 @@ lyjson_exp_number_copy_num_part(const char *num, uint32_t num_len, char *dec_poi
  */
 static LY_ERR
 lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent, uint64_t total_len, char **res,
-        size_t *res_len)
+        uint32_t *res_len)
 {
 
 #define MAYBE_WRITE_MINUS(ARRAY, INDEX, FLAG) \
@@ -630,7 +638,14 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
 static LY_ERR
 lyjson_number(struct lyjson_ctx *jsonctx)
 {
-    size_t offset = 0, num_len;
+#define ADD_CHECK_OVERFLOW_RET(var, num, ret) \
+        if (var + num < var) { \
+            LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "JSON value too long."); \
+            return ret; \
+        } \
+        var += num;
+
+    uint32_t offset = 0, num_len;
     const char *in = jsonctx->in->current, *exponent = NULL;
     uint8_t minus = 0;
     char *num;
@@ -645,7 +660,7 @@ lyjson_number(struct lyjson_ctx *jsonctx)
     } else if (isdigit(in[offset])) {
         ++offset;
         while (isdigit(in[offset])) {
-            ++offset;
+            ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         }
     } else {
 invalid_character:
@@ -658,26 +673,26 @@ invalid_character:
     }
 
     if (in[offset] == '.') {
-        ++offset;
+        ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         if (!isdigit(in[offset])) {
             goto invalid_character;
         }
         while (isdigit(in[offset])) {
-            ++offset;
+            ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         }
     }
 
     if ((in[offset] == 'e') || (in[offset] == 'E')) {
         exponent = &in[offset];
-        ++offset;
+        ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         if ((in[offset] == '+') || (in[offset] == '-')) {
-            ++offset;
+            ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         }
         if (!isdigit(in[offset])) {
             goto invalid_character;
         }
         while (isdigit(in[offset])) {
-            ++offset;
+            ADD_CHECK_OVERFLOW_RET(offset, 1, LY_EINVAL);
         }
     }
 
