@@ -280,7 +280,6 @@ struct rb_node;
  * - ::lyd_value_validate()
  *
  * - ::lyd_change_term()
- * - ::lyd_change_term_bin()
  * - ::lyd_change_term_canon()
  * - ::lyd_change_meta()
  *
@@ -1579,22 +1578,6 @@ LIBYANG_API_DECL LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const st
  * @return LY_ERR value on other errors.
  */
 LIBYANG_API_DECL LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
-
-/**
- * @brief Change the value of a term (leaf or leaf-list) node to a binary value.
- *
- * Node changed this way is always considered explicitly set, meaning its default flag
- * is always cleared.
- *
- * @param[in] term Term node to change.
- * @param[in] value New value to set in binary format (usually a pointer), see @ref howtoDataLYB.
- * @param[in] value_size_bits Size of @p value in bits.
- * @return LY_SUCCESS if value was changed,
- * @return LY_EEXIST if value was the same and only the default flag was cleared,
- * @return LY_ENOT if the values were equal and no change occurred,
- * @return LY_ERR value on other errors.
- */
-LIBYANG_API_DECL LY_ERR lyd_change_term_bin(struct lyd_node *term, const void *value, uint32_t value_size_bits);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node to a canonical string value.
