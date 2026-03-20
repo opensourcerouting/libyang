@@ -420,7 +420,7 @@ lyplg_type_print_binary(const struct ly_ctx *ctx, const struct lyd_value *value,
     if (format == LY_VALUE_LYB) {
         *dynamic = 0;
         if (value_size_bits) {
-            *value_size_bits = val->size * 8;
+            *value_size_bits = (uint64_t)val->size * 8;
         }
         return val->data;
     }
