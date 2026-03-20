@@ -310,7 +310,7 @@ static LY_ERR
 lyb_read_value(const struct lysc_type *type, uint8_t **val, uint64_t *val_size_bits, struct lylyb_parse_ctx *lybctx)
 {
     enum lyplg_lyb_size_type size_type;
-    uint32_t lyb_size_bits;
+    uint32_t lyb_size_bits = 0;
     uint64_t fixed_size_bits;
     struct lysc_type_leafref *type_lf;
 
