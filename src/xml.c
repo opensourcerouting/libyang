@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Generic XML parser implementation for libyang
  *
- * Copyright (c) 2015 - 2021 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@
         ly_in_skip(c->in, 1);             \
     }
 
-static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, ly_bool *ws_only,
+static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, uint32_t *value_len, ly_bool *ws_only,
         ly_bool *dynamic);
 
 /**
@@ -57,9 +57,9 @@ static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **val
  * @param[in] sectname Section name to refer in error message.
  */
 LY_ERR
-skip_section(struct lyxml_ctx *xmlctx, const char *delim, size_t delim_len, const char *sectname)
+skip_section(struct lyxml_ctx *xmlctx, const char *delim, uint32_t delim_len, const char *sectname)
 {
-    size_t i;
+    uint32_t i;
     register const char *input, *a, *b;
     uint64_t parsed = 0, newlines = 0;
 
@@ -154,7 +154,7 @@ lyxml_parse_identifier(struct lyxml_ctx *xmlctx, const char **start, const char 
  * @return LY_ERR values.
  */
 LY_ERR
-lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri)
+lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, uint32_t prefix_len, char *uri)
 {
     LY_ERR rc = LY_SUCCESS;
     struct lyxml_ns *ns;
@@ -253,7 +253,7 @@ lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 }
 
 const struct lyxml_ns *
-lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len)
+lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, uint32_t prefix_len)
 {
     struct lyxml_ns *ns;
     uint32_t u;
@@ -292,7 +292,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
 {
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
     const char *endtag, *sectname;
-    size_t endtag_len;
+    uint32_t endtag_len;
 
     while (1) {
         ign_xmlws(xmlctx);
@@ -351,7 +351,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len)
 {
     const char *start, *end;
 
@@ -361,11 +361,21 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_
     LY_CHECK_RET(lyxml_parse_identifier(xmlctx, &start, &end));
     if (end[0] == ':') {
         /* we have prefixed identifier */
+        if (end - start > UINT32_MAX) {
+            LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML qualified name prefix too long.");
+            return LY_EINVAL;
+        }
+
         *prefix = start;
         *prefix_len = end - start;
 
         move_input(xmlctx, 1);
         LY_CHECK_RET(lyxml_parse_identifier(xmlctx, &start, &end));
+    }
+
+    if (end - start > UINT32_MAX) {
+        LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML qualified name too long.");
+        return LY_EINVAL;
     }
 
     *name = start;
@@ -386,8 +396,8 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, size_t *offset, size_t need_space, char **buf,
-        size_t *len, size_t *size)
+lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, uint32_t *offset, uint32_t need_space, char **buf,
+        uint32_t *len, uint32_t *size)
 {
 #define BUFSIZE 24
 #define BUFSIZE_STEP 128
@@ -397,6 +407,12 @@ lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, size_t *off
         *buf = malloc(BUFSIZE);
         LY_CHECK_ERR_RET(!*buf, LOGMEM(ctx), LY_EMEM);
         *size = BUFSIZE;
+    }
+
+    /* overflow check */
+    if (*len + *offset + need_space < *size) {
+        LOGVAL(ctx, NULL, LYVE_SYNTAX, "XML value too long.");
+        return LY_EINVAL;
     }
 
     /* allocate needed space */
@@ -432,14 +448,21 @@ lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, size_t *off
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, ly_bool *ws_only, ly_bool *dynamic)
+lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t *length, ly_bool *ws_only, ly_bool *dynamic)
 {
+#define ADD_CHECK_OVERFLOW(var, num, err_label) \
+        if (var + num < var) { \
+            LOGVAL(ctx, NULL, LYVE_SYNTAX, "XML value too long."); \
+            goto err_label; \
+        } \
+        var += num;
+
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
     const char *in = xmlctx->in->current, *start, *in_aux, *p;
     char *buf = NULL;
-    size_t offset;   /* read offset in input buffer */
-    size_t len;      /* length of the output string (write offset in output buffer) */
-    size_t size = 0; /* size of the output buffer */
+    uint32_t offset;   /* read offset in input buffer */
+    uint32_t len;      /* length of the output string (write offset in output buffer) */
+    uint32_t size = 0; /* size of the output buffer */
     uint32_t n, u;
     ly_bool ws = 1;
 
@@ -460,7 +483,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
              * (one-char) entities and character references */
             LY_CHECK_RET(lyxml_parse_value_use_buf(ctx, &in, &offset, 4, &buf, &len, &size));
 
-            ++offset;
+            ADD_CHECK_OVERFLOW(offset, 1, error);
             if (in[offset] != '#') {
                 /* entity reference - only predefined references are supported */
                 if (!strncmp(&in[offset], "lt;", ly_strlen_const("lt;"))) {
@@ -488,7 +511,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
             } else {
                 p = &in[offset - 1];
                 /* character reference */
-                ++offset;
+                ADD_CHECK_OVERFLOW(offset, 1, error);
                 if (isdigit(in[offset])) {
                     for (n = 0; isdigit(in[offset]); offset++) {
                         n = (LY_BASE_DEC * n) + (in[offset] - '0');
@@ -514,7 +537,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                     LOGVAL(ctx, NULL, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(&in[offset]), &in[offset], ";");
                     goto error;
                 }
-                ++offset;
+                ADD_CHECK_OVERFLOW(offset, 1, error);
                 if (ly_pututf8(&buf[len], n, &u)) {
                     LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.12s\" (0x%08" PRIx32 ").", p, n);
                     goto error;
@@ -585,7 +608,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
             /* continue */
             in_aux = &in[offset];
             LY_CHECK_ERR_GOTO(ly_getutf8(&in_aux, &n, &u), LOGVAL(ctx, NULL, LY_VCODE_INCHAR, in[offset]), error);
-            offset += u;
+            ADD_CHECK_OVERFLOW(offset, u, error);
         }
     }
 
@@ -623,7 +646,7 @@ success:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
+lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, uint32_t prefix_len, const char *name, uint32_t name_len,
         ly_bool empty)
 {
     struct lyxml_elem *e;
@@ -681,14 +704,14 @@ lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len)
+lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, uint32_t prefix_len, const char *name, uint32_t name_len)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxml_elem *e;
     const char *prev_input;
     uint64_t prev_line;
     char *value;
-    size_t value_len;
+    uint32_t value_len;
     ly_bool ws_only, dynamic, is_ns;
     uint32_t c, parsed;
 
@@ -768,7 +791,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, ly_bool *ws_only, ly_bool *dynamic)
+lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, uint32_t *value_len, ly_bool *ws_only, ly_bool *dynamic)
 {
     char quot;
 
@@ -823,12 +846,12 @@ lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *va
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len)
 {
     const char *in;
     char *value;
     uint32_t c, parsed;
-    size_t value_len;
+    uint32_t value_len;
     ly_bool ws_only, dynamic;
 
     /* skip WS */
@@ -879,7 +902,7 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
+lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, uint32_t *prefix_len, const char **name, uint32_t *name_len,
         ly_bool *closing)
 {
     /* skip WS until EOF or after opening tag '<' */
@@ -1089,7 +1112,7 @@ lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name, *prev_input;
-    size_t prefix_len, name_len;
+    uint32_t prefix_len, name_len;
     ly_bool closing;
 
     prev_input = xmlctx->in->current;

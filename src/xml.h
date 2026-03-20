@@ -60,8 +60,8 @@ struct lyxml_ns {
 struct lyxml_elem {
     const char *prefix; /**< only pointer, not in dictionary */
     const char *name;   /**< only pointer, not in dictionary */
-    size_t prefix_len;
-    size_t name_len;
+    uint32_t prefix_len;
+    uint32_t name_len;
 };
 
 /**
@@ -88,15 +88,15 @@ struct lyxml_ctx {
         const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value */
     };
     union {
-        size_t prefix_len;  /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix length */
-        size_t value_len;   /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value length */
+        uint32_t prefix_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix length */
+        uint32_t value_len;     /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value length */
     };
     union {
         const char *name;   /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name */
         ly_bool ws_only;    /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is empty/white-space only */
     };
     union {
-        size_t name_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name length */
+        uint32_t name_len;  /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name length */
         ly_bool dynamic;    /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is dynamically allocated */
     };
 
@@ -153,7 +153,7 @@ void lyxml_ns_rm(struct lyxml_ctx *xmlctx);
  * @param[in] prefix_len Length of the prefix string (since it might not be NULL-terminated).
  * @return The namespace record or NULL if the record for the specified prefix not found.
  */
-const struct lyxml_ns *lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len);
+const struct lyxml_ns *lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, uint32_t prefix_len);
 
 /**
  * @brief Print the given @p text as XML string which replaces some of the characters which cannot appear in XML data.
