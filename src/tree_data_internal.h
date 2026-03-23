@@ -582,6 +582,15 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
         const char *value, uint32_t value_len, ly_bool *dynamic, LY_VALUE_FORMAT format, void *val_prefix_data, uint32_t hints);
 
 /**
+ * @brief Check the equality of the two schemas.
+ *
+ * @param schema1 Schema of first node.
+ * @param schema2 Schema of second node.
+ * @return 1 if the schemas are equal otherwise 0.
+ */
+ly_bool lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2);
+
+/**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.
  *
  * @param[in] ctx libyang context.

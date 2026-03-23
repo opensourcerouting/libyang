@@ -25,6 +25,7 @@
 #include "plugins_types.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 LY_ERR
@@ -108,7 +109,7 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(c
         if (!lyd_compare_single(val1, val2, 0)) {
             return 1;
         }
-    } else if (val1->schema == val2->schema) {
+    } else if (lyd_compare_schema_equal(val1->schema, val2->schema)) {
         /* just schema match */
         return 1;
     }

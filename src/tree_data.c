@@ -1505,14 +1505,7 @@ finish:
     return LY_SUCCESS;
 }
 
-/**
- * @brief Check the equality of the two schemas from different contexts.
- *
- * @param schema1 of first node.
- * @param schema2 of second node.
- * @return 1 if the schemas are equal otherwise 0.
- */
-static ly_bool
+ly_bool
 lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2)
 {
     if (!schema1 && !schema2) {
@@ -1521,7 +1514,9 @@ lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node
         return 0;
     }
 
-    assert(schema1->module->ctx != schema2->module->ctx);
+    if (schema1->module->ctx == schema2->module->ctx) {
+        return (schema1 == schema2) ? 1 : 0;
+    }
 
     if (schema1->nodetype != schema2->nodetype) {
         return 0;
@@ -3177,10 +3172,11 @@ lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, con
 LIBYANG_API_DEF LY_ERR
 lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
 {
-    struct lyd_node **match_p, *iter, *dup = NULL, *parent;
+    struct lyd_node **match_p, *iter, *parent;
     ly_bool found;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
+
     if (!siblings) {
         /* no data */
         if (match) {
@@ -3189,15 +3185,9 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         return LY_ENOTFOUND;
     }
 
-    if (LYD_CTX(siblings) != LYD_CTX(target)) {
-        /* create a duplicate in this context */
-        LY_CHECK_RET(lyd_dup_single_to_ctx(target, lyd_dup_get_top_ctx(siblings), NULL, 0, &dup));
-        target = dup;
-    }
-
-    if ((siblings->schema && target->schema && (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema)))) {
+    if ((siblings->schema && target->schema &&
+            !lyd_compare_schema_equal(lysc_data_parent(siblings->schema), lysc_data_parent(target->schema)))) {
         /* schema mismatch */
-        lyd_free_tree(dup);
         if (match) {
             *match = NULL;
         }
@@ -3214,7 +3204,9 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         if (lysc_is_dup_inst_list(target->schema)) {
             /* we must search the instances from beginning to find the first matching one */
             found = 0;
-            LYD_LIST_FOR_INST(siblings, target->schema, iter) {
+            for (lyd_find_sibling_val(siblings, target->schema, NULL, 0, &iter);
+                    iter && lyd_compare_schema_equal(iter->schema, target->schema);
+                    iter = iter->next) {
                 if (!lyd_compare_single(target, iter, LYD_COMPARE_FULL_RECURSION)) {
                     found = 1;
                     break;
@@ -3249,7 +3241,6 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         }
     }
 
-    lyd_free_tree(dup);
     if (!siblings) {
         if (match) {
             *match = NULL;
