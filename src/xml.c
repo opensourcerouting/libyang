@@ -412,7 +412,7 @@ lyxml_parse_value_use_buf(const struct ly_ctx *ctx, const char **in, uint32_t *o
     }
 
     /* overflow check */
-    req_size = *len + *offset + need_space;
+    req_size = (uint64_t)*len + (uint64_t)*offset + (uint64_t)need_space;
     if (req_size > UINT32_MAX) {
         LOGVAL(ctx, NULL, LYVE_SYNTAX, "XML value too long.");
         return LY_EINVAL;
