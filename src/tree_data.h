@@ -1491,7 +1491,8 @@ LIBYANG_API_DECL LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ct
  * but can be a data tree based on @p options. For other node types, it should be NULL.
  * @param[in] value_size_bits Size of @p value in bits. Does not have to be set if a 0-terminated string and XML or
  * JSON value format. Ignored when creating anyxml/anydata nodes.
- * @param[in] any_hints Hints for @p value when creating an anyxml/anydata node.
+ * @param[in] any_hints Hints for @p value when creating an anyxml/anydata node. Bitmap of [val hints](@ref lydvalhints)
+ * and [node hints](@ref lydnodehints).
  * @param[in] options Bitmask of options, see @ref newvaloptions.
  * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
  * @param[out] new_node Optional target node of @p path (the last created node, the list instance in case of a list).
