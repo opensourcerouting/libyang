@@ -929,9 +929,9 @@ struct lyd_node_any {
  *
  * Any information about node types encoded in the format is hinted by these values.
  */
-#define LYD_NODEHINT_LIST       0x0080 /**< node is allowed to be a list instance */
-#define LYD_NODEHINT_LEAFLIST   0x0100 /**< node is allowed to be a leaf-list instance */
-#define LYD_NODEHINT_CONTAINER  0x0200 /**< node is allowed to be a container instance */
+#define LYD_NODEHINT_LIST       0x1000 /**< node is allowed to be a list instance */
+#define LYD_NODEHINT_LEAFLIST   0x2000 /**< node is allowed to be a leaf-list instance */
+#define LYD_NODEHINT_CONTAINER  0x4000 /**< node is allowed to be a container instance */
 /**
  * @} lydnodehints
  */
@@ -946,11 +946,11 @@ struct lyd_node_any {
  * Any information about value and node types encoded in the format is hinted by these values.
  * It combines [value hints](@ref lydvalhints) and [node hints](@ref lydnodehints).
  */
-#define LYD_HINT_DATA       0x03F3 /**< special node/value hint to be used for generic data node/value (for cases when
+#define LYD_HINT_DATA       0xFFF3 /**< special node/value hint to be used for generic data node/value (for cases when
                                         there is no encoding or it does not provide any additional information about
                                         a node/value type); do not combine with specific [value hints](@ref lydvalhints)
                                         or [node hints](@ref lydnodehints). */
-#define LYD_HINT_SCHEMA     0x03FF /**< special node/value hint to be used for generic schema node/value(for cases when
+#define LYD_HINT_SCHEMA     0xFFFF /**< special node/value hint to be used for generic schema node/value(for cases when
                                         there is no encoding or it does not provide any additional information about
                                         a node/value type); do not combine with specific [value hints](@ref lydvalhints)
                                         or [node hints](@ref lydnodehints). */
