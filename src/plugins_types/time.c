@@ -556,7 +556,7 @@ lyplg_type_free_time(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_time[] = {
     {
         .module = "ietf-yang-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "time",
 
         .plugin.id = "ly2 time",
@@ -572,7 +572,7 @@ const struct lyplg_type_record plugins_time[] = {
     },
     {
         .module = "ietf-yang-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "time-no-zone",
 
         .plugin.id = "ly2 time",

@@ -84,7 +84,7 @@ lyplg_type_sort_time_period(const struct ly_ctx *ctx, const struct lyd_value *va
 const struct lyplg_type_record plugins_time_period[] = {
     {
         .module = "libnetconf2-netconf-server",
-        .revision = "2024-07-09",
+        .revision = NULL,
         .name = "time-period",
 
         .plugin.id = "ly2 time-period",

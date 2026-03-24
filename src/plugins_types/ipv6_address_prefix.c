@@ -362,7 +362,7 @@ lyplg_type_free_ipv6_address_prefix(const struct ly_ctx *ctx, struct lyd_value *
 const struct lyplg_type_record plugins_ipv6_address_prefix[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv6-prefix",
 
         .plugin.id = "ly2 ipv6-address-prefix",
@@ -378,7 +378,7 @@ const struct lyplg_type_record plugins_ipv6_address_prefix[] = {
     },
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv6-address-and-prefix",
 
         .plugin.id = "ly2 ipv6-address-prefix",

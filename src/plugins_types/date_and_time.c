@@ -50,7 +50,7 @@ static LY_ERR
 lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value, uint64_t value_size_bits,
         uint32_t options, LY_VALUE_FORMAT format, void *UNUSED(prefix_data), uint32_t hints,
         const struct lysc_node *UNUSED(ctx_node), struct lyd_value *storage, struct lys_glob_unres *UNUSED(unres),
-        struct ly_err_item **err)
+        ly_bool old_rev, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_value_date_and_time *val;
@@ -120,7 +120,7 @@ lyplg_type_store_date_and_time(const struct ly_ctx *ctx, const struct lysc_type 
         goto cleanup;
     }
 
-    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6) || (((char *)value)[value_size - 1] == 'Z')) {
+    if (!strncmp(((char *)value + value_size) - 6, "-00:00", 6) || (!old_rev && (((char *)value)[value_size - 1] == 'Z'))) {
         /* unknown timezone, timezone format supported for backwards compatibility */
         val->unknown_tz = 1;
     }
@@ -146,6 +146,24 @@ cleanup:
         lyplg_type_free_date_and_time(ctx, storage);
     }
     return ret;
+}
+
+static LY_ERR
+lyplg_type_store_date_and_time_old(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+{
+    return lyplg_type_store_date_and_time(ctx, type, value, value_size_bits, options, format, prefix_data, hints,
+            ctx_node, storage, unres, 1, err);
+}
+
+static LY_ERR
+lyplg_type_store_date_and_time_new(const struct ly_ctx *ctx, const struct lysc_type *type, const void *value,
+        uint64_t value_size_bits, uint32_t options, LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints,
+        const struct lysc_node *ctx_node, struct lyd_value *storage, struct lys_glob_unres *unres, struct ly_err_item **err)
+{
+    return lyplg_type_store_date_and_time(ctx, type, value, value_size_bits, options, format, prefix_data, hints,
+            ctx_node, storage, unres, 0, err);
 }
 
 /**
@@ -263,7 +281,7 @@ lyplg_type_sort_date_and_time(const struct ly_ctx *UNUSED(ctx), const struct lyd
  */
 static const void *
 lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
-        void *UNUSED(prefix_data), ly_bool *dynamic, uint64_t *value_size_bits)
+        void *UNUSED(prefix_data), ly_bool old_rev, ly_bool *dynamic, uint64_t *value_size_bits)
 {
     struct lyd_value_date_and_time *val;
     struct tm tm;
@@ -303,9 +321,9 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
                 return NULL;
             }
 
-            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%sZ",
+            if (asprintf(&ret, "%04d-%02d-%02dT%02d:%02d:%02d%s%s%s",
                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "") == -1) {
+                    val->fractions_s ? "." : "", val->fractions_s ? val->fractions_s : "", old_rev ? "-00:00" : "Z") == -1) {
                 return NULL;
             }
         } else {
@@ -329,6 +347,20 @@ lyplg_type_print_date_and_time(const struct ly_ctx *ctx, const struct lyd_value 
         *value_size_bits = strlen(value->_canonical) * 8;
     }
     return value->_canonical;
+}
+
+static const void *
+lyplg_type_print_date_and_time_old(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits)
+{
+    return lyplg_type_print_date_and_time(ctx, value, format, prefix_data, 1, dynamic, value_size_bits);
+}
+
+static const void *
+lyplg_type_print_date_and_time_new(const struct ly_ctx *ctx, const struct lyd_value *value, LY_VALUE_FORMAT format,
+        void *prefix_data, ly_bool *dynamic, uint64_t *value_size_bits)
+{
+    return lyplg_type_print_date_and_time(ctx, value, format, prefix_data, 0, dynamic, value_size_bits);
 }
 
 /**
@@ -397,17 +429,33 @@ lyplg_type_free_date_and_time(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_date_and_time[] = {
     {
         .module = "ietf-yang-types",
+        .revision = "2013-07-15",
+        .name = "date-and-time",
+
+        .plugin.id = "ly2 date-and-time",
+        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
+        .plugin.store = lyplg_type_store_date_and_time_old,
+        .plugin.validate_value = NULL,
+        .plugin.validate_tree = NULL,
+        .plugin.compare = lyplg_type_compare_date_and_time,
+        .plugin.sort = lyplg_type_sort_date_and_time,
+        .plugin.print = lyplg_type_print_date_and_time_old,
+        .plugin.duplicate = lyplg_type_dup_date_and_time,
+        .plugin.free = lyplg_type_free_date_and_time,
+    },
+    {
+        .module = "ietf-yang-types",
         .revision = "2025-12-22",
         .name = "date-and-time",
 
         .plugin.id = "ly2 date-and-time",
         .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
-        .plugin.store = lyplg_type_store_date_and_time,
+        .plugin.store = lyplg_type_store_date_and_time_new,
         .plugin.validate_value = NULL,
         .plugin.validate_tree = NULL,
         .plugin.compare = lyplg_type_compare_date_and_time,
         .plugin.sort = lyplg_type_sort_date_and_time,
-        .plugin.print = lyplg_type_print_date_and_time,
+        .plugin.print = lyplg_type_print_date_and_time_new,
         .plugin.duplicate = lyplg_type_dup_date_and_time,
         .plugin.free = lyplg_type_free_date_and_time,
     },

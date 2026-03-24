@@ -398,7 +398,7 @@ lyplg_type_free_date(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_date[] = {
     {
         .module = "ietf-yang-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "date",
 
         .plugin.id = "ly2 date",
@@ -414,7 +414,7 @@ const struct lyplg_type_record plugins_date[] = {
     },
     {
         .module = "ietf-yang-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "date-no-zone",
 
         .plugin.id = "ly2 date",

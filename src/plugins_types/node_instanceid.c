@@ -336,23 +336,7 @@ error:
 const struct lyplg_type_record plugins_node_instanceid[] = {
     {
         .module = "ietf-netconf-acm",
-        .revision = "2012-02-22",
-        .name = "node-instance-identifier",
-
-        .plugin.id = "ly2 node-instance-identifier",
-        .plugin.lyb_size = lyplg_type_lyb_size_variable_bytes,
-        .plugin.store = lyplg_type_store_node_instanceid,
-        .plugin.validate_value = NULL,
-        .plugin.validate_tree = NULL,
-        .plugin.compare = lyplg_type_compare_simple,
-        .plugin.sort = lyplg_type_sort_simple,
-        .plugin.print = lyplg_type_print_node_instanceid,
-        .plugin.duplicate = lyplg_type_dup_node_instanceid,
-        .plugin.free = lyplg_type_free_instanceid,
-    },
-    {
-        .module = "ietf-netconf-acm",
-        .revision = "2018-02-14",
+        .revision = NULL,
         .name = "node-instance-identifier",
 
         .plugin.id = "ly2 node-instance-identifier",

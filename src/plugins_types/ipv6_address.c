@@ -379,7 +379,7 @@ lyplg_type_free_ipv6_address(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_ipv6_address[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv6-address",
 
         .plugin.id = "ly2 ipv6-address",
@@ -395,7 +395,7 @@ const struct lyplg_type_record plugins_ipv6_address[] = {
     },
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv6-address-link-local",
 
         .plugin.id = "ly2 ipv6-address",

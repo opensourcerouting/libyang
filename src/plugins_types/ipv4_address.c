@@ -377,7 +377,7 @@ lyplg_type_free_ipv4_address(const struct ly_ctx *ctx, struct lyd_value *value)
 const struct lyplg_type_record plugins_ipv4_address[] = {
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv4-address",
 
         .plugin.id = "ly2 ipv4-address",
@@ -393,7 +393,7 @@ const struct lyplg_type_record plugins_ipv4_address[] = {
     },
     {
         .module = "ietf-inet-types",
-        .revision = "2025-12-22",
+        .revision = NULL,
         .name = "ipv4-address-link-local",
 
         .plugin.id = "ly2 ipv4-address",
