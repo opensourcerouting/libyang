@@ -1750,7 +1750,8 @@ struct lysc_submodule {
 struct lysc_module {
     struct lys_module *mod;             /**< covering module structure */
 
-    const char **features;              /**< array of all the enabled features ([sized array](@ref sizedarrays)) */
+    const char **features;              /**< array of all the enabled features ([sized array](@ref sizedarrays)), but
+                                             also terminated by NULL */
     struct lysc_node *data;             /**< list of module's top-level data nodes (linked list) */
     struct lysc_node_action *rpcs;      /**< first of actions nodes (linked list) */
     struct lysc_node_notif *notifs;     /**< first of notifications nodes (linked list) */

@@ -1730,6 +1730,10 @@ lys_compile_enabled_features(struct lys_module *mod)
         }
     }
 
+    /* last NULL feature */
+    LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->features, feat_p, rc, cleanup);
+    LY_ARRAY_DECREMENT(mod->compiled->features);
+
 cleanup:
     return rc;
 }
