@@ -244,30 +244,30 @@ test_getnext(void **state)
 }
 
 static void
-test_date(void **UNUSED(state))
+test_date(void **state)
 {
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
-    CHECK_LOG_LASTMSG("Invalid argument date (lysp_check_date()).");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "x", 1, "date"));
-    CHECK_LOG_LASTMSG("Invalid length 1 of a date.");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "nonsencexx", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"nonsencexx\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "123x-11-11", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"123x-11-11\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-13-11", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"2018-13-11\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-11-41", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"2018-11-41\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02-29", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"2018-02-29\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018.02-28", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"2018.02-28\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02.28", 10, "date"));
-    CHECK_LOG_LASTMSG("Invalid value \"2018-02.28\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, NULL, 0, "date"));
+    CHECK_LOG_CTX("Invalid argument date (lys_check_date()).", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "x", 1, "date"));
+    CHECK_LOG_CTX("Invalid length 1 of a date.", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "nonsencexx", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"nonsencexx\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "123x-11-11", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"123x-11-11\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-13-11", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"2018-13-11\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-11-41", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"2018-11-41\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-02-29", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"2018-02-29\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018.02-28", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"2018.02-28\" of \"date\".", NULL, 0);
+    assert_int_equal(LY_EINVAL, lys_check_date(UTEST_LYCTX, "2018-02.28", 10, "date"));
+    CHECK_LOG_CTX("Invalid value \"2018-02.28\" of \"date\".", NULL, 0);
 
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
+    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2018-11-11", 10, "date"));
+    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2018-02-28", 10, "date"));
+    assert_int_equal(LY_SUCCESS, lys_check_date(NULL, "2016-02-29", 10, "date"));
 }
 
 static void

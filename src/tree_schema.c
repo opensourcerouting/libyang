@@ -3131,8 +3131,8 @@ lys_search_localfile(const char * const *searchpaths, ly_bool cwd, const char *n
                 /* remember the revision and try to find the newest one */
                 if (match_name) {
                     if ((file->d_name[len] != '@') ||
-                            lysp_check_date(NULL, &file->d_name[len + 1],
-                            flen - ((format_aux == LYS_IN_YANG) ? LY_YANG_SUFFIX_LEN : LY_YIN_SUFFIX_LEN) - len - 1, NULL)) {
+                            lys_check_date(NULL, &file->d_name[len + 1],
+                            flen - ((format_aux == LYS_IN_YANG) ? LY_YANG_SUFFIX_LEN : LY_YIN_SUFFIX_LEN) - len - 1, "revision")) {
                         continue;
                     } else if ((match_name[match_len] == '@') &&
                             (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {

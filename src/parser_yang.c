@@ -1203,7 +1203,7 @@ parse_revisiondate(struct lysp_yang_ctx *ctx, char *rev, struct lysp_ext_instanc
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date((struct lysp_ctx *)ctx, word, word_len, "revision-date")) {
+    if (lys_check_date(PARSER_CTX(ctx), word, word_len, "revision-date")) {
         free(buf);
         return LY_EVALID;
     }
@@ -1365,7 +1365,7 @@ parse_revision(struct lysp_yang_ctx *ctx, struct lysp_revision **revs)
     LY_CHECK_RET(get_argument(ctx, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date((struct lysp_ctx *)ctx, word, word_len, "revision")) {
+    if (lys_check_date(PARSER_CTX(ctx), word, word_len, "revision")) {
         free(buf);
         return LY_EVALID;
     }

@@ -61,57 +61,6 @@ lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char 
     return LY_SUCCESS;
 }
 
-LY_ERR
-lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const char *stmt)
-{
-    struct tm tm, tm_;
-    char *r;
-
-    LY_CHECK_ARG_RET(PARSER_CTX(ctx), date, LY_EINVAL);
-
-    if (date_len != LY_REV_SIZE - 1) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid length %" PRIu32 " of a date.", (uint32_t)date_len);
-        return LY_EINVAL;
-    }
-
-    /* check format: YYYY-MM-DD */
-    for (uint8_t i = 0; i < date_len; i++) {
-        if ((i == 4) || (i == 7)) {
-            if (date[i] != '-') {
-                goto error;
-            }
-        } else if (!isdigit(date[i])) {
-            goto error;
-        }
-    }
-
-    /* check content, e.g. 2018-02-31 */
-    memset(&tm, 0, sizeof tm);
-    r = strptime(date, "%Y-%m-%d", &tm);
-    if (!r || (r != &date[LY_REV_SIZE - 1])) {
-        goto error;
-    }
-    memcpy(&tm_, &tm, sizeof tm);
-
-    /* Disabling DST: Set tm_isdst to -1 so that mktime() won't adjust for daylight saving time. */
-    tm_.tm_isdst = -1;
-
-    mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
-    if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
-        /* checking days is enough, since other errors
-         * have been checked by strptime() */
-        goto error;
-    }
-
-    return LY_SUCCESS;
-
-error:
-    if (stmt) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)date_len, date, stmt);
-    }
-    return LY_EINVAL;
-}
-
 void
 lysp_sort_revisions(struct lysp_revision *revs)
 {
@@ -688,6 +637,62 @@ lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod)
 cleanup:
     lyht_free(ht, NULL);
     return ret;
+}
+
+LY_ERR
+lys_check_date(const struct ly_ctx *ctx, const char *date, uint32_t date_len, const char *stmt)
+{
+    struct tm tm, tm_;
+    uint8_t i;
+    char *r;
+
+    LY_CHECK_ARG_RET(ctx, date, LY_EINVAL);
+
+    if (date_len != LY_REV_SIZE - 1) {
+        if (ctx) {
+            LOGVAL(ctx, NULL, LYVE_SYNTAX_YANG, "Invalid length %" PRIu32 " of a %s.", date_len, stmt);
+        }
+        return LY_EINVAL;
+    }
+
+    /* check format: YYYY-MM-DD */
+    for (i = 0; i < date_len; i++) {
+        if ((i == 4) || (i == 7)) {
+            if (date[i] != '-') {
+                goto error;
+            }
+        } else if (!isdigit(date[i])) {
+            goto error;
+        }
+    }
+
+    /* check content, e.g. 2018-02-31 */
+    memset(&tm, 0, sizeof tm);
+    r = strptime(date, "%Y-%m-%d", &tm);
+    if (!r || (r != &date[LY_REV_SIZE - 1])) {
+        goto error;
+    }
+    memcpy(&tm_, &tm, sizeof tm);
+
+    /* disable DST: set tm_isdst to -1 so that mktime() won't adjust for daylight saving time */
+    tm_.tm_isdst = -1;
+
+    /* mktime modifies tm_ if it refers invalid date */
+    mktime(&tm_);
+
+    /* e.g 2018-02-29 -> 2018-03-01 */
+    if (tm.tm_mday != tm_.tm_mday) {
+        /* checking days is enough, since other errors have been checked by strptime() */
+        goto error;
+    }
+
+    return LY_SUCCESS;
+
+error:
+    if (ctx) {
+        LOGVAL(ctx, NULL, LY_VCODE_INVAL, (int)date_len, date, stmt);
+    }
+    return LY_EINVAL;
 }
 
 /**

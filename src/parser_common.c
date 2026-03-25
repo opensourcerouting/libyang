@@ -1794,7 +1794,7 @@ lysp_stmt_import(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp
             LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &imp->exts));
             strcpy(imp->rev, str);
             lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lysp_check_date(ctx, imp->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), imp->rev, LY_REV_SIZE - 1, "revision-date"));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &imp->exts));
@@ -1841,7 +1841,7 @@ lysp_stmt_include(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lys
             LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &inc->exts));
             strcpy(inc->rev, str);
             lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lysp_check_date(ctx, inc->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), inc->rev, LY_REV_SIZE - 1, "revision-date"));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &inc->exts));
@@ -1871,7 +1871,7 @@ lysp_stmt_revision(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
     LY_ARRAY_NEW_RET(PARSER_CTX(ctx), *revs, rev, LY_EMEM);
 
     /* store date */
-    LY_CHECK_RET(lysp_check_date(ctx, stmt->arg, strlen(stmt->arg), "revision"));
+    LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), stmt->arg, strlen(stmt->arg), "revision"));
     strncpy(rev->date, stmt->arg, LY_REV_SIZE - 1);
 
     /* parse substatements */

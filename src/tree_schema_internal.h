@@ -222,17 +222,6 @@ LY_ERR lysp_check_identifierchar(struct lysp_ctx *ctx, uint32_t c, ly_bool first
 LY_ERR lysp_check_prefix(struct lysp_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
 
 /**
- * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
- *
- * @param[in] ctx Optional context for logging.
- * @param[in] date Date string to check (non-necessarily terminated by \0)
- * @param[in] date_len Length of the date string, 10 expected.
- * @param[in] stmt Statement name for error message.
- * @return LY_ERR value.
- */
-LY_ERR lysp_check_date(struct lysp_ctx *ctx, const char *date, size_t date_len, const char *stmt);
-
-/**
  * @brief Find type specified type definition.
  *
  * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
@@ -282,6 +271,17 @@ LY_ERR lysp_check_dup_features(struct lysp_ctx *ctx, struct lysp_module *mod);
  * @return LY_ERR value.
  */
 LY_ERR lysp_check_dup_identities(struct lysp_ctx *ctx, struct lysp_module *mod);
+
+/**
+ * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
+ *
+ * @param[in] ctx Optional context for logging.
+ * @param[in] date Date string to check (non-necessarily terminated by '\0').
+ * @param[in] date_len Length of the date string, 10 expected.
+ * @param[in] stmt Statement name for error message.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_check_date(const struct ly_ctx *ctx, const char *date, uint32_t date_len, const char *stmt);
 
 /**
  * @brief Just move the newest revision into the first position, does not sort the rest

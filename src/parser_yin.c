@@ -1841,8 +1841,9 @@ yin_parse_revision(struct lysp_yin_ctx *ctx, struct lysp_revision **revs)
     /* parse argument */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_date, Y_STR_ARG, LY_STMT_REVISION));
+
     /* check value */
-    if (lysp_check_date((struct lysp_ctx *)ctx, temp_date, strlen(temp_date), "revision")) {
+    if (lys_check_date(PARSER_CTX(ctx), temp_date, strlen(temp_date), "revision")) {
         lysdict_remove(ctx->xmlctx->ctx, temp_date);
         return LY_EVALID;
     }
@@ -1924,7 +1925,7 @@ yin_parse_revision_date(struct lysp_yin_ctx *ctx, char *rev, struct lysp_ext_ins
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, LY_STMT_REVISION_DATE));
-    LY_CHECK_ERR_RET(lysp_check_date((struct lysp_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
+    LY_CHECK_ERR_RET(lys_check_date(PARSER_CTX(ctx), temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
             lysdict_remove(ctx->xmlctx->ctx, temp_rev), LY_EVALID);
 
     strcpy(rev, temp_rev);
