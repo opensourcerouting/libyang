@@ -1,0 +1,5 @@
+<int32 xmlns="urn:tests:types"
+       xmlns:yang="urn:ietf:params:xml:ns:yang:1"
+       xmlns:dflt="urn:ietf:params:xml:ns:netconf:default:1.0"
+       yang:operation="create"
+       dflt:default="true">5</int32>

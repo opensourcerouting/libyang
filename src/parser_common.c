@@ -313,8 +313,8 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
             next_meta = meta2->next;
 
             /* delete the metadata */
-            if (meta != &node->meta) {
-                *meta = (*meta)->next;
+            if ((meta != &node->meta) && (meta2 == *meta)) {
+                *meta = next_meta;
             }
             lyd_free_meta_single(meta2);
             if (prev_meta) {
