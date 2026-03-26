@@ -182,7 +182,7 @@ lys_schema_node_get_module(const struct ly_ctx *ctx, const char *prefix_dict, co
     }
 
     /* prefix module not found */
-    LOGVAL(ctx, NULL, LYVE_REFERENCE, "Invalid absolute-schema-nodeid nametest - prefix \"%s\" not defined in module \"%s\".",
+    LOGVAL(ctx, NULL, LYVE_REFERENCE, "Invalid schema-nodeid nametest - prefix \"%s\" not defined in module \"%s\".",
             prefix_dict, LYSP_MODULE_NAME(pmod));
     return NULL;
 }
@@ -254,9 +254,7 @@ lys_nodeid_mod_check(struct lysc_ctx *ctx, const char *str, ly_bool abs, struct 
     if (abs || nodeid) {
         /* compile into nodeid, only if needed */
         LY_CHECK_GOTO(ret = lys_precompile_nodeid(ctx->ctx, str, &ni), cleanup);
-    }
 
-    if (abs) {
         for (i = 0; i < ni->count; ++i) {
             mod = (struct lys_module *)lys_schema_node_get_module(ctx->ctx, ni->prefix[i], ctx->pmod);
             LY_CHECK_ERR_GOTO(!mod, ret = LY_EVALID, cleanup);

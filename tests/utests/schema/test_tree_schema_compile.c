@@ -2872,6 +2872,22 @@ test_refine(void **state)
             "uses g:grp {refine c/ll {min-elements 1;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Compilation of a deviated and/or refined node failed.", "/mm:{uses='g:grp'}/mm:c/ll", 0);
     CHECK_LOG_CTX("The default statement is present on leaf-list with a nonzero min-elements.", "/mm:{uses='g:grp'}/mm:c/ll", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module nn {namespace urn:nn; prefix nn;"
+            "grouping test-group {"
+            "  container cont {"
+            "    leaf my-leaf {type string;}"
+            "  }"
+            "}"
+            "container test-container {"
+            "  uses test-group {"
+            "    refine \"invalid:my-leaf\" {"
+            "      description \"test\";"
+            "    }"
+            "  }"
+            "}}", LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Invalid schema-nodeid nametest - prefix \"invalid\" not defined in module \"nn\".",
+            "/nn:test-container/{uses='test-group'}/{refine='invalid:my-leaf'}", 0);
 }
 
 static void
