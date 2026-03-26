@@ -990,18 +990,21 @@ lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc
     }
 
 cleanup:
-    if (storage.realtype->basetype == LY_TYPE_UNION) {
-        val = &storage.subvalue->value;
-    } else {
-        val = &storage;
+    if (!rc) {
+        /* free the stored value, already freed on failure */
+        if (storage.realtype->basetype == LY_TYPE_UNION) {
+            val = &storage.subvalue->value;
+        } else {
+            val = &storage;
+        }
+        if (val->realtype->basetype == LY_TYPE_INST) {
+            /* ly_path includes references to other nodes, in case they are in foreign modules, the context would
+             * need to be freed in specific order to avoid accessing freed memory, so just avoid storing it */
+            ly_path_free(val->target);
+            val->target = NULL;
+        }
+        type_plg->free(ctx->ctx, &storage);
     }
-    if (val->realtype->basetype == LY_TYPE_INST) {
-        /* ly_path includes references to other nodes, in case they are in foreign modules, the context would
-         * need to be freed in specific order to avoid accessing freed memory, so just avoid storing it */
-        ly_path_free(val->target);
-        val->target = NULL;
-    }
-    type_plg->free(ctx->ctx, &storage);
     return rc;
 }
 

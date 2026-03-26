@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_yang.c
  *
- * Copyright (c) 2018 - 2023 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -2197,9 +2197,28 @@ test_type_union(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;typedef mytype {type union{type mytype; type string;}}"
             "leaf l {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "/ee:l", 0);
+
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ef {namespace urn:ef;prefix ef;typedef mytype {type mytype2;}"
             "typedef mytype2 {type mytype;} leaf l {type mytype;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid \"mytype\" type reference - circular chain of types detected.", "/ef:l", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module test {namespace \"urn:test\"; prefix t;"
+            "  leaf target { type int8; }"
+            "  typedef union-leafref {"
+            "    type union {"
+            "      type leafref { path \"/target\"; }"
+            "      type int8;"
+            "    }"
+            "  }"
+            "  leaf test-leaf {"
+            "    type union-leafref;"
+            "    default \"999\";"
+            "  }"
+            "}", LYS_IN_YANG, &mod));
+    CHECK_LOG_CTX("Invalid default - value does not fit the type (Invalid union value \"999\" - no matching subtype found:\n"
+            "    ly2 leafref: Invalid leafref value \"999\" - no target instance \"/target\" with the same value.\n"
+            "    ly2 integers: Value \"999\" is out of type int8 min/max bounds.\n"
+            ").", "/test:test-leaf", 0);
 }
 
 static void
