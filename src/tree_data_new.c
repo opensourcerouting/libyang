@@ -273,6 +273,10 @@ lyd_create_any(const struct lysc_node *schema, const struct lyd_node *child, con
         }
     } else {
         /* anyxml */
+        if (hints & 0x0FFF) {
+            /* any LYD_VALHINT_* */
+            try_parse = 0;
+        }
         if (value && try_parse) {
             /* try to parse as a data tree */
             r = lyd_create_any_datatree(schema->module->ctx, value, 0, &tree);
@@ -297,10 +301,10 @@ lyd_create_any(const struct lysc_node *schema, const struct lyd_node *child, con
         } else if (value) {
             LY_CHECK_GOTO(rc = lydict_insert_zc(schema->module->ctx, (void *)value, &any->value), cleanup);
         }
+        any->hints = hints;
     } else {
-        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, child, value, 0), cleanup);
+        LY_CHECK_GOTO(rc = lyd_any_copy_value(&any->node, child, value, hints), cleanup);
     }
-    any->hints = hints;
     lyd_hash(&any->node);
 
 cleanup:
@@ -335,7 +339,7 @@ lyd_any_copy_value(struct lyd_node *trg, const struct lyd_node *child, const cha
         return LY_SUCCESS;
     }
 
-    if (value) {
+    if (value && ((trg->schema->nodetype == LYS_ANYDATA) || !(hints & 0x0FFF))) {
         /* try to parse as a data tree */
         if (!lyd_create_any_datatree(LYD_CTX(trg), value, 0, &node)) {
             /* use the parsed data tree */
