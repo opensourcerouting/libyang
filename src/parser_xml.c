@@ -924,26 +924,26 @@ lydxml_subtree_any(struct lyd_xml_ctx *lydctx, const struct lysc_node *snode, co
 
     *node = NULL;
 
-    if ((snode->nodetype == LYS_ANYDATA) && !xmlctx->ws_only) {
-        /* value in anydata node, we expect a tree */
-        LOGVAL(xmlctx->ctx, parent, LYVE_SYNTAX, "Text value \"%.*s\" inside an anydata node \"%s\" found.",
-                xmlctx->value_len < 20 ? (int)xmlctx->value_len : 20, xmlctx->value, snode->name);
-        r = LY_EVALID;
-        LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-    }
-
     if (xmlctx->ws_only) {
         /* create empty node first */
         r = lyd_create_any(snode, NULL, NULL, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         datatree_val = 1;
     } else {
+        if (snode->nodetype == LYS_ANYDATA) {
+            /* value in anydata node, we expect a tree */
+            LOGVAL(xmlctx->ctx, parent, LYVE_SYNTAX, "Text value \"%.*s\" inside an anydata node \"%s\" found.",
+                    xmlctx->value_len < 20 ? (int)xmlctx->value_len : 20, xmlctx->value, snode->name);
+            r = LY_EVALID;
+            LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
+        }
+
         /* use an arbitrary text value for anyxml */
         val = strndup(xmlctx->value, xmlctx->value_len);
         LY_CHECK_ERR_GOTO(!val, LOGMEM(xmlctx->ctx); rc = LY_EMEM, cleanup);
 
         /* create node */
-        r = lyd_create_any(snode, NULL, val, 0, 1, 1, node);
+        r = lyd_create_any(snode, NULL, val, 0, 1, 0, node);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
         val = NULL;
     }

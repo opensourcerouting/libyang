@@ -217,10 +217,11 @@ test_anydata_strict_validation(void **state)
 static void
 test_anyxml(void **state)
 {
-    const char *data;
+    const char *data, *data_expected;
     char *str;
     struct lyd_node *tree;
 
+    /* element value */
     data = "<anyx xmlns=\"urn:tests:a\">\n"
             "  <element1>\n"
             "    <element2 x:attr2=\"test\" xmlns:x=\"urn:x\">data</element2>\n"
@@ -231,14 +232,13 @@ test_anyxml(void **state)
     assert_non_null(tree);
     tree = tree->next;
 
-    const char *data_expected =
+    data_expected =
             "<anyx xmlns=\"urn:tests:a\">\n"
             "  <element1>\n"
             "    <element2 xmlns:x=\"urn:x\" x:attr2=\"test\">data</element2>\n"
             "  </element1>\n"
             "  <element1a/>\n"
             "</anyx>\n";
-
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
 
     assert_int_equal(LY_SUCCESS, lyd_any_value_str(tree, LYD_XML, &str));
@@ -249,6 +249,17 @@ test_anyxml(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
     lyd_free_all(tree);
 
+    /* text value */
+    data = "<anyx xmlns=\"urn:tests:a\">&lt;text/&gt;</anyx>\n";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
+
+    data_expected = "<anyx xmlns=\"urn:tests:a\">&lt;text/&gt;</anyx>\n";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SIBLINGS, data_expected);
+    lyd_free_all(tree);
+
+    /* leaf-list element value */
     data = "<anyx xmlns=\"urn:tests:a\"><x>1</x><x>0</x><x>-1</x><x>4294967295</x><x>4294967296</x><x>-2147483648</x><x>-2147483649</x></anyx>";
     CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
     assert_non_null(tree);
