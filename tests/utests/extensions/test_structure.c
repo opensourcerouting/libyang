@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for structure extensions support
  *
- * Copyright (c) 2022 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2022 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -339,6 +339,62 @@ test_parse(void **state)
             LYD_PARSE_STRICT | LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LOG_CTX("Node \"l2\" not found as a child of \"cont\" node.",
             "/a:struct/x/struct/x/any/c:cont", 1);
+
+    /* patch */
+    ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG);
+    assert_non_null(ly_ctx_load_module(UTEST_LYCTX, "ietf-yang-patch", NULL, NULL));
+    yang = "module example {yang-version 1.1;namespace \"http://example.tld/example\";prefix ex;"
+            "  container a {"
+            "    container b {"
+            "      container c {"
+            "        leaf enabled {"
+            "          type boolean;"
+            "          default true;"
+            "        }"
+            "        leaf blower {"
+            "          type string;"
+            "        }"
+            "      }"
+            "    }"
+            "    container b1 { }"
+            "    leaf something { type string; }"
+            "  }"
+            "  container two-leafs {"
+            "    leaf a { type string; }"
+            "    leaf b { type string; }"
+            "  }"
+            "}";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
+
+    json =
+            "{\n"
+            "  \"ietf-yang-patch:yang-patch\": {\n"
+            "    \"patch-id\": \"patch\",\n"
+            "    \"edit\": [\n"
+            "      {\n"
+            "        \"edit-id\": \"edit\",\n"
+            "        \"operation\": \"replace\",\n"
+            "        \"target\": \"/example:a\",\n"
+            "        \"value\": {\n"
+            "          \"example:a\": \"aaa\"\n"
+            "        }\n"
+            "      },\n"
+            "      {\n"
+            "        \"edit-id\": \"edit\",\n"
+            "        \"operation\": \"replace\",\n"
+            "        \"target\": \"/example:b\",\n"
+            "        \"value\": {\n"
+            "          \"example:b\": \"bbb\"\n"
+            "        }\n"
+            "      }\n"
+            "    ]\n"
+            "  }\n"
+            "}\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(json, &UTEST_IN));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data(UTEST_LYCTX, NULL, UTEST_IN, LYD_JSON, LYD_PARSE_STRICT | LYD_PARSE_ONLY,
+            0, &tree));
+    CHECK_LYD_STRING_PARAM(tree, json, LYD_JSON, LYD_PRINT_SIBLINGS);
+    lyd_free_all(tree);
 }
 
 static void

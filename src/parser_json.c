@@ -517,11 +517,6 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
 
     assert(snode);
 
-    if (!(snode->nodetype & (LYD_NODE_TERM | LYS_LIST))) {
-        /* can always be parsed as a data node if we have the schema node */
-        return LY_SUCCESS;
-    }
-
     /* backup parser */
     lyjson_ctx_backup(jsonctx);
     status = lyjson_ctx_status(jsonctx);
@@ -550,6 +545,15 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
             /* lists may not have all its keys */
             if (lydjson_check_list(lydctx, snode)) {
                 /* invalid list, parse as opaque if it misses/has invalid some keys */
+                ret = LY_ENOT;
+            }
+            break;
+        case LYS_CONTAINER:
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+            /* check the status only */
+            if (status != LYJSON_OBJECT) {
                 ret = LY_ENOT;
             }
             break;
