@@ -318,6 +318,67 @@ lyd_diff_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct 
     lyd_insert_node(NULL, first_sibling, node, LYD_INSERT_NODE_LAST_BY_SCHEMA);
 }
 
+/**
+ * @brief Duplicate a node with any parents and connect it to the parent, if any.
+ *
+ * @param[in] node Node to duplicate.
+ * @param[in] op Diff operation.
+ * @param[in] parent Parent to connect to, if any.
+ * @param[in,out] first First top-level node.
+ * @param[out] dup Duplicated @p node.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_diff_dup(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node *parent, struct lyd_node **first,
+        struct lyd_node **dup)
+{
+    struct lyd_node *dup_parent, *d;
+    const struct lyd_node *node_parent;
+    const struct lysc_node *sparent;
+    uint32_t diff_opts;
+
+    diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_FLAGS;
+    if (lysc_is_userordered(node->schema)) {
+        diff_opts |= LYD_DUP_NO_LYDS;
+    }
+    if ((op != LYD_DIFF_OP_REPLACE) || !lysc_is_userordered(node->schema) || (node->schema->flags & LYS_CONFIG_R)) {
+        /* move applies only to the user-ordered list, no descendants */
+        diff_opts |= LYD_DUP_RECURSIVE;
+    }
+
+    /* duplicate the node */
+    LY_CHECK_RET(lyd_dup_single(node, NULL, diff_opts, dup));
+
+    dup_parent = *dup;
+    node_parent = node;
+    sparent = parent ? parent->schema : NULL;
+    while (lysc_data_parent(dup_parent->schema) &&
+            !lyd_compare_schema_equal(lysc_data_parent(dup_parent->schema), sparent)) {
+        node_parent = node_parent->parent;
+
+        /* duplicate the next parent */
+        LY_CHECK_RET(lyd_dup_single(node_parent, NULL, LYD_DUP_NO_META | LYD_DUP_WITH_FLAGS, &d));
+
+        /* connect the existing dup tree into the parent */
+        lyd_insert_node(d, NULL, dup_parent, LYD_INSERT_NODE_DEFAULT);
+        dup_parent = d;
+    }
+
+    /* connect to the parent/data tree */
+    if (parent) {
+        lyd_insert_node(parent, NULL, dup_parent, LYD_INSERT_NODE_DEFAULT);
+    } else {
+        lyd_diff_insert_sibling(*first, dup_parent, first);
+    }
+
+    /* add parent operation, if any */
+    if (dup_parent != *dup) {
+        LY_CHECK_RET(lyd_new_meta(NULL, dup_parent, NULL, "yang:operation", "none", LYD_NEW_VAL_STORE_ONLY, NULL));
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
         const char *key, const char *value, const char *position, const char *orig_key, const char *orig_position,
@@ -327,7 +388,6 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     const struct lyd_node *parent = NULL;
     enum lyd_diff_op cur_op;
     struct lyd_meta *meta;
-    uint32_t diff_opts;
     ly_bool found;
 
     assert(diff);
@@ -406,47 +466,8 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
 
         dup = diff_parent;
     } else {
-        diff_opts = LYD_DUP_NO_META | LYD_DUP_WITH_PARENTS | LYD_DUP_WITH_FLAGS;
-        if (lysc_is_userordered(node->schema)) {
-            diff_opts |= LYD_DUP_NO_LYDS;
-        }
-        if ((op != LYD_DIFF_OP_REPLACE) || !lysc_is_userordered(node->schema) || (node->schema->flags & LYS_CONFIG_R)) {
-            /* move applies only to the user-ordered list, no descendants */
-            diff_opts |= LYD_DUP_RECURSIVE;
-        }
-
         /* duplicate the subtree (and connect to the diff if possible) */
-        if (diff_parent && (LYD_CTX(diff_parent) != LYD_CTX(node))) {
-            LY_CHECK_RET(lyd_dup_single_to_ctx(node, LYD_CTX(diff_parent), diff_parent, diff_opts, &dup));
-        } else {
-            LY_CHECK_RET(lyd_dup_single(node, diff_parent, diff_opts, &dup));
-        }
-
-        /* find the first duplicated parent */
-        if (!diff_parent) {
-            diff_parent = dup->parent;
-            while (diff_parent && diff_parent->parent) {
-                diff_parent = diff_parent->parent;
-            }
-        } else {
-            diff_parent = dup;
-            while (diff_parent->parent && (diff_parent->parent->schema == parent->schema)) {
-                diff_parent = diff_parent->parent;
-            }
-        }
-
-        /* no parent existed, must be manually connected */
-        if (!diff_parent) {
-            /* there actually was no parent to duplicate */
-            lyd_diff_insert_sibling(*diff, dup, diff);
-        } else if (!diff_parent->parent) {
-            lyd_diff_insert_sibling(*diff, diff_parent, diff);
-        }
-
-        /* add parent operation, if any */
-        if (diff_parent && (diff_parent != dup)) {
-            LY_CHECK_RET(lyd_new_meta(NULL, diff_parent, NULL, "yang:operation", "none", LYD_NEW_VAL_STORE_ONLY, NULL));
-        }
+        LY_CHECK_RET(lyd_diff_dup(node, op, diff_parent, diff, &dup));
     }
 
     /* add subtree operation if needed */
