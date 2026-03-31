@@ -353,7 +353,7 @@ lyd_diff_dup(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node *
     node_parent = node;
     sparent = parent ? parent->schema : NULL;
     while (lysc_data_parent(dup_parent->schema) &&
-            !lyd_compare_schema_equal(lysc_data_parent(dup_parent->schema), sparent)) {
+            !lyd_compare_schema_equal(lysc_data_parent(dup_parent->schema), sparent, 0)) {
         node_parent = node_parent->parent;
 
         /* duplicate the next parent */

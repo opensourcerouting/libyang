@@ -584,11 +584,12 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
 /**
  * @brief Check the equality of the two schemas.
  *
- * @param schema1 Schema of first node.
- * @param schema2 Schema of second node.
+ * @param[in] schema1 Schema of first node.
+ * @param[in] schema2 Schema of second node.
+ * @param[in] cmp_parents Whether to also compare all the parents.
  * @return 1 if the schemas are equal otherwise 0.
  */
-ly_bool lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2);
+ly_bool lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2, ly_bool cmp_parents);
 
 /**
  * @brief Store and canonize the given @p value into @p val according to the schema node type rules.

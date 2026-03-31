@@ -1080,12 +1080,7 @@ lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod),
     val1 = *((struct lysc_node **)val1_p);
     val2 = *((struct lyd_node **)val2_p);
 
-    if (val1 == val2->schema) {
-        /* schema match is enough */
-        return 1;
-    } else {
-        return 0;
-    }
+    return lyd_compare_schema_equal(val1, val2->schema, 1);
 }
 
 LY_ERR

@@ -1506,7 +1506,7 @@ finish:
 }
 
 ly_bool
-lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2)
+lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node *schema2, ly_bool cmp_parents)
 {
     if (!schema1 && !schema2) {
         return 1;
@@ -1518,15 +1518,24 @@ lyd_compare_schema_equal(const struct lysc_node *schema1, const struct lysc_node
         return (schema1 == schema2) ? 1 : 0;
     }
 
-    if (schema1->nodetype != schema2->nodetype) {
-        return 0;
-    }
+    do {
+        if (schema1->nodetype != schema2->nodetype) {
+            return 0;
+        }
 
-    if (strcmp(schema1->name, schema2->name)) {
-        return 0;
-    }
+        if (strcmp(schema1->name, schema2->name)) {
+            return 0;
+        }
 
-    if (strcmp(schema1->module->name, schema2->module->name)) {
+        if (strcmp(schema1->module->name, schema2->module->name)) {
+            return 0;
+        }
+
+        schema1 = schema1->parent;
+        schema2 = schema2->parent;
+    } while (cmp_parents && schema1 && schema2);
+
+    if ((schema1 && !schema2) || (!schema1 && schema2)) {
         return 0;
     }
 
@@ -1552,7 +1561,7 @@ lyd_compare_schema_parents_equal(const struct lyd_node *node1, const struct lyd_
     for (parent1 = node1->schema->parent, parent2 = node2->schema->parent;
             parent1 && parent2;
             parent1 = parent1->parent, parent2 = parent2->parent) {
-        if (!lyd_compare_schema_equal(parent1, parent2)) {
+        if (!lyd_compare_schema_equal(parent1, parent2, 0)) {
             return 0;
         }
     }
@@ -1669,7 +1678,7 @@ lyd_compare_single_schema(const struct lyd_node *node1, const struct lyd_node *n
         }
     } else {
         /* different contexts */
-        if (!lyd_compare_schema_equal(node1->schema, node2->schema)) {
+        if (!lyd_compare_schema_equal(node1->schema, node2->schema, 0)) {
             return LY_ENOT;
         }
         if (!parental_schemas_checked) {
@@ -2369,7 +2378,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct ly_ctx **trg_
             iter = parent;
             repeat = 0;
         } else if (parent && (LYD_CTX(parent) != LYD_CTX(orig_parent)) &&
-                lyd_compare_schema_equal(parent->schema, orig_parent->schema) &&
+                lyd_compare_schema_equal(parent->schema, orig_parent->schema, 0) &&
                 lyd_compare_schema_parents_equal(parent, orig_parent)) {
             iter = parent;
             repeat = 0;
@@ -3186,7 +3195,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     }
 
     if ((siblings->schema && target->schema &&
-            !lyd_compare_schema_equal(lysc_data_parent(siblings->schema), lysc_data_parent(target->schema)))) {
+            !lyd_compare_schema_equal(lysc_data_parent(siblings->schema), lysc_data_parent(target->schema), 1))) {
         /* schema mismatch */
         if (match) {
             *match = NULL;
@@ -3205,7 +3214,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
             /* we must search the instances from beginning to find the first matching one */
             found = 0;
             for (lyd_find_sibling_val(siblings, target->schema, NULL, 0, &iter);
-                    iter && lyd_compare_schema_equal(iter->schema, target->schema);
+                    iter && lyd_compare_schema_equal(iter->schema, target->schema, 0);
                     iter = iter->next) {
                 if (!lyd_compare_single(target, iter, LYD_COMPARE_FULL_RECURSION)) {
                     found = 1;
