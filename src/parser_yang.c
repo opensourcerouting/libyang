@@ -1746,7 +1746,7 @@ parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p)
             LY_CHECK_GOTO(ret, cleanup);
             break;
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, *when_p, LY_STMT_WHEN, 0, &when->exts), cleanup);
+            LY_CHECK_GOTO(ret = parse_ext(ctx, word, word_len, when, LY_STMT_WHEN, 0, &when->exts), cleanup);
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, lyplg_ext_stmt2str(kw), "when");
